@@ -20,6 +20,16 @@
 
 ## 🚀 Getting started
 
+Make sure you are running **Node.js** `22` (the version we test with). If you use [fnm](https://github.com/Schniz/fnm):
+
+```bash
+fnm install 22
+fnm use 22
+node -v
+```
+
+Then install and start Voux:
+
 ```bash
 npm install
 cp .env.example .env
