@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title> Voux · Terms of Service </title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
+    rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="/assets/logo.png" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body>
+  <header class="site-nav">
+    <a class="brand" href="/">
+      <img src="/assets/logo-text.png" alt="Voux" />
+    </a>
+    <div class="nav-account">
+      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu">
+        <i class="ri-account-circle-fill"></i>
+      </button>
+      <div class="account-menu" id="navAccountMenu">
+        <a href="/admin.html" class="account-menu__link">
+          <i class="ri-dashboard-line"></i>
+          Dashboard
+        </a>
+        <a href="/settings.html" class="account-menu__link">
+          <i class="ri-equalizer-line"></i>
+          Settings
+        </a>
+        <button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
+          <i class="ri-logout-box-r-line"></i>
+          Log out
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">
+        <span class="eyebrow-logo">
+          <img src="/assets/logo.png" alt="Voux logo" />
+        </span>
+        <span>Voux - Terms</span>
+      </p>
+      <h1>Terms of Service</h1>
+      <p>Here's the quick version: you run your own copy of Voux, so you control what it does and you're responsible for it.</p>
+    </header>
+
+    <section class="card">
+      <h2>1. You're in charge</h2>
+      <p>When you host Voux, it sits on your server. Make sure it follows the laws where you live, especially around privacy and data retention.</p>
+    </section>
+
+    <section class="card">
+      <h2>2. Your counters, your data</h2>
+      <p>All counters and hits stay in your SQLite file. Nothing gets sent back to us. Back it up if the stats matter to you.</p>
+    </section>
+
+    <section class="card">
+      <h2>3. Keep it reasonable</h2>
+      <p>Don't use Voux to collect more data than you need. It only dedupes by IP. If you don't want to keep those hits, clear them out.</p>
+    </section>
+
+    <section class="card">
+      <h2>4. No promises</h2>
+      <p>Voux is free software with no warranty. If something breaks, you're responsible for fixing it.</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__content">
+      <div class="footer__main">
+        <div class="footer__socials">
+          <a href="https://github.com/yourusername/voux" target="_blank" rel="noreferrer" aria-label="GitHub">
+            <i class="ri-github-fill"></i>
+          </a>
+          <a href="https://twitter.com/yourusername" target="_blank" rel="noreferrer" aria-label="Twitter">
+            <i class="ri-twitter-x-fill"></i>
+          </a>
+          <a href="https://discord.gg/yourinvite" target="_blank" rel="noreferrer" aria-label="Discord">
+            <i class="ri-discord-fill"></i>
+          </a>
+        </div>
+
+        <div class="footer__links">
+          <a href="/terms">Terms of Service</a>
+          <a href="/privacy">Privacy Policy</a>
+        </div>
+      </div>
+
+      <p class="footer__copyright">© <span id="currentYear"></span> Quintix Labs. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="/nav.js" defer></script>
+  <script>
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+  </script>
+</body>
+
+</html>
