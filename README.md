@@ -1,15 +1,24 @@
-# Voux Counter Service
+<h1 align="center">
+  <a href="http://voux.fr0st.xyz" target="_blank"><img src="https://github.com/QuintixLabs/Voux/blob/master/public/assets/banner-2.png" alt="Voux" width="900"></a>
+</h1>
+<p align="center"><strong>Simple Free & Open Source Hit Counter for Blogs and Websites</strong></p>
 
-Voux is a self-hosted view counter you can embed on any site. Each counter increments only once per visitor IP (unless you set a cooldown window), and the output HTML uses predictable classes so anyone can override the styling.
 
-## Features
+<p align="center">
+<a href="#-features">Features</a> •
+  <a href="#-getting-started">Getting Started</a> •
+<a href="#-clearing-ip-dedupe-data">Clearing IP dedupe data</a> •
+<a href="#-counting-modes">Counting modes</a>
+</p>
+
+## ✨ Features
 
 - JSON API + dashboard to create counters and fetch their metadata.
 - One-line `<script async src="...">` embed; wrap it with your own element (e.g. `<span class="counter-widget">…</span>`) when you need classes for styling.
 - SQLite storage (lives in `data/counters.db`) so you can run it entirely on your own machine.
 - Separate `hits` table tracks the IP + last-hit timestamp used for deduplication.
 
-## Getting started
+## 🚀 Getting started
 
 ```bash
 npm install
@@ -19,33 +28,32 @@ npm run dev
 # open http://localhost:8787
 ```
 
-For production or when running on your Arch host:
+For production or when running on your machine:
 
 ```bash
 npm install --production
 npm start
 ```
 
-## Configuration
+## ⚙️ Configuration
 
-Environment variables (used as defaults the first time you run Voux). After the service starts you can tweak the same
-options from `/settings.html` without editing `.env`.
+Environment variables. You can tweak some of these options later from `/settings.html` without editing `.env`.
 
-| Name | Default | Description |
-| ---- | ------- | ----------- |
-| `PORT` | `8787` | HTTP port |
-| `PUBLIC_BASE_URL` | derived from request | Force embed URLs to use a specific origin (e.g. `https://counter.example.com`) |
-| `ADMIN_TOKEN` | `unset` | Required secret for admin APIs and the `/admin.html` dashboard |
-| `PRIVATE_MODE` | `false` | Initial value for whether counter creation is admin-only |
-| `ADMIN_PAGE_SIZE` | `20` | How many counters to show per page on `/admin.html` |
-| `SHOW_PUBLIC_GUIDES` | `true` | Initial value for showing the public guide cards |
-| `ADMIN_TOKEN` | `unset` | When set, `GET /api/counters` requires header `x-voux-admin: <token>` |
+
+| Name | Default | What it does |
+| ---- | -------- | ------------ |
+| `PORT` | `8787` | The web server port number. |
+| `PUBLIC_BASE_URL` | based on request | Lets you set a fixed site URL (like `https://counter.yourdomain.com`). |
+| `ADMIN_TOKEN` | `unset` | A secret key needed to access admin tools and the `/admin.html` page. |
+| `PRIVATE_MODE` | `false` | If `true`, only admins can create new counters. |
+| `ADMIN_PAGE_SIZE` | `5` | How many counters show on each page in the admin panel. |
+| `SHOW_PUBLIC_GUIDES` | `true` | Controls if public guide cards are shown on the main page. |
 
 SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers.
 
 When `PRIVATE_MODE=true`, the public builder hides the “Generate counter” form and all creation/deletion happens through `/admin.html` with your admin token.
 
-## API quick reference
+## 🧩 API quick reference
 
 - `GET /api/config` – returns `{ privateMode, adminPageSize }` so UIs know how to behave.
 - `POST /api/counters` – body: `{ "label": "Blog Views", "startValue": 25, "ipCooldownHours": "never" }` (requires `X-Voux-Admin` when `PRIVATE_MODE` is `true`).
@@ -63,19 +71,14 @@ If `ADMIN_TOKEN` is set, include `X-Voux-Admin: <token>` when calling any admin 
 Use the browser dashboard at `/admin.html` for a token-protected UI to list and delete counters.
 When `PRIVATE_MODE=true`, that dashboard is also where you create new counters.
 
-### Styling embeds
+### 🎨 Styling embeds
 
-Default embed snippet:
-
-```html
-<script async src="https://your-host/embed/abc123.js"></script>
-```
-
-Wrap it yourself when you need styling:
+Styling your counter with **Voux** is super simple. All you need to do is wrap your counter script inside an element. We'll use a `<span>` in this example:
 
 ```html
 <span class="counter-widget">
-  <script async src="https://your-host/embed/abc123.js"></script>
+  <!---------------------replace this with urs--------------------->
+  <script async src="https://your-domain/embed/abc123.js"></script>
 </span>
 ```
 
@@ -83,27 +86,20 @@ When the script runs it replaces the inner script with the label/value spans, so
 
 ```css
 .counter-widget {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
-  font-family: 'Space Grotesk', 'Inter', sans-serif;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-}
-
-.counter-widget__label {
-  opacity: 0.65;
-}
-
-.counter-widget__value {
-  font-weight: 700;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: black;
+  font-weight: 600;
+  font-size: 3rem;
+  font-family: system-ui, sans-serif;
 }
 ```
+And that's it. Your counter is now styled and ready to use. You can change the font, colors, or layout any way you like.
 
-Leave `label` empty when creating a counter if you only want the bare number.
-
-### Clearing IP dedupe data
+### 🧹 Clearing IP dedupe data
 
 The `hits` table only stores `counter_id`, `ip`, and the last timestamp for deduplication. To wipe it (for privacy or to reset the cooldown), run:
 
@@ -112,12 +108,8 @@ npm run clear-hits
 ```
 
 Counters remain untouched; only the IP records used for dedupe are removed.
-### Settings dashboard
 
-Visit `/settings.html` (authenticate with the admin token) to toggle private mode or the public guide cards at runtime.
-Changes persist to `data/config.json`.
-
-### Counting modes
+### 🧮 Counting modes
 
 - `"unique"` – each IP can increment once.
 - `"unlimited"` – every visit increments (no dedupe).
