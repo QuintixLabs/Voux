@@ -5,6 +5,7 @@ const settingsPanel = document.getElementById('settingsPanel');
 const togglePrivate = document.getElementById('togglePrivateMode');
 const toggleGuides = document.getElementById('toggleShowGuides');
 const statusLabel = document.getElementById('settingsStatus');
+const versionLabel = document.getElementById('settingsVersion');
 
 let tokenData = loadStoredToken();
 let statusTimeout = null;
@@ -18,10 +19,11 @@ if (!tokenData) {
 function init(token) {
   setTogglesDisabled(true);
   fetchSettings(token)
-    .then((config) => {
+    .then(({ config, version }) => {
       populateForm(config);
       settingsPanel?.classList.remove('hidden');
       setStatus('Changes save instantly.');
+      setVersion(version);
       setTogglesDisabled(false);
       togglePrivate?.addEventListener('change', () => handleToggleChange(token, { privateMode: togglePrivate.checked }));
       toggleGuides?.addEventListener('change', () => handleToggleChange(token, { showGuides: toggleGuides.checked }));
@@ -38,7 +40,10 @@ async function fetchSettings(token) {
   });
   if (!res.ok) throw new Error('Unauthorized');
   const data = await res.json();
-  return data.config || {};
+  return {
+    config: data.config || {},
+    version: data.version || ''
+  };
 }
 
 function populateForm(config) {
@@ -46,6 +51,10 @@ function populateForm(config) {
   if (toggleGuides) toggleGuides.checked = Boolean(config.showGuides);
 }
 
+function setVersion(version) {
+  if (!versionLabel || !version) return;
+  versionLabel.textContent = `v${version}`;
+}
 async function handleToggleChange(token, patch) {
   try {
     setStatus('Saving…');
@@ -59,6 +68,10 @@ async function handleToggleChange(token, patch) {
       body: JSON.stringify(patch)
     });
     if (!res.ok) throw new Error('Failed to save');
+    const data = await res.json().catch(() => ({}));
+    if (data.version) {
+      setVersion(data.version);
+    }
     setStatus('Saved');
     resetStatusAfterDelay();
   } catch (error) {

@@ -35,6 +35,7 @@ app.get('/api/config', (req, res) => {
   const runtimeConfig = getConfig();
   res.json({
     ...runtimeConfig,
+    version: getVersion(),
     adminPageSize: DEFAULT_PAGE_SIZE,
     defaultMode: 'unique',
     defaultCooldownLabel: describeCooldownLabel('unique')
@@ -77,19 +78,20 @@ app.delete('/api/counters/:id', requireAdmin, (req, res) => {
 });
 
 app.get('/api/settings', requireAdmin, (req, res) => {
-  res.json({ config: getConfig() });
+  res.json({ config: getConfig(), version: getVersion() });
 });
 
 app.post('/api/settings', requireAdmin, (req, res) => {
-  const { privateMode, showGuides } = req.body || {};
+  const { privateMode, showGuides, homeTitle } = req.body || {};
   const patch = {};
   if (typeof privateMode === 'boolean') patch.privateMode = privateMode;
   if (typeof showGuides === 'boolean') patch.showGuides = showGuides;
+  if (typeof homeTitle === 'string') patch.homeTitle = homeTitle.trim().slice(0, 80);
   if (Object.keys(patch).length === 0) {
     return res.status(400).json({ error: 'no_valid_settings' });
   }
   const updated = updateConfig(patch);
-  res.json({ config: updated });
+  res.json({ config: updated, version: getVersion() });
 });
 
 app.delete('/api/counters', requireAdmin, (req, res) => {
@@ -246,6 +248,15 @@ function isPreviewRequest(req) {
   if (value === undefined || value === null) return false;
   const normalized = String(value).trim().toLowerCase();
   return normalized === '1' || normalized === 'true' || normalized === 'yes';
+}
+
+function getVersion() {
+  try {
+    const pkg = require('../package.json');
+    return pkg.version || '0.0.0';
+  } catch (_) {
+    return '0.0.0';
+  }
 }
 
 function serializeCounter(counter) {

@@ -165,6 +165,10 @@ body {
       color: var(--text-tertiary);
     }
 
+    .settings-version {
+      margin-top: 0.75rem;
+    }
+
     input,
     select,
     textarea {

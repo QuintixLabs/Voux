@@ -20,7 +20,7 @@
 
 ## 🚀 Getting started
 
-Make sure you are running **Node.js** `22` (the version we test with). If you use [fnm](https://github.com/Schniz/fnm):
+Make sure you are running Node.js 22 (the version we test with). If you use [fnm](https://github.com/Schniz/fnm):
 
 ```bash
 fnm install 22
@@ -59,7 +59,7 @@ Environment variables. You can tweak some of these options later from `/settings
 | `ADMIN_PAGE_SIZE` | `5` | How many counters show on each page in the admin panel. |
 | `SHOW_PUBLIC_GUIDES` | `true` | Controls if public guide cards are shown on the main page. |
 
-SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers.
+SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers. If you delete it, Voux creates a fresh empty file at the next start, but all counters will be gone.
 
 When `PRIVATE_MODE=true`, the public builder hides the “Generate counter” form and all creation/deletion happens through `/admin.html` with your admin token.
 

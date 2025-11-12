@@ -1,4 +1,4 @@
 {
-  "privateMode": false,
-  "showGuides": true
+  "privateMode": true,
+  "showGuides": false
 }
