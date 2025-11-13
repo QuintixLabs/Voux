@@ -11,7 +11,6 @@ if (!fs.existsSync(DATA_DIR)) {
 const dbPath = path.join(DATA_DIR, 'counters.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
-ensureIpCooldownColumn();
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS counters (
@@ -67,6 +66,8 @@ const countHitsSinceStmt = db.prepare(
 const insertCounterStmt = db.prepare(
   'INSERT INTO counters (id, label, theme, value, created_at, ip_cooldown_hours) VALUES (@id, @label, @theme, @value, @created_at, @ip_cooldown_hours)'
 );
+
+ensureIpCooldownColumn();
 const upsertCounterStmt = db.prepare(
   'INSERT INTO counters (id, label, theme, value, created_at, ip_cooldown_hours) VALUES (@id, @label, @theme, @value, @created_at, @ip_cooldown_hours) '
     + 'ON CONFLICT(id) DO UPDATE SET label=excluded.label, theme=excluded.theme, value=excluded.value, created_at=excluded.created_at, ip_cooldown_hours=excluded.ip_cooldown_hours'
