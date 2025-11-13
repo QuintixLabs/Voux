@@ -1,4 +1,4 @@
 node_modules
-data/*.db
+data/
 .env
 npm-debug.log*
