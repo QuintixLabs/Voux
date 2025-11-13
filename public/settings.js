@@ -71,7 +71,7 @@ function setupBackupControls(token) {
 }
 async function handleToggleChange(token, patch, successMessage = 'Updated') {
   try {
-    setStatus('Saving…');
+    setStatus('');
     setTogglesDisabled(true);
     const res = await fetch('/api/settings', {
       method: 'POST',

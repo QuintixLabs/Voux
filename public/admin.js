@@ -385,7 +385,7 @@ function renderCounterList(counters) {
     const setValueBtn = document.createElement('button');
     setValueBtn.type = 'button';
     setValueBtn.className = 'ghost setvalue';
-    setValueBtn.textContent = 'Set value';
+    setValueBtn.innerHTML = '<i class="ri-edit-line"></i> Set value';
 
     const adjustPanel = document.createElement('div');
     adjustPanel.className = 'counter-adjust hidden';
@@ -453,7 +453,7 @@ function renderCounterList(counters) {
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'danger ghost';
-    deleteBtn.textContent = 'Delete';
+    deleteBtn.innerHTML = '<i class="ri-delete-bin-line" aria-hidden="true"></i><span> Delete</span>';
     deleteBtn.addEventListener('click', () => removeCounter(counter.id));
 
     row.append(meta, deleteBtn);
