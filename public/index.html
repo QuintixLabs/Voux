@@ -113,20 +113,24 @@
       </div>
     </section>
 
-    <section class="card instructions config-guard" id="stylingCard">
-      <h2>Styling your counter</h2>
-      <p>Styling your counter with <b>Voux</b> is super simple. All you need to do is wrap your counter script inside an element. We'll use a <span class="code-inline">&lt;span&gt;</span> in this example:</p>
-      <div class="code-snippet">
-        <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
-        <pre><code class="language-markup">&lt;span class="counter-widget"&gt;
+    <details class="card instructions config-guard expander" id="stylingCard">
+      <summary>
+        <span>Styling your counter</span>
+        <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+      </summary>
+      <div class="expander__content">
+        <p>Styling your counter with <b>Voux</b> is super simple. All you need to do is wrap your counter script inside an element. We'll use a <span class="code-inline">&lt;span&gt;</span> in this example:</p>
+        <div class="code-snippet">
+          <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
+          <pre><code class="language-markup">&lt;span class="counter-widget"&gt;
   &lt;!---------------------replace this with urs---------------------&gt;
   &lt;script async src="https://your-domain/embed/abc123.js"&gt;&lt;/script&gt;
 &lt;/span&gt;</code></pre>
-      </div>
-      <p>Once that's in place, you can style it however you like using <b>CSS</b>. Here's a simple example that centers the counter on the screen and makes the text black:</p>
-      <div class="code-snippet">
-        <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
-        <pre><code class="language-css">.counter-widget {
+        </div>
+        <p>Once that's in place, you can style it however you like using <b>CSS</b>. Here's a simple example that centers the counter on the screen and makes the text black:</p>
+        <div class="code-snippet">
+          <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
+          <pre><code class="language-css">.counter-widget {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -137,46 +141,52 @@
   font-size: 3rem;
   font-family: system-ui, sans-serif;
 }</code></pre>
+        </div>
+        <p class="hint">And that's it. Your counter is now styled and ready to use. You can change the font, colors, or layout any way you like.</p>
       </div>
-      <p class="hint">And that's it. Your counter is now styled and ready to use. You can change the font, colors, or layout any way you like.</p>
-    </section>
+    </details>
 
-    <section class="card instructions config-guard" id="selfHostCard">
-      <h2>Self-hosting Voux</h2>
-      <p>Running your own copy is easy. Use Node.js 22 (install and switch with <b>fnm</b> or any manager) and keep the files anywhere. The SQLite file sits in the project folder, so you do not need any other services.</p>
+    <details class="card instructions config-guard expander" id="selfHostCard">
+      <summary>
+        <span>Self-hosting Voux</span>
+        <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+      </summary>
+      <div class="expander__content">
+        <p>Running your own copy is easy. Use Node.js 22 (install and switch with <b>fnm</b> or any manager) and keep the files anywhere. The SQLite file sits in the project folder, so you do not need any other services.</p>
 
-      <p><strong>1. Grab the project</strong></p>
-      <div class="code-snippet">
-        <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
-        <pre><code class="language-bash">git clone https://github.com/QuintixLabs/Voux.git
+        <p><strong>1. Grab the project</strong></p>
+        <div class="code-snippet">
+          <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
+          <pre><code class="language-bash">git clone https://github.com/QuintixLabs/Voux.git
 cd voux
 npm install</code></pre>
-      </div>
+        </div>
 
-      <p><strong>2. Drop in your settings</strong></p>
-      <div class="code-snippet">
-        <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
-        <pre><code class="language-bash">cp .env.example .env
+        <p><strong>2. Drop in your settings</strong></p>
+        <div class="code-snippet">
+          <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
+          <pre><code class="language-bash">cp .env.example .env
 $EDITOR .env   # set ADMIN_TOKEN, etc.</code></pre>
-      </div>
+        </div>
 
-      <p><strong>3. Run it</strong></p>
-      <div class="code-snippet">
-        <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
-        <pre><code class="language-bash">npm run dev   # dev server with reload
+        <p><strong>3. Run it</strong></p>
+        <div class="code-snippet">
+          <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
+          <pre><code class="language-bash">npm run dev   # dev server with reload
 npm start     # production build</code></pre>
-      </div>
+        </div>
 
-      <p><strong>4. Tweak optional vars</strong></p>
-      <div class="code-snippet">
-        <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
-        <pre><code class="language-bash">PORT=8787
+        <p><strong>4. Tweak optional vars</strong></p>
+        <div class="code-snippet">
+          <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
+          <pre><code class="language-bash">PORT=8787
 PUBLIC_BASE_URL=https://counter.yourdomain.com</code></pre>
-      </div>
+        </div>
 
-      <p><strong>5. Share it</strong> with a Cloudflared tunnel, reverse proxy, or any static IP. Point your embed script at that URL and you are done.</p>
-      <p class="hint">Need more tips? Check the <a href="https://github.com/QuintixLabs/Voux" target="_blank" rel="noreferrer" style="color: var(--accent); text-decoration: underline;">GitHub repo</a> any time.</p>
-    </section>
+        <p><strong>5. Share it</strong> with a Cloudflared tunnel, reverse proxy, or any static IP. Point your embed script at that URL and you are done.</p>
+        <p class="hint">Need more tips? Check the <a href="https://github.com/QuintixLabs/Voux" target="_blank" rel="noreferrer" style="color: var(--accent); text-decoration: underline;">GitHub repo</a> any time.</p>
+      </div>
+    </details>
 
 
   </main>
