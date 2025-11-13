@@ -299,7 +299,7 @@ function renderCounterList(counters) {
     const empty = document.createElement('p');
     empty.className = 'hint';
     empty.textContent = state.searchQuery
-      ? `No counters match "${state.searchQuery}".`
+      ? `No counters match "${truncateQuery(state.searchQuery)}".`
       : 'No counters yet.';
     counterListEl.appendChild(empty);
     return;
@@ -523,6 +523,11 @@ function formatLastHit(timestamp) {
     return `${days}d ago`;
   }
   return new Date(timestamp).toLocaleDateString();
+}
+
+function truncateQuery(query) {
+  if (!query) return '';
+  return query.length > 32 ? `${query.slice(0, 32)}…` : query;
 }
 
 async function copyEmbedSnippet(counterId, button) {

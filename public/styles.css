@@ -514,6 +514,7 @@ body.modal-open {
 
 .admin-search {
   margin-bottom: 1rem;
+  width: 100%;
 }
 
 .admin-search__field {
@@ -524,6 +525,7 @@ body.modal-open {
   border: 1px solid var(--border-primary);
   border-radius: 10px;
   padding: 0.5rem 0.75rem;
+  width: 100%;
 }
 
 .admin-search__field i {
@@ -537,8 +539,9 @@ body.modal-open {
   border: none;
   outline: none;
   padding: 0;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   color: var(--text-primary);
+  min-width: 0;
 }
 
 .admin-search__field input::placeholder {
@@ -548,6 +551,7 @@ body.modal-open {
 .admin-search__clear {
   font-size: 0.8125rem;
   padding: 0.35rem 0.75rem;
+  flex-shrink: 0;
 }
 
 .admin-panel__actions {
@@ -598,11 +602,16 @@ body.modal-open {
       color: var(--text-secondary);
     }
 
-    .counter-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
+.counter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.counter-list .hint {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
 
     .counter-row {
       display: flex;
@@ -1139,11 +1148,11 @@ body.modal-open {
 }
 
 .dashboard-grid {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
+  width: 100%;
 }
-
-
 
 .dashboard-card {
   border: 1px solid var(--border-primary);
