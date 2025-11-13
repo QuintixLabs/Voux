@@ -67,6 +67,10 @@ const countHitsSinceStmt = db.prepare(
 const insertCounterStmt = db.prepare(
   'INSERT INTO counters (id, label, theme, value, created_at, ip_cooldown_hours) VALUES (@id, @label, @theme, @value, @created_at, @ip_cooldown_hours)'
 );
+const upsertCounterStmt = db.prepare(
+  'INSERT INTO counters (id, label, theme, value, created_at, ip_cooldown_hours) VALUES (@id, @label, @theme, @value, @created_at, @ip_cooldown_hours) '
+    + 'ON CONFLICT(id) DO UPDATE SET label=excluded.label, theme=excluded.theme, value=excluded.value, created_at=excluded.created_at, ip_cooldown_hours=excluded.ip_cooldown_hours'
+);
 const incrementCounterStmt = db.prepare('UPDATE counters SET value = value + 1 WHERE id = ?');
 const getHitStmt = db.prepare('SELECT last_hit FROM hits WHERE counter_id = ? AND ip = ?');
 const upsertHitStmt = db.prepare(`
@@ -75,6 +79,7 @@ const upsertHitStmt = db.prepare(`
   ON CONFLICT(counter_id, ip) DO UPDATE SET last_hit = excluded.last_hit
 `);
 const pruneHitsStmt = db.prepare('DELETE FROM hits WHERE last_hit < ?');
+const clearHitsStmt = db.prepare('DELETE FROM hits');
 const deleteCounterStmt = db.prepare('DELETE FROM counters WHERE id = ?');
 const countCountersStmt = db.prepare('SELECT COUNT(*) as total FROM counters');
 const countCountersSearchStmt = db.prepare(
@@ -198,6 +203,64 @@ function countHitsSince(counterId, sinceTimestamp) {
   return row && typeof row.total === 'number' ? row.total : 0;
 }
 
+function exportCounters() {
+  return listCountersStmt.all();
+}
+
+function importCounters(data, options = {}) {
+  if (!Array.isArray(data)) {
+    throw new Error('invalid_backup_format');
+  }
+  const normalized = data
+    .map(normalizeImportedCounter)
+    .filter(Boolean);
+  if (!normalized.length) {
+    throw new Error('no_valid_counters');
+  }
+  importCountersTx(normalized, Boolean(options.replace));
+  return normalized.length;
+}
+
+const importCountersTx = db.transaction((items, replaceExisting) => {
+  if (replaceExisting) {
+    deleteAllCountersStmt.run();
+    clearHitsStmt.run();
+  }
+  items.forEach((item) => {
+    upsertCounterStmt.run(item);
+  });
+});
+
+function normalizeImportedCounter(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = typeof raw.id === 'string' ? raw.id.trim() : '';
+  if (!id) return null;
+  const label = typeof raw.label === 'string' ? raw.label.trim().slice(0, 80) : '';
+  const theme = typeof raw.theme === 'string' && raw.theme.trim() ? raw.theme.trim().slice(0, 40) : 'plain';
+  const value = Number(raw.value);
+  if (!Number.isFinite(value) || value < 0) {
+    return null;
+  }
+  const createdAtRaw = Number(raw.created_at);
+  const created_at = Number.isFinite(createdAtRaw) && createdAtRaw > 0 ? createdAtRaw : Date.now();
+  let cooldown = raw.ip_cooldown_hours;
+  if (cooldown === '' || cooldown === undefined) {
+    cooldown = null;
+  }
+  if (cooldown !== null) {
+    const coerced = Number(cooldown);
+    cooldown = Number.isFinite(coerced) ? coerced : null;
+  }
+  return {
+    id: id.slice(0, 64),
+    label,
+    theme,
+    value: Math.floor(value),
+    created_at,
+    ip_cooldown_hours: cooldown
+  };
+}
+
 module.exports = {
   createCounter,
   listCounters,
@@ -209,6 +272,8 @@ module.exports = {
   countCounters,
   getLastHitTimestamp,
   countHitsSince,
+  exportCounters,
+  importCounters,
   describeCooldownLabel,
   parseRequestedCooldown
 };

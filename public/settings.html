@@ -48,8 +48,16 @@
         </span>
         <span>Voux · Settings</span>
       </p>
-      <h1>Instance Controls</h1>
-      <p>Manage your instance options and behavior. Only logged-in admins can make changes.</p>
+      <div class="settings-hero-head">
+        <div>
+          <h1>Instance Controls</h1>
+          <p>Manage your instance options and behavior. Only logged-in admins can make changes.</p>
+        </div>
+        <div class="version-pill">
+          <span class="version-pill__label">Current version</span>
+          <span class="version-pill__value" id="settingsVersion">?.?.?</span>
+        </div>
+      </div>
     </header>
 
     <section class="card hidden" id="settingsPanel">
@@ -72,7 +80,19 @@
         </label>
       </div>
       <p class="hint" id="settingsStatus">Loading…</p>
-      <p class="hint settings-version">Currently running <span class="code-inline" id="settingsVersion">v?.?.?</span></p>
+    </section>
+
+    <section class="card" id="backupCard">
+      <h2>Backup &amp; Restore</h2>
+      <p>Download all counters as JSON or restore from a previous backup when moving servers.</p>
+      <div class="backup-actions">
+        <button type="button" id="downloadBackup">Download backup</button>
+        <label class="file-upload">
+          <input type="file" id="restoreFile" accept="application/json" />
+          <span>Restore backup</span>
+        </label>
+      </div>
+      <p class="hint" id="backupStatus">No backup actions yet.</p>
     </section>
   </main>
 

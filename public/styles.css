@@ -850,6 +850,75 @@ body.modal-open {
   padding: 0.75rem 0rem;
 }
 
+.settings-hero-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.version-pill {
+  border: 1px solid var(--border-primary);
+  padding: 0.35rem 0.95rem;
+  border-radius: 20px;
+  margin-bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.version-pill__value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal:focus,
+.modal:focus-visible {
+  outline: none;
+}
+
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.file-upload {
+  border: 1px dashed var(--border-primary);
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.file-upload input {
+  display: none;
+}
+
+.file-upload span {
+  font-weight: 500;
+}
+
+.backup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 0.5rem;
+}
+
+.toggle--inline {
+  margin-top: 0.5rem;
+}
+
 .toggle {
   display: grid;
   grid-template-columns: auto 1fr;

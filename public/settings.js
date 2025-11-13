@@ -6,6 +6,9 @@ const togglePrivate = document.getElementById('togglePrivateMode');
 const toggleGuides = document.getElementById('toggleShowGuides');
 const statusLabel = document.getElementById('settingsStatus');
 const versionLabel = document.getElementById('settingsVersion');
+const downloadBackupBtn = document.getElementById('downloadBackup');
+const restoreFileInput = document.getElementById('restoreFile');
+const backupStatusLabel = document.getElementById('backupStatus');
 
 let tokenData = loadStoredToken();
 let statusTimeout = null;
@@ -27,6 +30,7 @@ function init(token) {
       setTogglesDisabled(false);
       togglePrivate?.addEventListener('change', () => handleToggleChange(token, { privateMode: togglePrivate.checked }));
       toggleGuides?.addEventListener('change', () => handleToggleChange(token, { showGuides: toggleGuides.checked }));
+      setupBackupControls(token);
     })
     .catch(() => {
       clearStoredToken();
@@ -53,7 +57,12 @@ function populateForm(config) {
 
 function setVersion(version) {
   if (!versionLabel || !version) return;
-  versionLabel.textContent = `v${version}`;
+  versionLabel.textContent = version;
+}
+
+function setupBackupControls(token) {
+  downloadBackupBtn?.addEventListener('click', () => handleBackupDownload(token));
+  restoreFileInput?.addEventListener('change', (event) => handleBackupRestore(token, event));
 }
 async function handleToggleChange(token, patch) {
   try {
@@ -130,5 +139,91 @@ async function showAlert(message, options = {}) {
     await modalApi().alert(message, options);
   } else {
     window.alert(message);
+  }
+}
+
+function modalConfirm(options) {
+  if (modalApi()?.confirm) {
+    return modalApi().confirm(options);
+  }
+  const message = options?.message || 'Are you sure?';
+  return Promise.resolve(window.confirm(message));
+}
+
+async function handleBackupDownload(token) {
+  try {
+    setBackupStatus('Preparing download…');
+    const res = await fetch('/api/counters/export', {
+      headers: { 'x-voux-admin': token }
+    });
+    if (!res.ok) throw new Error('Failed to download backup');
+    const data = await res.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    link.href = url;
+    link.download = `voux-backup-${timestamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setBackupStatus('Backup downloaded.');
+  } catch (error) {
+    setBackupStatus('Download failed.');
+    await showAlert(error.message || 'Failed to download backup');
+  }
+}
+
+async function handleBackupRestore(token, event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    setBackupStatus('Reading backup…');
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const payload = Array.isArray(parsed?.counters)
+      ? parsed.counters
+      : Array.isArray(parsed)
+      ? parsed
+      : null;
+    if (!payload) throw new Error('Invalid backup file.');
+    const confirmed = await modalConfirm({
+      title: 'Replace counters?',
+      message: 'Restoring a backup replaces every existing counter. Continue?',
+      confirmLabel: 'Replace counters',
+      variant: 'danger'
+    });
+    if (!confirmed) {
+      event.target.value = '';
+      setBackupStatus('Restore canceled.');
+      return;
+    }
+    setBackupStatus('Uploading backup…');
+    const res = await fetch('/api/counters/import', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-voux-admin': token
+      },
+      body: JSON.stringify({ counters: payload, replace: true })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to restore backup');
+    }
+    const result = await res.json();
+    setBackupStatus(`Backup restored (${result.imported || payload.length} counters).`);
+  } catch (error) {
+    setBackupStatus('Restore failed.');
+    await showAlert(error.message || 'Failed to restore backup');
+  } finally {
+    event.target.value = '';
+  }
+}
+
+function setBackupStatus(message) {
+  if (backupStatusLabel) {
+    backupStatusLabel.textContent = message;
   }
 }

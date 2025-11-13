@@ -74,6 +74,8 @@ When `PRIVATE_MODE=true`, the public builder hides the “Generate counter” fo
 - `DELETE /api/counters` – remove every counter (admin only).
 - `GET /api/settings` – current runtime config (admin only).
 - `POST /api/settings` – toggle private mode or guide cards (admin only).
+- `GET /api/counters/export` – download every counter as JSON (admin only).
+- `POST /api/counters/import` – restore counters from a JSON backup (admin only).
 - Admin dashboard: open `/admin.html`, paste your admin token, and manage counters through the UI (includes pagination controls).
 
 If `ADMIN_TOKEN` is set, include `X-Voux-Admin: <token>` when calling any admin endpoint.
@@ -125,3 +127,7 @@ Counters remain untouched; only the IP records used for dedupe are removed.
 - `"unlimited"` – every visit increments (no dedupe).
 
 Counters store this per ID, and the admin dashboard lists the mode for each counter.
+
+### 💾 Backups
+
+Open `/settings.html` to download a JSON backup of every counter or restore from a previous export. When “Replace existing counters” is checked, Voux clears the current counters before importing.

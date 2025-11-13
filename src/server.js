@@ -13,7 +13,9 @@ const {
   parseRequestedCooldown,
   describeCooldownLabel,
   getLastHitTimestamp,
-  countHitsSince
+  countHitsSince,
+  exportCounters,
+  importCounters
 } = require('./db');
 const { getConfig, updateConfig } = require('./configStore');
 const requireAdmin = require('./middleware/requireAdmin');
@@ -72,6 +74,29 @@ app.get('/api/counters', requireAdmin, (req, res) => {
       overall: totalOverall
     }
   });
+});
+
+app.get('/api/counters/export', requireAdmin, (req, res) => {
+  const counters = exportCounters();
+  res.json({ counters, exportedAt: Date.now() });
+});
+
+app.post('/api/counters/import', requireAdmin, (req, res) => {
+  const { replace = false, counters } = req.body || {};
+  const payload = Array.isArray(counters)
+    ? counters
+    : Array.isArray(req.body)
+    ? req.body
+    : null;
+  if (!payload) {
+    return res.status(400).json({ error: 'invalid_backup_format' });
+  }
+  try {
+    const imported = importCounters(payload, { replace: Boolean(replace) });
+    res.json({ ok: true, imported });
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'import_failed' });
+  }
 });
 
 app.delete('/api/counters/:id', requireAdmin, (req, res) => {
