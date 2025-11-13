@@ -15,7 +15,8 @@ const {
   getLastHitTimestamp,
   countHitsSince,
   exportCounters,
-  importCounters
+  importCounters,
+  updateCounterValue
 } = require('./db');
 const { getConfig, updateConfig } = require('./configStore');
 const requireAdmin = require('./middleware/requireAdmin');
@@ -102,6 +103,19 @@ app.post('/api/counters/import', requireAdmin, (req, res) => {
 app.delete('/api/counters/:id', requireAdmin, (req, res) => {
   const removed = deleteCounter(req.params.id);
   if (!removed) {
+    return res.status(404).json({ error: 'counter_not_found' });
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/counters/:id/value', requireAdmin, (req, res) => {
+  const { value } = req.body || {};
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return res.status(400).json({ error: 'invalid_value' });
+  }
+  const updated = updateCounterValue(req.params.id, Math.floor(parsed));
+  if (!updated) {
     return res.status(404).json({ error: 'counter_not_found' });
   }
   res.json({ ok: true });

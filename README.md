@@ -72,6 +72,7 @@ When `PRIVATE_MODE=true`, the public builder hides the “Generate counter” fo
 - `GET /embed/:id.js` – script users place on their site.
 - `DELETE /api/counters/:id` – remove one counter (admin only).
 - `DELETE /api/counters` – remove every counter (admin only).
+- `POST /api/counters/:id/value` – set a counter’s value to a new number (admin only).
 - `GET /api/settings` – current runtime config (admin only).
 - `POST /api/settings` – toggle private mode or guide cards (admin only).
 - `GET /api/counters/export` – download every counter as JSON (admin only).

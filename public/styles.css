@@ -19,7 +19,7 @@
     }
 
 body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'Inter', sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
       line-height: 1.6;
@@ -38,6 +38,18 @@ body {
         padding: 5rem 2rem 6rem;
       }
     }
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
 
 .page--compact {
   max-width: 640px;
@@ -620,6 +632,38 @@ body.modal-open {
   font-weight: 600;
   color: var(--text-primary);
   min-width: 2ch;
+}
+
+.counter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.counter-adjust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.counter-adjust input {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.counter-adjust button {
+  padding: 0.4rem 0.85rem;
+}
+
+.counter-adjust.hidden {
+  display: none;
 }
 
 .admin-pagination {

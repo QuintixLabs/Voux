@@ -82,6 +82,7 @@ const upsertHitStmt = db.prepare(`
 const pruneHitsStmt = db.prepare('DELETE FROM hits WHERE last_hit < ?');
 const clearHitsStmt = db.prepare('DELETE FROM hits');
 const deleteCounterStmt = db.prepare('DELETE FROM counters WHERE id = ?');
+const updateCounterValueStmt = db.prepare('UPDATE counters SET value = ? WHERE id = ?');
 const countCountersStmt = db.prepare('SELECT COUNT(*) as total FROM counters');
 const countCountersSearchStmt = db.prepare(
   'SELECT COUNT(*) as total FROM counters WHERE LOWER(id) LIKE ? OR LOWER(label) LIKE ?'
@@ -180,6 +181,11 @@ function recordHit(counterId, ip) {
   return recordHitTx(counterId, ip, Date.now());
 }
 
+function updateCounterValue(id, value) {
+  const result = updateCounterValueStmt.run(value, id);
+  return result.changes > 0;
+}
+
 function deleteCounter(id) {
   const result = deleteCounterStmt.run(id);
   return result.changes > 0;
@@ -275,6 +281,7 @@ module.exports = {
   countHitsSince,
   exportCounters,
   importCounters,
+  updateCounterValue,
   describeCooldownLabel,
   parseRequestedCooldown
 };

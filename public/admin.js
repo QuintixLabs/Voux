@@ -354,7 +354,65 @@ function renderCounterList(counters) {
 
     stats.append(todayStat, lastHitStat);
 
-    meta.append(label, id, value, mode, stats);
+    const actions = document.createElement('div');
+    actions.className = 'counter-actions';
+
+    const setValueBtn = document.createElement('button');
+    setValueBtn.type = 'button';
+    setValueBtn.className = 'ghost';
+    setValueBtn.textContent = 'Set value';
+
+    const adjustPanel = document.createElement('div');
+    adjustPanel.className = 'counter-adjust hidden';
+    const adjustInput = document.createElement('input');
+    adjustInput.type = 'number';
+    adjustInput.min = '0';
+    adjustInput.step = '1';
+    adjustInput.value = counter.value;
+    const adjustSave = document.createElement('button');
+    adjustSave.type = 'button';
+    adjustSave.textContent = 'Save';
+    const adjustCancel = document.createElement('button');
+    adjustCancel.type = 'button';
+    adjustCancel.className = 'ghost';
+    adjustCancel.textContent = 'Cancel';
+
+    adjustPanel.append(adjustInput, adjustSave, adjustCancel);
+
+    setValueBtn.addEventListener('click', () => {
+      adjustInput.value = counter.value;
+      adjustPanel.classList.remove('hidden');
+      setValueBtn.disabled = true;
+      adjustInput.focus();
+    });
+
+    adjustCancel.addEventListener('click', () => {
+      adjustPanel.classList.add('hidden');
+      setValueBtn.disabled = false;
+    });
+
+    adjustSave.addEventListener('click', async () => {
+      const nextValue = Number(adjustInput.value);
+      if (!Number.isFinite(nextValue) || nextValue < 0) {
+        await showAlert('Enter a valid non-negative number.');
+        return;
+      }
+      adjustSave.disabled = true;
+      try {
+        await updateCounterValueRequest(counter.id, Math.floor(nextValue));
+        adjustPanel.classList.add('hidden');
+        setValueBtn.disabled = false;
+        await refreshCounters(state.page);
+      } catch (error) {
+        await showAlert(error.message || 'Failed to update value');
+      } finally {
+        adjustSave.disabled = false;
+      }
+    });
+
+    actions.append(setValueBtn);
+
+    meta.append(label, id, value, mode, stats, actions, adjustPanel);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -528,6 +586,23 @@ function formatLastHit(timestamp) {
 function truncateQuery(query) {
   if (!query) return '';
   return query.length > 32 ? `${query.slice(0, 32)}…` : query;
+}
+
+async function updateCounterValueRequest(id, value) {
+  const res = await fetch(`/api/counters/${id}/value`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ value })
+  });
+  if (res.status === 401) throw new Error('Invalid admin token.');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update value');
+  }
+  return res.json().catch(() => ({}));
 }
 
 async function copyEmbedSnippet(counterId, button) {
