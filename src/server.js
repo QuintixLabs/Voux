@@ -16,7 +16,8 @@ const {
   countHitsSince,
   exportCounters,
   importCounters,
-  updateCounterValue
+  updateCounterValue,
+  updateCounterMetadata
 } = require('./db');
 const { getConfig, updateConfig } = require('./configStore');
 const requireAdmin = require('./middleware/requireAdmin');
@@ -24,6 +25,8 @@ const { verifyAdmin } = require('./middleware/requireAdmin');
 
 const PORT = process.env.PORT || 8787;
 const DEFAULT_PAGE_SIZE = Number(process.env.ADMIN_PAGE_SIZE) || 20;
+const LABEL_LIMIT = 80;
+const NOTE_LIMIT = 200;
 
 const app = express();
 app.set('trust proxy', true);
@@ -119,6 +122,43 @@ app.post('/api/counters/:id/value', requireAdmin, (req, res) => {
     return res.status(404).json({ error: 'counter_not_found' });
   }
   res.json({ ok: true });
+});
+
+app.patch('/api/counters/:id', requireAdmin, (req, res) => {
+  const counter = getCounter(req.params.id);
+  if (!counter) {
+    return res.status(404).json({ error: 'counter_not_found' });
+  }
+  const { label, value, note } = req.body || {};
+  const nextLabel =
+    typeof label === 'string'
+      ? label.trim().slice(0, LABEL_LIMIT)
+      : typeof counter.label === 'string'
+      ? counter.label.trim().slice(0, LABEL_LIMIT)
+      : '';
+  let nextValue = value !== undefined ? Number(value) : counter.value;
+  if (!Number.isFinite(nextValue) || nextValue < 0) {
+    return res.status(400).json({ error: 'invalid_value' });
+  }
+  nextValue = Math.floor(nextValue);
+  let nextNote = note;
+  if (typeof nextNote === 'string') {
+    nextNote = nextNote.trim().slice(0, NOTE_LIMIT);
+  } else if (nextNote === undefined || nextNote === null) {
+    nextNote = counter.note || '';
+  } else {
+    nextNote = '';
+  }
+  const stored = updateCounterMetadata(req.params.id, {
+    label: nextLabel,
+    value: nextValue,
+    note: nextNote || null
+  });
+  if (!stored) {
+    return res.status(500).json({ error: 'update_failed' });
+  }
+  const updated = getCounter(req.params.id);
+  res.json({ counter: serializeCounterWithStats(updated, getDayStart()) });
 });
 
 app.get('/api/settings', requireAdmin, (req, res) => {
@@ -310,6 +350,7 @@ function serializeCounter(counter) {
     id: counter.id,
     label: counter.label,
     theme: counter.theme,
+    note: counter.note || '',
     value: counter.value,
     createdAt: counter.created_at,
     cooldownMode: mode,

@@ -642,29 +642,58 @@ body.modal-open {
   margin-top: 0.5rem;
 }
 
-.counter-adjust {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+.counter-edit {
+  margin-top: 0.75rem;
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
 }
 
-.counter-adjust input {
-  flex: 1;
-  min-width: 140px;
-  padding: 0.4rem 0.6rem;
+.counter-edit.hidden {
+  display: none;
+}
+
+.counter-edit__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.counter-edit__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.counter-edit__field-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+
+.counter-edit__field input,
+.counter-edit__field textarea {
+  width: 100%;
+  padding: 0.45rem 0.65rem;
   border-radius: 8px;
   border: 1px solid var(--border-primary);
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
   color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
 }
 
-.counter-adjust button {
-  padding: 0.4rem 0.85rem;
+.counter-edit__field textarea {
+  resize: vertical;
+  min-height: 60px;
 }
 
-.counter-adjust.hidden {
-  display: none;
+.counter-edit__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .toast-stack {
@@ -794,6 +823,14 @@ body.modal-open {
       font-weight: 600;
       word-break: break-all;
       overflow-wrap: break-word;
+    }
+
+    .counter-meta__note {
+      font-size: 0.78rem;
+      color: var(--text-tertiary);
+      margin-bottom: 0.15rem;
+      word-break: break-word;
+      white-space: pre-wrap;
     }
 
     .counter-meta__id {
@@ -1184,6 +1221,19 @@ body.modal-open {
         align-items: flex-start;
         gap: 0.75rem;
       }
+
+      .savebtn,
+      .cancelbtn{ 
+        padding: 0.75rem 1rem;
+      }
+
+
+      textarea::-webkit-resizer {
+        display: none;
+      }
+
+
+
     }
 :root {
 .site-nav {

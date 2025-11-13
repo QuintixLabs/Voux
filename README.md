@@ -17,6 +17,7 @@
 - One-line `<script async src="...">` embed; wrap it with your own element (e.g. `<span class="counter-widget">…</span>`) when you need classes for styling.
 - SQLite storage (lives in `data/counters.db`) so you can run it entirely on your own machine.
 - Separate `hits` table tracks the IP + last-hit timestamp used for deduplication.
+- Admin dashboard has pagination, search, inline edits for label/value, and optional private notes so you can tag each counter.
 
 ## 🚀 Getting started
 
@@ -72,6 +73,7 @@ When `PRIVATE_MODE=true`, the public builder hides the “Generate counter” fo
 - `GET /embed/:id.js` – script users place on their site.
 - `DELETE /api/counters/:id` – remove one counter (admin only).
 - `DELETE /api/counters` – remove every counter (admin only).
+- `PATCH /api/counters/:id` – update a counter’s label, value, or note (admin only).
 - `POST /api/counters/:id/value` – set a counter’s value to a new number (admin only).
 - `GET /api/settings` – current runtime config (admin only).
 - `POST /api/settings` – toggle private mode or guide cards (admin only).
@@ -131,4 +133,4 @@ Counters store this per ID, and the admin dashboard lists the mode for each coun
 
 ### 💾 Backups
 
-Open `/settings.html` to download a JSON backup of every counter or restore from a previous export. When “Replace existing counters” is checked, Voux clears the current counters before importing.
+Open `/settings.html` to download a JSON backup of every counter or restore from a previous export. Exported files include each counter’s id, label, note, value, theme, and counting mode. When “Replace existing counters” is checked, Voux clears the current counters before importing.

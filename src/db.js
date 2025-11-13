@@ -12,11 +12,15 @@ const dbPath = path.join(DATA_DIR, 'counters.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
+require('./migrations/001_add_ip_cooldown')();
+require('./migrations/002_add_note')();
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS counters (
     id TEXT PRIMARY KEY,
     label TEXT NOT NULL,
     theme TEXT NOT NULL,
+    note TEXT,
     value INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
     ip_cooldown_hours REAL
@@ -43,34 +47,32 @@ function ensureIpCooldownColumn() {
   }
 }
 
-const listCountersStmt = db.prepare(
-  'SELECT id, label, theme, value, created_at, ip_cooldown_hours FROM counters ORDER BY created_at DESC'
-);
+const baseSelectFields = 'id, label, theme, note, value, created_at, ip_cooldown_hours';
+
+const listCountersStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters ORDER BY created_at DESC`);
 const listCountersPageStmt = db.prepare(
-  'SELECT id, label, theme, value, created_at, ip_cooldown_hours FROM counters ORDER BY created_at DESC LIMIT ? OFFSET ?'
+  `SELECT ${baseSelectFields} FROM counters ORDER BY created_at DESC LIMIT ? OFFSET ?`
 );
 const listCountersSearchStmt = db.prepare(
-  `SELECT id, label, theme, value, created_at, ip_cooldown_hours
+  `SELECT ${baseSelectFields}
    FROM counters
-   WHERE LOWER(id) LIKE @pattern OR LOWER(label) LIKE @pattern
+   WHERE LOWER(id) LIKE @pattern OR LOWER(label) LIKE @pattern OR (note IS NOT NULL AND LOWER(note) LIKE @pattern)
    ORDER BY created_at DESC
    LIMIT @limit OFFSET @offset`
 );
-const getCounterStmt = db.prepare(
-  'SELECT id, label, theme, value, created_at, ip_cooldown_hours FROM counters WHERE id = ?'
-);
+const getCounterStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters WHERE id = ?`);
 const getLastHitStmt = db.prepare('SELECT last_hit FROM hits WHERE counter_id = ? ORDER BY last_hit DESC LIMIT 1');
 const countHitsSinceStmt = db.prepare(
   'SELECT COUNT(*) as total FROM hits WHERE counter_id = ? AND last_hit >= ?'
 );
 const insertCounterStmt = db.prepare(
-  'INSERT INTO counters (id, label, theme, value, created_at, ip_cooldown_hours) VALUES (@id, @label, @theme, @value, @created_at, @ip_cooldown_hours)'
+  'INSERT INTO counters (id, label, theme, note, value, created_at, ip_cooldown_hours) VALUES (@id, @label, @theme, @note, @value, @created_at, @ip_cooldown_hours)'
 );
 
 ensureIpCooldownColumn();
 const upsertCounterStmt = db.prepare(
-  'INSERT INTO counters (id, label, theme, value, created_at, ip_cooldown_hours) VALUES (@id, @label, @theme, @value, @created_at, @ip_cooldown_hours) '
-    + 'ON CONFLICT(id) DO UPDATE SET label=excluded.label, theme=excluded.theme, value=excluded.value, created_at=excluded.created_at, ip_cooldown_hours=excluded.ip_cooldown_hours'
+  'INSERT INTO counters (id, label, theme, note, value, created_at, ip_cooldown_hours) VALUES (@id, @label, @theme, @note, @value, @created_at, @ip_cooldown_hours) '
+    + 'ON CONFLICT(id) DO UPDATE SET label=excluded.label, theme=excluded.theme, note=excluded.note, value=excluded.value, created_at=excluded.created_at, ip_cooldown_hours=excluded.ip_cooldown_hours'
 );
 const incrementCounterStmt = db.prepare('UPDATE counters SET value = value + 1 WHERE id = ?');
 const getHitStmt = db.prepare('SELECT last_hit FROM hits WHERE counter_id = ? AND ip = ?');
@@ -83,9 +85,10 @@ const pruneHitsStmt = db.prepare('DELETE FROM hits WHERE last_hit < ?');
 const clearHitsStmt = db.prepare('DELETE FROM hits');
 const deleteCounterStmt = db.prepare('DELETE FROM counters WHERE id = ?');
 const updateCounterValueStmt = db.prepare('UPDATE counters SET value = ? WHERE id = ?');
+const updateCounterMetaStmt = db.prepare('UPDATE counters SET label = @label, value = @value, note = @note WHERE id = @id');
 const countCountersStmt = db.prepare('SELECT COUNT(*) as total FROM counters');
 const countCountersSearchStmt = db.prepare(
-  'SELECT COUNT(*) as total FROM counters WHERE LOWER(id) LIKE ? OR LOWER(label) LIKE ?'
+  'SELECT COUNT(*) as total FROM counters WHERE LOWER(id) LIKE ? OR LOWER(label) LIKE ? OR (note IS NOT NULL AND LOWER(note) LIKE ?)'
 );
 const deleteAllCountersStmt = db.prepare('DELETE FROM counters');
 
@@ -136,6 +139,7 @@ function createCounter({ label, theme = 'plain', startValue, ipCooldownHours }) 
     id: generateId(8),
     label,
     theme,
+    note: null,
     value: initialValue,
     created_at: Date.now(),
     ip_cooldown_hours: cooldownResult.value
@@ -159,7 +163,7 @@ function listCountersPage(limit, offset, search) {
 function countCounters(search) {
   const normalized = normalizeSearch(search);
   if (normalized) {
-    const { total } = countCountersSearchStmt.get(normalized, normalized);
+    const { total } = countCountersSearchStmt.get(normalized, normalized, normalized);
     return total;
   }
   const { total } = countCountersStmt.get();
@@ -183,6 +187,17 @@ function recordHit(counterId, ip) {
 
 function updateCounterValue(id, value) {
   const result = updateCounterValueStmt.run(value, id);
+  return result.changes > 0;
+}
+
+function updateCounterMetadata(id, { label, value, note }) {
+  const payload = {
+    id,
+    label,
+    value,
+    note: note || null
+  };
+  const result = updateCounterMetaStmt.run(payload);
   return result.changes > 0;
 }
 
@@ -243,6 +258,7 @@ function normalizeImportedCounter(raw) {
   const id = typeof raw.id === 'string' ? raw.id.trim() : '';
   if (!id) return null;
   const label = typeof raw.label === 'string' ? raw.label.trim().slice(0, 80) : '';
+  const note = typeof raw.note === 'string' ? raw.note.trim().slice(0, 200) : '';
   const theme = typeof raw.theme === 'string' && raw.theme.trim() ? raw.theme.trim().slice(0, 40) : 'plain';
   const value = Number(raw.value);
   if (!Number.isFinite(value) || value < 0) {
@@ -262,6 +278,7 @@ function normalizeImportedCounter(raw) {
     id: id.slice(0, 64),
     label,
     theme,
+    note: note || null,
     value: Math.floor(value),
     created_at,
     ip_cooldown_hours: cooldown
@@ -282,6 +299,7 @@ module.exports = {
   exportCounters,
   importCounters,
   updateCounterValue,
+  updateCounterMetadata,
   describeCooldownLabel,
   parseRequestedCooldown
 };

@@ -339,7 +339,7 @@ function renderCounterList(counters) {
 
     const label = document.createElement('div');
     label.className = 'counter-meta__label';
-    label.textContent = counter.label || '(no label)';
+    label.textContent = counter.label || '';
 
     const id = document.createElement('div');
     id.className = 'counter-meta__id';
@@ -382,73 +382,129 @@ function renderCounterList(counters) {
     const actions = document.createElement('div');
     actions.className = 'counter-actions';
 
-    const setValueBtn = document.createElement('button');
-    setValueBtn.type = 'button';
-    setValueBtn.className = 'ghost setvalue';
-    setValueBtn.innerHTML = '<i class="ri-edit-line"></i> Set value';
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'ghost setvalue';
+    editBtn.innerHTML = '<i class="ri-edit-line"></i> Edit';
 
-    const adjustPanel = document.createElement('div');
-    adjustPanel.className = 'counter-adjust hidden';
-    const adjustInput = document.createElement('input');
-    adjustInput.type = 'number';
-    adjustInput.min = '0';
-    adjustInput.step = '1';
-    adjustInput.value = counter.value;
-    const adjustSave = document.createElement('button');
-    adjustSave.type = 'button';
-    adjustSave.className = 'savebtn';
-    adjustSave.textContent = 'Save';
-    const adjustCancel = document.createElement('button');
-    adjustCancel.type = 'button';
-    adjustCancel.className = 'ghost cancelbtn';
-    adjustCancel.textContent = 'Cancel';
+    const editPanel = document.createElement('div');
+    editPanel.className = 'counter-edit hidden';
 
-    adjustPanel.append(adjustInput, adjustSave, adjustCancel);
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text';
+    labelInput.maxLength = 80;
+    labelInput.value = counter.label || '';
 
-    setValueBtn.addEventListener('click', () => {
-      adjustInput.value = counter.value;
-      adjustPanel.classList.remove('hidden');
-      setValueBtn.disabled = true;
-      adjustInput.focus();
-    });
+    const valueInput = document.createElement('input');
+    valueInput.type = 'number';
+    valueInput.min = '0';
+    valueInput.step = '1';
+    valueInput.value = counter.value;
 
-    adjustCancel.addEventListener('click', () => {
-      adjustPanel.classList.add('hidden');
-      setValueBtn.disabled = false;
-    });
+    const noteInput = document.createElement('textarea');
+    noteInput.rows = 2;
+    noteInput.maxLength = 200;
+    noteInput.placeholder = 'Optional note';
+    noteInput.value = counter.note || '';
 
-    const submitAdjustment = async () => {
-      const raw = adjustInput.value.trim();
-      if (!/^\d+$/.test(raw)) {
-        await showAlert('Use digits only when setting a value.');
-        return;
-      }
-      const nextValue = Number(raw);
-      adjustSave.disabled = true;
-      try {
-        await updateCounterValueRequest(counter.id, Math.floor(nextValue));
-        adjustPanel.classList.add('hidden');
-        setValueBtn.disabled = false;
-        await refreshCounters(state.page);
-        showToast(`Set ${counter.id} to ${nextValue}`);
-      } catch (error) {
-        await showAlert(error.message || 'Failed to update value');
-      } finally {
-        adjustSave.disabled = false;
+    const fieldsWrapper = document.createElement('div');
+    fieldsWrapper.className = 'counter-edit__fields';
+    fieldsWrapper.append(
+      buildEditField('Label (optional)', labelInput),
+      buildEditField('Value', valueInput),
+      buildEditField('Note (optional)', noteInput)
+    );
+
+    const editActions = document.createElement('div');
+    editActions.className = 'counter-edit__actions';
+    const editSave = document.createElement('button');
+    editSave.type = 'button';
+    editSave.className = 'savebtn';
+    editSave.textContent = 'Save';
+    const editCancel = document.createElement('button');
+    editCancel.type = 'button';
+    editCancel.className = 'ghost cancelbtn';
+    editCancel.textContent = 'Cancel';
+    editActions.append(editSave, editCancel);
+
+    editPanel.append(fieldsWrapper, editActions);
+
+    const toggleEdit = (open) => {
+      editPanel.classList.toggle('hidden', !open);
+      editBtn.classList.toggle('active', open);
+      editBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) {
+        labelInput.focus();
+        labelInput.setSelectionRange(labelInput.value.length, labelInput.value.length);
       }
     };
 
-    adjustSave.addEventListener('click', submitAdjustment);
-    adjustInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
+    const submitEdit = async () => {
+      const nextLabel = labelInput.value.trim();
+      const rawValue = valueInput.value.trim();
+      if (!/^\d+$/.test(rawValue)) {
+        await showAlert('Use digits only when setting a value.');
+        return;
+      }
+      const nextValue = Number(rawValue);
+      const nextNote = noteInput.value.trim();
+      editSave.disabled = true;
+      try {
+        await updateCounterMetadataRequest(counter.id, {
+          label: nextLabel,
+          value: Math.floor(nextValue),
+          note: nextNote
+        });
+        toggleEdit(false);
+        await refreshCounters(state.page);
+        showToast(`Updated ${counter.id}`);
+      } catch (error) {
+        await showAlert(error.message || 'Failed to update counter');
+      } finally {
+        editSave.disabled = false;
+      }
+    };
+
+    editBtn.addEventListener('click', () => {
+      const isOpen = !editPanel.classList.contains('hidden');
+      if (isOpen) {
+        toggleEdit(false);
+        return;
+      }
+      labelInput.value = counter.label || '';
+      valueInput.value = counter.value;
+      noteInput.value = counter.note || '';
+      toggleEdit(true);
+    });
+
+    editCancel.addEventListener('click', () => toggleEdit(false));
+    editSave.addEventListener('click', submitEdit);
+
+    [labelInput, valueInput].forEach((input) => {
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          submitEdit();
+        }
+      });
+    });
+    noteInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
-        submitAdjustment();
+        submitEdit();
       }
     });
 
-    actions.append(setValueBtn);
+    actions.append(editBtn);
 
-    meta.append(label, id, value, mode, stats, actions, adjustPanel);
+    meta.append(label, id);
+    if (counter.note) {
+      const note = document.createElement('div');
+      note.className = 'counter-meta__note';
+      note.textContent = counter.note;
+      meta.append(note);
+    }
+    meta.append(value, mode, stats, actions, editPanel);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -625,19 +681,19 @@ function truncateQuery(query) {
   return query.length > 32 ? `${query.slice(0, 32)}…` : query;
 }
 
-async function updateCounterValueRequest(id, value) {
-  const res = await fetch(`/api/counters/${id}/value`, {
-    method: 'POST',
+async function updateCounterMetadataRequest(id, payload) {
+  const res = await fetch(`/api/counters/${id}`, {
+    method: 'PATCH',
     headers: {
       ...authHeaders(),
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ value })
+    body: JSON.stringify(payload)
   });
   if (res.status === 401) throw new Error('Invalid admin token.');
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Failed to update value');
+    throw new Error(err.error || 'Failed to update counter');
   }
   return res.json().catch(() => ({}));
 }
@@ -680,4 +736,14 @@ function updateCreateCardVisibility() {
     createCard.classList.add('hidden');
     adminEmbedSnippet?.classList.add('hidden');
   }
+}
+
+function buildEditField(labelText, control) {
+  const wrapper = document.createElement('label');
+  wrapper.className = 'counter-edit__field';
+  const title = document.createElement('span');
+  title.className = 'counter-edit__field-label';
+  title.textContent = labelText;
+  wrapper.append(title, control);
+  return wrapper;
 }
