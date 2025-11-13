@@ -116,9 +116,6 @@ document.querySelectorAll('.copy-button').forEach((button) => {
 });
 
 
-// Set current year
-document.getElementById('currentYear').textContent = new Date().getFullYear();
-
 initConfig();
 
 async function initConfig() {

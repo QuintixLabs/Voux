@@ -723,11 +723,6 @@ async function copyEmbedSnippet(counterId, button) {
   }
 }
 
-const yearEl = document.getElementById('currentYear');
-if (yearEl) {
-  yearEl.textContent = new Date().getFullYear();
-}
-
 function updateCreateCardVisibility() {
   if (!createCard) return;
   if (state.privateMode) {

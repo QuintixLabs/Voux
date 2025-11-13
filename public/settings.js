@@ -5,7 +5,6 @@ const settingsPanel = document.getElementById('settingsPanel');
 const togglePrivate = document.getElementById('togglePrivateMode');
 const toggleGuides = document.getElementById('toggleShowGuides');
 const statusLabel = document.getElementById('settingsStatus');
-const versionLabel = document.getElementById('settingsVersion');
 const downloadBackupBtn = document.getElementById('downloadBackup');
 const restoreFileInput = document.getElementById('restoreFile');
 const backupStatusLabel = document.getElementById('backupStatus');
@@ -23,11 +22,10 @@ if (!tokenData) {
 function init(token) {
   setTogglesDisabled(true);
   fetchSettings(token)
-    .then(({ config, version }) => {
+    .then(({ config }) => {
       populateForm(config);
       settingsPanel?.classList.remove('hidden');
       setStatus('');
-      setVersion(version);
       setTogglesDisabled(false);
       togglePrivate?.addEventListener('change', () =>
         handleToggleChange(token, { privateMode: togglePrivate.checked }, togglePrivate.checked ? 'Private instance enabled' : 'Private instance disabled')
@@ -50,19 +48,13 @@ async function fetchSettings(token) {
   if (!res.ok) throw new Error('Unauthorized');
   const data = await res.json();
   return {
-    config: data.config || {},
-    version: data.version || ''
+    config: data.config || {}
   };
 }
 
 function populateForm(config) {
   if (togglePrivate) togglePrivate.checked = Boolean(config.privateMode);
   if (toggleGuides) toggleGuides.checked = Boolean(config.showGuides);
-}
-
-function setVersion(version) {
-  if (!versionLabel || !version) return;
-  versionLabel.textContent = version;
 }
 
 function setupBackupControls(token) {
@@ -82,10 +74,7 @@ async function handleToggleChange(token, patch, successMessage = 'Updated') {
       body: JSON.stringify(patch)
     });
     if (!res.ok) throw new Error('Failed to save');
-    const data = await res.json().catch(() => ({}));
-    if (data.version) {
-      setVersion(data.version);
-    }
+    await res.json().catch(() => ({}));
     setStatus('');
     showToast(successMessage);
   } catch (error) {

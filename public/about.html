@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Page Not Found · Voux</title>
+  <title>Voux · About</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
@@ -40,15 +40,38 @@
     </div>
   </header>
 
-  <main class="page page--centered">
-    <div class="not-found-minimal">
-      <h1>404</h1>
-      <p>Looks like this link is empty.</p>
-      <a class="nav-link" href="/">
-        <i class="ri-home-5-line"></i>
-        Go home
-      </a>
-    </div>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">
+        <span class="eyebrow-logo">
+          <img src="/assets/logo.png" alt="Voux logo" />
+        </span>
+        <span>Voux · About</span>
+      </p>
+      <h1>What is Voux?</h1>
+      <p>Voux is a self-hosted counter generator. It runs on your hardware, lets you style embeds any way you want, and keeps the data with you.</p>
+    </header>
+
+    <section class="card">
+      <h2>Why I built it</h2>
+      <p>There were no good free hit counters left, so I decided to make my own. 
+      A long time ago there was a site called Cutercounter where you could make simple unique-visit counters, but it shut down. 
+      So I switched to freehitcounters.org for a while, but I wanted something I could control myself. 
+      If a service goes down or changes, I don't want to depend on it. 
+      So I built Voux to be my own version that anyone can run and trust.</p>
+    </section>
+
+    <section class="card">
+      <h2>Self-hosted or community instances</h2>
+      <p>You can run Voux yourself, or you can use a public instance hosted by someone else. 
+      Those hosts control their own databases, policies, and uptime. If you join their instance, you trust them, not us, with your data.</p>
+    </section>
+
+    <section class="card">
+      <h2>Need help?</h2>
+      <p>The code lives on <a href="https://github.com/QuintixLabs/Voux" target="_blank" rel="noreferrer">GitHub</a>.
+        Open an issue, send a pull request, or fork it for your own needs. Everything is public and free.</p>
+    </section>
   </main>
 
   <div data-footer-root></div>

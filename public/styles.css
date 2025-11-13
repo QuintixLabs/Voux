@@ -140,6 +140,17 @@ input[type=number] {
       margin-bottom: 1.5rem;
     }
 
+    .card a {
+      color: var(--accent);
+      text-decoration: underline;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+
+    .card a:hover {
+      color: var(--accent-hover);
+    }
+
     @media (min-width: 768px) {
       .card {
         padding: 2rem;
@@ -966,94 +977,125 @@ body.modal-open {
       margin-top: 4rem;
     }
 
-    .footer__content {
-      max-width: 720px;
-      margin: 0 auto;
+   .footer__content {
+  max-width: 1200px; /* controls width on large screens */
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+}
+
+
+
+    .footer__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem;
+}
+
+
+    .footer__about,
+    .footer__links,
+    .footer__socials {
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
+      gap: 0.65rem;
     }
 
-    .footer__main {
-      display: flex;
-      justify-content: space-between;
+    .footer__links {
+      align-items: flex-start;
+    }
+
+    .footer__about p {
+      max-width: 45ch;
+      color: var(--text-tertiary);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+
+    .footer__links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.15s ease;
+      display: inline-flex;
       align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
+      gap: 0.35rem;
+      
+      border-radius: 6px;
     }
 
-    .footer__socials {
+    .footer__links a:hover {
+      color: var(--text-primary);
+    }
+
+    .footer__social-links {
       display: flex;
       align-items: center;
       gap: 0.75rem;
     }
 
-    .footer__links {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      flex-wrap: wrap;
-      font-size: 0.875rem;
-    }
-
-    .footer__copyright {
-      color: var(--text-tertiary);
-      font-size: 0.875rem;
-    }
-
-    .footer a {
-      color: var(--text-secondary);
-      text-decoration: none;
+    .footer__social-links a {
+      width: 36px;
+      height: 36px;
       display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 500;
-      transition: color 0.15s ease;
-    }
-
-    .footer-a {
-      color: inherit !important;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 500;
-      transition: color 0.15s ease;
-    }
-
-
-    .footer__link {
-      color: var(--text-secondary);
-      text-decoration: none;
-    }
-
-    .footer a:hover {
-      color: var(--text-primary);
-    }
-
-    .footer-a:hover{
-      color: var(--text-secondary) !important;
-    }
-
-    .footer__socials a {
-      width: 32px;
-      height: 32px;
-      display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 8px;
-      background: var(--bg-secondary);
       border: 1px solid var(--border-primary);
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
     }
 
-    .footer__socials a:hover {
-      background: var(--bg-tertiary);
+    .footer__social-links a:hover {
+      color: var(--text-primary);
       border-color: var(--border-hover);
+      background: var(--bg-tertiary);
     }
 
-.footer i {
-  font-size: 1.125rem;
-}
+    .footer__bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-size: 0.9rem;
+      color: var(--text-tertiary);
+    }
+
+    .footer__version {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .footer__bottom a {
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .footer__bottom a:hover {
+      color: var(--text-secondary);
+    }
+
+    .footer i {
+      font-size: 1.125rem;
+    }
+
+    /* Desktop layout: push Links and Social right */
+    @media (min-width: 700px) {
+      .footer__grid {
+        grid-template-columns: 1.6fr 1fr 0.7fr;
+      }
+    }
+
+    /* Mobile: stack everything in one column */
+    @media (max-width: 700px) {
+      .footer__grid {
+        grid-template-columns: 1fr;
+      }
+    }
 
 .settings-grid {
   display: grid;
@@ -1211,15 +1253,12 @@ body.modal-open {
         font-size: 1rem;
       }
 
-      .footer__main {
-        flex-direction: column;
-        align-items: flex-start;
+      .footer__grid {
+        grid-template-columns: 1fr;
       }
 
-      .footer__links {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
+      .footer__social-links {
+        flex-wrap: wrap;
       }
 
       .savebtn,

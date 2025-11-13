@@ -53,10 +53,6 @@
           <h1>Instance Controls</h1>
           <p>Manage your instance options and behavior. Only logged-in admins can make changes.</p>
         </div>
-        <div class="version-pill">
-          <span class="version-pill__label"><i class="ri-git-repository-fill"></i> · Current version</span>
-          <span class="version-pill__value" id="settingsVersion">?.?.?</span>
-        </div>
       </div>
     </header>
 
@@ -96,39 +92,12 @@
     </section>
   </main>
 
-  <footer class="footer">
-    <div class="footer__content">
-      <div class="footer__main">
-        <div class="footer__socials">
-          <a href="https://github.com/QuintixLabs/Voux" target="_blank" rel="noreferrer" aria-label="GitHub">
-            <i class="ri-github-fill"></i>
-          </a>
-          <!--
-          <a href="https://twitter.com/yourusername" target="_blank" rel="noreferrer" aria-label="Twitter">
-            <i class="ri-twitter-x-fill"></i>
-          </a>
-          <a href="https://discord.gg/yourinvite" target="_blank" rel="noreferrer" aria-label="Discord">
-            <i class="ri-discord-fill"></i>
-          </a>
-          -->
-        </div>
-
-        <div class="footer__links">
-          <a href="/terms">Terms of Service</a>
-          <a href="/privacy">Privacy Policy</a>
-        </div>
-      </div>
-
-      <p class="footer__copyright">© <span id="currentYear"></span> <a class="footer-a" href="https://quintixlabs.netlify.app" target="_blank">Quintix Labs</a>. All rights reserved.</p>
-    </div>
-  </footer>
+  <div data-footer-root></div>
 
   <script src="/modal.js" defer></script>
   <script src="/nav.js" defer></script>
+  <script src="/footer.js" defer></script>
   <script src="/settings.js" type="module"></script>
-  <script>
-    document.getElementById('currentYear').textContent = new Date().getFullYear();
-  </script>
 </body>
 
 </html>
