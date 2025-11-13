@@ -20,6 +20,9 @@ const createStartInput = document.querySelector('#adminStartValue');
 const adminEmbedSnippet = document.querySelector('#adminEmbedSnippet');
 const createCard = document.querySelector('#createCard');
 const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
+const toastContainer = document.createElement('div');
+toastContainer.className = 'toast-stack';
+document.body.appendChild(toastContainer);
 
 const STORAGE_KEY = 'vouxAdminAuth';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000; // 12h
@@ -55,6 +58,22 @@ async function showConfirm(options) {
     return modalApi().confirm(options);
   }
   return window.confirm(options?.message || 'Are you sure?');
+}
+
+function showToast(message, variant = 'success') {
+  if (!toastContainer) return;
+  const toast = document.createElement('div');
+  toast.className = `toast toast--${variant}`;
+  toast.innerHTML = `<i class="${variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}"></i>
+    <span>${message}</span>`;
+  toastContainer.appendChild(toast);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => toast.classList.add('toast--visible'));
+  });
+  setTimeout(() => {
+    toast.classList.remove('toast--visible');
+    setTimeout(() => toast.remove(), 250);
+  }, 2200);
 }
 
 init();
@@ -241,7 +260,9 @@ async function handleDeleteAll() {
     });
     if (res.status === 401) throw new Error('Invalid admin token.');
     if (!res.ok) throw new Error('Failed to delete counters');
+    const payload = await res.json().catch(() => ({}));
     await refreshCounters(1);
+    showToast(`Deleted ${payload.deleted ?? 'all'} counters`);
   } catch (error) {
     await showAlert(error.message || 'Failed to delete counters');
   } finally {
@@ -359,7 +380,7 @@ function renderCounterList(counters) {
 
     const setValueBtn = document.createElement('button');
     setValueBtn.type = 'button';
-    setValueBtn.className = 'ghost';
+    setValueBtn.className = 'ghost setvalue';
     setValueBtn.textContent = 'Set value';
 
     const adjustPanel = document.createElement('div');
@@ -371,10 +392,11 @@ function renderCounterList(counters) {
     adjustInput.value = counter.value;
     const adjustSave = document.createElement('button');
     adjustSave.type = 'button';
+    adjustSave.className = 'savebtn';
     adjustSave.textContent = 'Save';
     const adjustCancel = document.createElement('button');
     adjustCancel.type = 'button';
-    adjustCancel.className = 'ghost';
+    adjustCancel.className = 'ghost cancelbtn';
     adjustCancel.textContent = 'Cancel';
 
     adjustPanel.append(adjustInput, adjustSave, adjustCancel);
@@ -404,6 +426,7 @@ function renderCounterList(counters) {
         adjustPanel.classList.add('hidden');
         setValueBtn.disabled = false;
         await refreshCounters(state.page);
+        showToast(`Set ${counter.id} to ${nextValue}`);
       } catch (error) {
         await showAlert(error.message || 'Failed to update value');
       } finally {
@@ -452,6 +475,7 @@ async function removeCounter(id) {
     if (!res.ok) throw new Error('Failed to delete counter');
     const nextPage = state.page > 1 && counterListEl.children.length === 1 ? state.page - 1 : state.page;
     await refreshCounters(nextPage);
+    showToast(`Deleted ${id}`);
   } catch (error) {
     await showAlert(error.message || 'Failed to delete counter');
   }
