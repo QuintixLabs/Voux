@@ -585,22 +585,36 @@ body.modal-open {
   min-width: 2ch;
 }
 
-    .admin-pagination {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 1rem;
-      margin-top: 0.5rem;
-    }
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
 
-    .admin-pagination.hidden {
-      display: none;
-    }
+.admin-pagination.hidden {
+  display: none;
+}
 
-    .pagination-info {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
+.pagination-info {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 480px) {
+  .admin-pagination {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .admin-pagination button {
+    font-size: 0.90rem;
+    padding: 0.4rem 0.75rem;
+  }
+  .pagination-info {
+    font-size: 0.9rem;
+  }
+}
 
 .counter-list {
   display: flex;
@@ -686,7 +700,7 @@ body.modal-open {
       gap: 0.35rem;
       background: var(--bg-tertiary);
       border: 1px solid var(--border-primary);
-      border-radius: 999px;
+      border-radius: 10px;
       padding: 0.2rem 0.75rem;
       font-size: 0.78rem;
       color: var(--text-secondary);
