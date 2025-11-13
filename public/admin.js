@@ -20,9 +20,12 @@ const createStartInput = document.querySelector('#adminStartValue');
 const adminEmbedSnippet = document.querySelector('#adminEmbedSnippet');
 const createCard = document.querySelector('#createCard');
 const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
-const toastContainer = document.createElement('div');
-toastContainer.className = 'toast-stack';
-document.body.appendChild(toastContainer);
+let toastContainer = document.querySelector('.toast-stack');
+if (!toastContainer) {
+  toastContainer = document.createElement('div');
+  toastContainer.className = 'toast-stack';
+  document.body.appendChild(toastContainer);
+}
 
 const STORAGE_KEY = 'vouxAdminAuth';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000; // 12h
@@ -75,6 +78,7 @@ function showToast(message, variant = 'success') {
     setTimeout(() => toast.remove(), 250);
   }, 2200);
 }
+window.showToast = showToast;
 
 init();
 

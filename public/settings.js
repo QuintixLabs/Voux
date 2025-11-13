@@ -28,8 +28,12 @@ function init(token) {
       setStatus('Changes save instantly.');
       setVersion(version);
       setTogglesDisabled(false);
-      togglePrivate?.addEventListener('change', () => handleToggleChange(token, { privateMode: togglePrivate.checked }));
-      toggleGuides?.addEventListener('change', () => handleToggleChange(token, { showGuides: toggleGuides.checked }));
+      togglePrivate?.addEventListener('change', () =>
+        handleToggleChange(token, { privateMode: togglePrivate.checked }, togglePrivate.checked ? 'Private mode enabled' : 'Private mode disabled')
+      );
+      toggleGuides?.addEventListener('change', () =>
+        handleToggleChange(token, { showGuides: toggleGuides.checked }, toggleGuides.checked ? 'Guide cards shown' : 'Guide cards hidden')
+      );
       setupBackupControls(token);
     })
     .catch(() => {
@@ -64,7 +68,7 @@ function setupBackupControls(token) {
   downloadBackupBtn?.addEventListener('click', () => handleBackupDownload(token));
   restoreFileInput?.addEventListener('change', (event) => handleBackupRestore(token, event));
 }
-async function handleToggleChange(token, patch) {
+async function handleToggleChange(token, patch, successMessage = 'Updated') {
   try {
     setStatus('Saving…');
     setTogglesDisabled(true);
@@ -81,8 +85,8 @@ async function handleToggleChange(token, patch) {
     if (data.version) {
       setVersion(data.version);
     }
-    setStatus('Saved');
-    resetStatusAfterDelay();
+    setStatus('Changes save instantly.');
+    showToast(successMessage);
   } catch (error) {
     setStatus('Error saving settings');
     await showAlert(error.message || 'Failed to save settings');
@@ -93,7 +97,7 @@ async function handleToggleChange(token, patch) {
 }
 
 function setStatus(text) {
-  if (statusLabel) statusLabel.textContent = text;
+  if (statusLabel) statusLabel.textContent = text || '';
 }
 
 function resetStatusAfterDelay() {
@@ -134,6 +138,36 @@ function modalApi() {
   return window.VouxModal;
 }
 
+function ensureToastSupport() {
+  if (window.showToast) return window.showToast;
+  let container = document.querySelector('.toast-stack');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'toast-stack';
+    document.body.appendChild(container);
+  }
+  window.showToast = (message, variant = 'success') => {
+    const toast = document.createElement('div');
+    toast.className = `toast toast--${variant}`;
+    toast.innerHTML = `<i class="${variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}"></i>
+      <span>${message}</span>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => toast.classList.add('toast--visible'));
+    });
+    setTimeout(() => {
+      toast.classList.remove('toast--visible');
+      setTimeout(() => toast.remove(), 250);
+    }, 2200);
+  };
+  return window.showToast;
+}
+
+function showToast(message, variant = 'success') {
+  const toastFn = ensureToastSupport();
+  toastFn(message, variant);
+}
+
 async function showAlert(message, options = {}) {
   if (modalApi()?.alert) {
     await modalApi().alert(message, options);
@@ -152,7 +186,7 @@ function modalConfirm(options) {
 
 async function handleBackupDownload(token) {
   try {
-    setBackupStatus('Preparing download…');
+    setBackupStatus('');
     const res = await fetch('/api/counters/export', {
       headers: { 'x-voux-admin': token }
     });
@@ -168,9 +202,11 @@ async function handleBackupDownload(token) {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    setBackupStatus('Backup downloaded.');
+    setBackupStatus('');
+    showToast('Backup downloaded');
   } catch (error) {
-    setBackupStatus('Download failed.');
+    setBackupStatus('');
+    showToast('Backup download failed', 'danger');
     await showAlert(error.message || 'Failed to download backup');
   }
 }
@@ -196,7 +232,8 @@ async function handleBackupRestore(token, event) {
     });
     if (!confirmed) {
       event.target.value = '';
-      setBackupStatus('Restore canceled.');
+      setBackupStatus('');
+      showToast('Restore canceled', 'danger');
       return;
     }
     setBackupStatus('Uploading backup…');
@@ -213,9 +250,12 @@ async function handleBackupRestore(token, event) {
       throw new Error(err.error || 'Failed to restore backup');
     }
     const result = await res.json();
-    setBackupStatus(`Backup restored (${result.imported || payload.length} counters).`);
+    const count = result.imported || payload.length;
+    setBackupStatus('');
+    showToast(`Restored ${count} counters`);
   } catch (error) {
-    setBackupStatus('Restore failed.');
+    setBackupStatus('');
+    showToast('Restore failed', 'danger');
     await showAlert(error.message || 'Failed to restore backup');
   } finally {
     event.target.value = '';
@@ -224,6 +264,6 @@ async function handleBackupRestore(token, event) {
 
 function setBackupStatus(message) {
   if (backupStatusLabel) {
-    backupStatusLabel.textContent = message;
+    backupStatusLabel.textContent = message || '';
   }
 }
