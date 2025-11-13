@@ -391,7 +391,7 @@ function renderCounterList(counters) {
       setValueBtn.disabled = false;
     });
 
-    adjustSave.addEventListener('click', async () => {
+    const submitAdjustment = async () => {
       const raw = adjustInput.value.trim();
       if (!/^\d+$/.test(raw)) {
         await showAlert('Use digits only when setting a value.');
@@ -408,6 +408,14 @@ function renderCounterList(counters) {
         await showAlert(error.message || 'Failed to update value');
       } finally {
         adjustSave.disabled = false;
+      }
+    };
+
+    adjustSave.addEventListener('click', submitAdjustment);
+    adjustInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submitAdjustment();
       }
     });
 
