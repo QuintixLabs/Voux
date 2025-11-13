@@ -974,6 +974,17 @@ body.modal-open {
       transition: color 0.15s ease;
     }
 
+    .footer-a {
+      color: inherit !important;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+
+
     .footer__link {
       color: var(--text-secondary);
       text-decoration: none;
@@ -981,6 +992,10 @@ body.modal-open {
 
     .footer a:hover {
       color: var(--text-primary);
+    }
+
+    .footer-a:hover{
+      color: var(--text-secondary) !important;
     }
 
     .footer__socials a {
