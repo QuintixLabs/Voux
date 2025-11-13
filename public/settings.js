@@ -26,11 +26,11 @@ function init(token) {
     .then(({ config, version }) => {
       populateForm(config);
       settingsPanel?.classList.remove('hidden');
-      setStatus('Changes save instantly.');
+      setStatus('');
       setVersion(version);
       setTogglesDisabled(false);
       togglePrivate?.addEventListener('change', () =>
-        handleToggleChange(token, { privateMode: togglePrivate.checked }, togglePrivate.checked ? 'Private mode enabled' : 'Private mode disabled')
+        handleToggleChange(token, { privateMode: togglePrivate.checked }, togglePrivate.checked ? 'Private instance enabled' : 'Private instance disabled')
       );
       toggleGuides?.addEventListener('change', () =>
         handleToggleChange(token, { showGuides: toggleGuides.checked }, toggleGuides.checked ? 'Guide cards shown' : 'Guide cards hidden')
@@ -86,7 +86,7 @@ async function handleToggleChange(token, patch, successMessage = 'Updated') {
     if (data.version) {
       setVersion(data.version);
     }
-    setStatus('Changes save instantly.');
+    setStatus('');
     showToast(successMessage);
   } catch (error) {
     setStatus('Error saving settings');
@@ -104,7 +104,7 @@ function setStatus(text) {
 function resetStatusAfterDelay() {
   clearTimeout(statusTimeout);
   statusTimeout = setTimeout(() => {
-    setStatus('Changes save instantly.');
+    setStatus('');
   }, 1200);
 }
 

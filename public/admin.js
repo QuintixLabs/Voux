@@ -126,7 +126,7 @@ async function fetchConfig() {
     state.privateMode = Boolean(data.privateMode);
     if (dashboardSubtitle) {
       dashboardSubtitle.textContent = state.privateMode
-        ? 'Private mode'
+        ? 'Private instance'
         : 'Public instance';
     }
     updateCreateCardVisibility();

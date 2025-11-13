@@ -29,8 +29,8 @@ if (form) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (isPrivateMode) {
-      await showAlert('Private mode is enabled. Create counters from the dashboard.', {
-        title: 'Private mode'
+      await showAlert('Private instance is enabled. Create counters from the dashboard.', {
+        title: 'Private instance'
       });
       return;
     }
