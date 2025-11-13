@@ -9,6 +9,7 @@ const versionLabel = document.getElementById('settingsVersion');
 const downloadBackupBtn = document.getElementById('downloadBackup');
 const restoreFileInput = document.getElementById('restoreFile');
 const backupStatusLabel = document.getElementById('backupStatus');
+let backupBusy = false;
 
 let tokenData = loadStoredToken();
 let statusTimeout = null;
@@ -185,7 +186,13 @@ function modalConfirm(options) {
 }
 
 async function handleBackupDownload(token) {
+  if (backupBusy) {
+    showToast('Finish the current backup task first', 'danger');
+    return;
+  }
   try {
+    backupBusy = true;
+    if (downloadBackupBtn) downloadBackupBtn.disabled = true;
     setBackupStatus('');
     const res = await fetch('/api/counters/export', {
       headers: { 'x-voux-admin': token }
@@ -208,12 +215,20 @@ async function handleBackupDownload(token) {
     setBackupStatus('');
     showToast('Backup download failed', 'danger');
     await showAlert(error.message || 'Failed to download backup');
+  } finally {
+    backupBusy = false;
+    if (downloadBackupBtn) downloadBackupBtn.disabled = false;
   }
 }
 
 async function handleBackupRestore(token, event) {
   const file = event.target.files?.[0];
   if (!file) return;
+  if (backupBusy) {
+    showToast('Finish the current backup task first', 'danger');
+    event.target.value = '';
+    return;
+  }
   try {
     setBackupStatus('Reading backup…');
     const text = await file.text();
@@ -237,6 +252,9 @@ async function handleBackupRestore(token, event) {
       return;
     }
     setBackupStatus('Uploading backup…');
+    backupBusy = true;
+    if (downloadBackupBtn) downloadBackupBtn.disabled = true;
+    if (restoreFileInput) restoreFileInput.disabled = true;
     const res = await fetch('/api/counters/import', {
       method: 'POST',
       headers: {
@@ -259,6 +277,9 @@ async function handleBackupRestore(token, event) {
     await showAlert(error.message || 'Failed to restore backup');
   } finally {
     event.target.value = '';
+    backupBusy = false;
+    if (downloadBackupBtn) downloadBackupBtn.disabled = false;
+    if (restoreFileInput) restoreFileInput.disabled = false;
   }
 }
 

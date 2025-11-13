@@ -8,7 +8,7 @@
       --bg-primary: #0F1115;
       --bg-secondary: #16181D;
       --bg-tertiary: #1C1E24;
-      --border-primary: rgba(255, 255, 255, 0.08);
+      --border-primary: rgba(255, 255, 255, 0.10);
       --border-hover: rgba(255, 255, 255, 0.12);
       --text-primary: #ffffff;
       --text-secondary: #a1a1a1;
@@ -1053,6 +1053,11 @@ body.modal-open {
   align-items: center;
   gap: 0.5rem;
 }
+
+.file-upload:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
 
 .file-upload input {
   display: none;

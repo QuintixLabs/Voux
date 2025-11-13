@@ -54,7 +54,7 @@
           <p>Manage your instance options and behavior. Only logged-in admins can make changes.</p>
         </div>
         <div class="version-pill">
-          <span class="version-pill__label">Current version</span>
+          <span class="version-pill__label"><i class="ri-git-repository-fill"></i> · Current version</span>
           <span class="version-pill__value" id="settingsVersion">?.?.?</span>
         </div>
       </div>
@@ -66,7 +66,7 @@
         <label class="toggle">
           <input type="checkbox" id="togglePrivateMode" />
           <span>
-            <strong>Private mode</strong>
+            <strong><i class="ri-lock-line"></i> · Private mode</strong>
             <small>Only logged-in admins can create counters.</small>
           </span>
         </label>
@@ -74,7 +74,7 @@
         <label class="toggle">
           <input type="checkbox" id="toggleShowGuides" />
           <span>
-            <strong>Show guide cards</strong>
+            <strong><i class="ri-guide-line"></i> · Show guide cards</strong>
             <small>Display the styling/self-hosting tips on the public page.</small>
           </span>
         </label>
@@ -86,10 +86,10 @@
       <h2>Backup &amp; Restore</h2>
       <p>Download all counters as JSON or restore from a previous backup when moving servers.</p>
       <div class="backup-actions">
-        <button type="button" id="downloadBackup">Download backup</button>
+        <button type="button" id="downloadBackup"><i class="ri-download-cloud-line"></i> Download backup</button>
         <label class="file-upload">
           <input type="file" id="restoreFile" accept="application/json" />
-          <span>Restore backup</span>
+          <span><i class="ri-loop-right-fill"></i> Restore backup</span>
         </label>
       </div>
       <p class="hint" id="backupStatus" aria-live="polite"></p>
