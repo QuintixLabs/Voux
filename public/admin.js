@@ -392,11 +392,12 @@ function renderCounterList(counters) {
     });
 
     adjustSave.addEventListener('click', async () => {
-      const nextValue = Number(adjustInput.value);
-      if (!Number.isFinite(nextValue) || nextValue < 0) {
-        await showAlert('Enter a valid non-negative number.');
+      const raw = adjustInput.value.trim();
+      if (!/^\d+$/.test(raw)) {
+        await showAlert('Use digits only when setting a value.');
         return;
       }
+      const nextValue = Number(raw);
       adjustSave.disabled = true;
       try {
         await updateCounterValueRequest(counter.id, Math.floor(nextValue));
