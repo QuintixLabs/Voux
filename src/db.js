@@ -60,6 +60,10 @@ const listCountersSearchStmt = db.prepare(
 const getCounterStmt = db.prepare(
   'SELECT id, label, theme, value, created_at, ip_cooldown_hours FROM counters WHERE id = ?'
 );
+const getLastHitStmt = db.prepare('SELECT last_hit FROM hits WHERE counter_id = ? ORDER BY last_hit DESC LIMIT 1');
+const countHitsSinceStmt = db.prepare(
+  'SELECT COUNT(*) as total FROM hits WHERE counter_id = ? AND last_hit >= ?'
+);
 const insertCounterStmt = db.prepare(
   'INSERT INTO counters (id, label, theme, value, created_at, ip_cooldown_hours) VALUES (@id, @label, @theme, @value, @created_at, @ip_cooldown_hours)'
 );
@@ -181,6 +185,19 @@ const deleteAllCounters = db.transaction(() => {
   return total;
 });
 
+function getLastHitTimestamp(counterId) {
+  const row = getLastHitStmt.get(counterId);
+  return row ? row.last_hit : null;
+}
+
+function countHitsSince(counterId, sinceTimestamp) {
+  if (sinceTimestamp === undefined || sinceTimestamp === null) {
+    return 0;
+  }
+  const row = countHitsSinceStmt.get(counterId, sinceTimestamp);
+  return row && typeof row.total === 'number' ? row.total : 0;
+}
+
 module.exports = {
   createCounter,
   listCounters,
@@ -190,6 +207,8 @@ module.exports = {
   deleteCounter,
   deleteAllCounters,
   countCounters,
+  getLastHitTimestamp,
+  countHitsSince,
   describeCooldownLabel,
   parseRequestedCooldown
 };

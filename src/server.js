@@ -11,7 +11,9 @@ const {
   deleteAllCounters,
   countCounters,
   parseRequestedCooldown,
-  describeCooldownLabel
+  describeCooldownLabel,
+  getLastHitTimestamp,
+  countHitsSince
 } = require('./db');
 const { getConfig, updateConfig } = require('./configStore');
 const requireAdmin = require('./middleware/requireAdmin');
@@ -52,7 +54,10 @@ app.get('/api/counters', requireAdmin, (req, res) => {
   const totalPages = Math.max(1, Math.ceil(Math.max(totalMatching, 1) / pageSize));
   const safePage = Math.min(page, totalPages);
   const offset = (safePage - 1) * pageSize;
-  const counters = listCountersPage(pageSize, offset, searchQuery).map(serializeCounter);
+  const dayStart = getDayStart();
+  const counters = listCountersPage(pageSize, offset, searchQuery).map((counter) =>
+    serializeCounterWithStats(counter, dayStart)
+  );
 
   res.json({
     counters,
@@ -146,7 +151,7 @@ app.get('/api/counters/:id', (req, res) => {
   const embedUrl = `${baseUrl}/embed/${counter.id}.js`;
   const embedCode = `<script async src="${embedUrl}"></script>`;
   res.json({
-    counter: serializeCounter(counter),
+    counter: serializeCounterWithStats(counter, getDayStart()),
     embedCode,
     embedUrl
   });
@@ -273,6 +278,24 @@ function serializeCounter(counter) {
   };
 }
 
+function serializeCounterWithStats(counter, dayStart) {
+  const base = serializeCounter(counter);
+  if (!base) return base;
+  const lastHit = getLastHitTimestamp(counter.id);
+  const hitsToday = dayStart ? countHitsSince(counter.id, dayStart) : 0;
+  return {
+    ...base,
+    lastHit,
+    hitsToday
+  };
+}
+
 function isPrivateMode() {
   return Boolean(getConfig().privateMode);
+}
+
+function getDayStart() {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now.getTime();
 }

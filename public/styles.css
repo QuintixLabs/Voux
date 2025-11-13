@@ -644,6 +644,9 @@ body.modal-open {
       color: var(--text-tertiary);
       word-break: break-all;
       overflow-wrap: break-word;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
     .counter-meta__value {
@@ -659,6 +662,61 @@ body.modal-open {
     .counter-meta__mode {
       font-size: 0.8rem;
       color: var(--text-tertiary);
+    }
+
+    .counter-meta__stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.45rem;
+    }
+
+    .counter-meta__stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-primary);
+      border-radius: 999px;
+      padding: 0.2rem 0.75rem;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+
+    .counter-meta__stat-label {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.68rem;
+      color: var(--text-tertiary);
+    }
+
+    .counter-meta__stat-value {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .counter-copy-button {
+      border: 1px solid var(--border-primary);
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 6px;
+      padding: 0.2rem 0.4rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+    }
+
+    .counter-copy-button:hover {
+      color: var(--text-primary);
+      border-color: var(--border-hover);
+    }
+
+    .counter-copy-button.copied {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.5);
+      color: #34d399;
     }
 
     .counter-meta__value .badge {

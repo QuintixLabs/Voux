@@ -318,18 +318,43 @@ function renderCounterList(counters) {
 
     const id = document.createElement('div');
     id.className = 'counter-meta__id';
-    id.textContent = counter.id;
+    const idValue = document.createElement('span');
+    idValue.textContent = counter.id;
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'counter-copy-button';
+    copyBtn.innerHTML = '<i class="ri-file-copy-line"></i>';
+    copyBtn.title = 'Copy embed snippet';
+    copyBtn.addEventListener('click', () => copyEmbedSnippet(counter.id, copyBtn));
+    id.append(idValue, copyBtn);
 
     const value = document.createElement('div');
     value.className = 'counter-meta__value';
-    value.innerHTML = `Value <span class="badge">${counter.value}</span>`;
+    value.innerHTML = `Value <span class="badge">${formatNumber(counter.value)}</span>`;
 
     const mode = document.createElement('div');
     mode.className = 'counter-meta__mode';
     const labelText = counter.cooldownLabel || 'Unique visitors';
     mode.textContent = `Mode: ${labelText}`;
 
-    meta.append(label, id, value, mode);
+    const stats = document.createElement('div');
+    stats.className = 'counter-meta__stats';
+
+    const todayStat = document.createElement('span');
+    todayStat.className = 'counter-meta__stat';
+    todayStat.innerHTML = `<span class="counter-meta__stat-label">Today</span><span class="counter-meta__stat-value">${formatNumber(
+      counter.hitsToday ?? 0
+    )}</span>`;
+
+    const lastHitStat = document.createElement('span');
+    lastHitStat.className = 'counter-meta__stat';
+    lastHitStat.innerHTML = `<span class="counter-meta__stat-label">Last hit</span><span class="counter-meta__stat-value">${formatLastHit(
+      counter.lastHit
+    )}</span>`;
+
+    stats.append(todayStat, lastHitStat);
+
+    meta.append(label, id, value, mode, stats);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -464,6 +489,65 @@ function authHeaders() {
 function getCooldownPayload(selectEl) {
   if (!selectEl) return 'unique';
   return selectEl.value === 'unlimited' ? 'unlimited' : 'unique';
+}
+
+function formatNumber(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return '0';
+  return num.toLocaleString();
+}
+
+function formatLastHit(timestamp) {
+  if (!timestamp) {
+    return 'No hits yet';
+  }
+  const diff = Date.now() - timestamp;
+  if (diff <= 0) return 'Just now';
+  const seconds = Math.floor(diff / 1000);
+  const minute = 60;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (seconds < minute) {
+    return 'Just now';
+  }
+  if (seconds < hour) {
+    const mins = Math.floor(seconds / minute);
+    return `${mins}m ago`;
+  }
+  if (seconds < day) {
+    const hours = Math.floor(seconds / hour);
+    return `${hours}h ago`;
+  }
+  if (seconds < day * 7) {
+    const days = Math.floor(seconds / day);
+    return `${days}d ago`;
+  }
+  return new Date(timestamp).toLocaleDateString();
+}
+
+async function copyEmbedSnippet(counterId, button) {
+  const origin = window.location.origin.replace(/\/+$/, '');
+  const snippet = `<script async src="${origin}/embed/${counterId}.js"></script>`;
+  try {
+    await navigator.clipboard.writeText(snippet);
+    if (button) {
+      if (button._copyTimeout) {
+        clearTimeout(button._copyTimeout);
+        button._copyTimeout = null;
+      }
+      const original = button.dataset.originalIcon || button.innerHTML;
+      button.dataset.originalIcon = original;
+      button.classList.add('copied');
+      button.innerHTML = '<i class="ri-check-line"></i>';
+      button._copyTimeout = setTimeout(() => {
+        button.classList.remove('copied');
+        button.innerHTML = button.dataset.originalIcon || original;
+        button._copyTimeout = null;
+      }, 1400);
+    }
+  } catch (error) {
+    window.alert('Unable to copy snippet');
+  }
 }
 
 const yearEl = document.getElementById('currentYear');
