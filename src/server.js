@@ -25,7 +25,7 @@ const requireAdmin = require('./middleware/requireAdmin');
 const { verifyAdmin } = require('./middleware/requireAdmin');
 
 const PORT = process.env.PORT || 8787;
-const DEFAULT_PAGE_SIZE = Number(process.env.ADMIN_PAGE_SIZE) || 20;
+const DEFAULT_PAGE_SIZE = Number(process.env.ADMIN_PAGE_SIZE) || 5;
 const LABEL_LIMIT = 80;
 const NOTE_LIMIT = 200;
 

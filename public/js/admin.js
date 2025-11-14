@@ -39,7 +39,7 @@ const state = {
   total: 0,
   totalOverall: 0,
   searchQuery: '',
-  pageSize: 20,
+  pageSize: 5,
   privateMode: false,
   loadingLogin: false,
   allowedModes: { unique: true, unlimited: true },
