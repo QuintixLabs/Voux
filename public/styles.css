@@ -140,14 +140,14 @@ input[type=number] {
       margin-bottom: 1.5rem;
     }
 
-    .card a {
+    .card a:not(.nav-link) {
       color: var(--accent);
       text-decoration: underline;
       font-weight: 500;
       transition: color 0.15s ease;
     }
 
-    .card a:hover {
+    .card a:not(.nav-link):hover {
       color: var(--accent-hover);
     }
 
