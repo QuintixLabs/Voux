@@ -51,13 +51,14 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
+/* 404 page */
 .page--compact {
   max-width: 640px;
   margin: 0 auto;
 }
 
 .page--centered {
-  min-height: calc(100vh - 220px);
+  min-height: calc(100vh - 150px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -79,11 +80,6 @@ input[type=number] {
   color: var(--text-secondary);
   font-size: 1.1rem;
 }
-}
-
-    .hero {
-      margin-bottom: 4rem;
-    }
 
     .eyebrow {
       display: inline-flex;
@@ -971,6 +967,29 @@ body.modal-open {
       margin-top: 3px;
     }
 
+/* 
+  MODIFY FOOTER FROM HERE 
+*/
+    .footer__grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    /* Desktop layout: push Links and Social right */
+    @media (min-width: 700px) {
+      .footer__grid {
+        grid-template-columns: 1.6fr 1fr 0.7fr; /* <-- MAINLY FROM HERE */
+      }
+    }
+
+    /* Mobile: stack everything in one column */
+    @media (max-width: 700px) {
+      .footer__grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .footer {
       padding: 2rem 1.5rem;
       border-top: 1px solid var(--border-primary);
@@ -978,21 +997,13 @@ body.modal-open {
     }
 
    .footer__content {
-  max-width: 1200px; /* controls width on large screens */
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  width: 100%;
-}
-
-
-
-    .footer__grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 1.5rem;
-}
+      max-width: 1200px; /* controls width on large screens */
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      width: 100%;
+    }
 
 
     .footer__about,
@@ -1081,20 +1092,6 @@ body.modal-open {
 
     .footer i {
       font-size: 1.125rem;
-    }
-
-    /* Desktop layout: push Links and Social right */
-    @media (min-width: 700px) {
-      .footer__grid {
-        grid-template-columns: 1.6fr 1fr 0.7fr;
-      }
-    }
-
-    /* Mobile: stack everything in one column */
-    @media (max-width: 700px) {
-      .footer__grid {
-        grid-template-columns: 1fr;
-      }
     }
 
 .settings-grid {
