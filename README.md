@@ -139,7 +139,7 @@ Styling your counter with **Voux** is super simple. All you need to do is wrap y
 </span>
 ```
 
-When the script runs it replaces the inner script with the label/value spans, so you can target them with CSS:
+Once that's in place, you can style it however you like using CSS. Here's a simple example that centers the counter on the screen and makes the text black:
 
 ```css
 .counter-widget {
