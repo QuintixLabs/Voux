@@ -1192,8 +1192,6 @@ body.modal-open {
   color: var(--accent);
 }
 
-
-
 .version-pill {
   border: 1px solid var(--border-primary);
   padding: 0.35rem 0.95rem;
