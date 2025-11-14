@@ -152,17 +152,20 @@
         <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
       </summary>
       <div class="expander__content">
-        <p>Running your own copy is easy. Use Node.js 22 (install and switch with <b>fnm</b> or any manager) and keep the files anywhere. The SQLite file sits in the project folder, so you do not need any other services.</p>
+        <p>Running your own copy is easy. Use Node.js 22 (install and switch with <a href="https://github.com/Schniz/fnm" target="_blank">fnm</a> or any manager). The SQLite file stays inside the project folder, so you do not need any extra services.</p>
 
         <p><strong>1. Grab the project</strong></p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
           <pre><code class="language-bash">git clone https://github.com/QuintixLabs/Voux.git
 cd voux
+fnm use 22
 npm install</code></pre>
         </div>
 
         <p><strong>2. Drop in your settings</strong></p>
+        <p>The <span class="code-inline">.env</span> file is where you store your admin password and all settings for Voux. 
+        You must update a few values in it before running the server. For more informations on the settings check them <a href="https://github.com/QuintixLabs/Voux?tab=readme-ov-file#%EF%B8%8F-configuration" target="_blank">here</a></p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
           <pre><code class="language-bash">cp .env.example .env
