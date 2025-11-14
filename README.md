@@ -58,7 +58,7 @@ cp .env.example .env
 
 Open `.env` and set your settings.
 This is where you configure your admin token, site URL, port, and other options.
-You must set `ADMIN_TOKEN` to something secret before running the server.
+You must set `ADMIN_TOKEN` to something secret before running the server. For more settings check [Configuration](#-configuration)
 
 ### 4. Start Voux
 **Development (auto-reload) :**
