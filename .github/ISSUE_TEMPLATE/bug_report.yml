@@ -20,10 +20,17 @@ body:
   - type: textarea
     attributes:
       label: What did you expect?
+      description: What should have happened instead?
   - type: textarea
     attributes:
       label: Screenshots / logs
+      description: Paste logs or drag screenshots if helpful.
   - type: input
     attributes:
       label: Environment
       description: OS, browser, Node.js version, hosting method.
+      placeholder: | 
+        OS: Windows 11 
+        Browser: Chrome 
+        Node Version: Node 22
+        Hosting Method: Cloudflare tunnel
