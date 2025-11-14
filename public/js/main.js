@@ -60,7 +60,10 @@ if (form) {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || 'Failed to create counter');
+        const message = buildCreateCounterErrorMessage(error, response.status);
+        const err = new Error(message);
+        err.code = error && error.error;
+        throw err;
       }
 
       const data = await response.json();
@@ -170,6 +173,27 @@ function getSelectedCooldown(selectEl) {
     return 'unlimited';
   }
   return 'unique';
+}
+
+function buildCreateCounterErrorMessage(error, status) {
+  if (error && typeof error.message === 'string' && error.message.trim()) {
+    return error.message.trim();
+  }
+  if (error && error.error === 'rate_limited') {
+    const wait = typeof error.retryAfterSeconds === 'number' ? error.retryAfterSeconds : null;
+    if (wait) {
+      const pretty = wait === 1 ? '1 second' : `${wait} seconds`;
+      return `Too many new counters at once. Try again in ${pretty}.`;
+    }
+    return 'Too many new counters right now. Try again in a moment.';
+  }
+  if (error && typeof error.error === 'string') {
+    return error.error;
+  }
+  if (status === 413) {
+    return 'Payload too large.';
+  }
+  return 'Failed to create counter. Please try again.';
 }
 
 function appendPreviewParam(url) {

@@ -26,6 +26,20 @@ const { verifyAdmin } = require('./middleware/requireAdmin');
 
 const PORT = process.env.PORT || 8787;
 const DEFAULT_PAGE_SIZE = Number(process.env.ADMIN_PAGE_SIZE) || 5;
+const CREATION_LIMIT_COUNT = Math.max(
+  1,
+  Number.isFinite(Number(process.env.COUNTER_CREATE_LIMIT))
+    ? Number(process.env.COUNTER_CREATE_LIMIT)
+    : 5
+);
+const CREATION_LIMIT_WINDOW_MS = Math.max(
+  1000,
+  Number.isFinite(Number(process.env.COUNTER_CREATE_WINDOW_MS))
+    ? Number(process.env.COUNTER_CREATE_WINDOW_MS)
+    : 60 * 1000
+);
+
+const creationTracker = new Map();
 const LABEL_LIMIT = 80;
 const NOTE_LIMIT = 200;
 
@@ -214,6 +228,23 @@ app.post('/api/counters', (req, res) => {
     }
   }
 
+  const clientIp = getClientIp(req) || 'unknown';
+  if (!isPrivateMode()) {
+    const rateCheck = checkCreationRate(clientIp);
+    if (!rateCheck.allowed) {
+      const retrySeconds = rateCheck.retryAfterSeconds;
+      const prettySeconds = retrySeconds === 1 ? '1 second' : `${retrySeconds} seconds`;
+      res.set('Retry-After', String(Math.max(1, retrySeconds || 1)));
+      return res.status(429).json({
+        error: 'rate_limited',
+        message: `Too many new counters at once. Try again in about ${prettySeconds}.`,
+        retryAfterSeconds: retrySeconds,
+        limit: CREATION_LIMIT_COUNT,
+        windowSeconds: Math.round(CREATION_LIMIT_WINDOW_MS / 1000)
+      });
+    }
+  }
+
   const runtimeConfig = getConfig();
   const defaultMode = getDefaultMode(runtimeConfig);
   const {
@@ -242,6 +273,9 @@ app.post('/api/counters', (req, res) => {
     startValue: Math.floor(parsedStart),
     mode: requestedMode
   });
+  if (!isPrivateMode()) {
+    recordCreationAttempt(clientIp);
+  }
 
   const baseUrl = getBaseUrl(req);
   const embedUrl = `${baseUrl}/embed/${counter.id}.js`;
@@ -343,6 +377,32 @@ function getClientIp(req) {
     req.socket?.remoteAddress ||
     null
   );
+}
+
+function checkCreationRate(ip, now = Date.now()) {
+  if (!ip) {
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+  const entries = creationTracker.get(ip) || [];
+  const recent = entries.filter((ts) => now - ts < CREATION_LIMIT_WINDOW_MS);
+  creationTracker.set(ip, recent);
+  if (recent.length >= CREATION_LIMIT_COUNT) {
+    const oldest = recent[0];
+    const retryAfterMs = CREATION_LIMIT_WINDOW_MS - (now - oldest);
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil(retryAfterMs / 1000))
+    };
+  }
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
+function recordCreationAttempt(ip, now = Date.now()) {
+  if (!ip) return;
+  const entries = creationTracker.get(ip) || [];
+  const recent = entries.filter((ts) => now - ts < CREATION_LIMIT_WINDOW_MS);
+  recent.push(now);
+  creationTracker.set(ip, recent);
 }
 
 function extractSearchQuery(value) {
