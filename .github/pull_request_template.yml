@@ -1,0 +1,23 @@
+name: Pull request template
+description: Checklist for contributors
+title: ""
+body:
+  - type: textarea
+    attributes:
+      label: Summary
+      description: Explain what you changed and why. Keep it short.
+      placeholder: This PR...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Testing
+      description: How did you verify your changes?
+      placeholder: Commands, screenshots, etc.
+  - type: checkboxes
+    attributes:
+      label: Checklist
+      options:
+        - label: Builds cleanly (`npm run dev` or `npm start`).
+        - label: No secrets/token files committed.
+        - label: Docs/README updated if needed.

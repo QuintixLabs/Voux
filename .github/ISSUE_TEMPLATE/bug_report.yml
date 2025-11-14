@@ -1,0 +1,29 @@
+name: Bug report
+description: Something broke or behaves strangely
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Clear description of the bug.
+      placeholder: Describe the issue...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      description: Numbered list helps.
+      placeholder: |
+        1. Go to...
+        2. Click...
+        3. See error...
+  - type: textarea
+    attributes:
+      label: What did you expect?
+  - type: textarea
+    attributes:
+      label: Screenshots / logs
+  - type: input
+    attributes:
+      label: Environment
+      description: OS, browser, Node.js version, hosting method.
