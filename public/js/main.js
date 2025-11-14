@@ -42,7 +42,7 @@ if (form) {
       startValue: Number(formData.get('startValue') || 0)
     };
     try {
-      payload.ipCooldownHours = getSelectedCooldown(cooldownSelect);
+      payload.mode = getSelectedCooldown(cooldownSelect);
     } catch (error) {
       await showAlert(error.message || 'Invalid counting mode', {
         title: 'Invalid mode'

@@ -321,7 +321,7 @@ async function handleCreateCounter(event) {
     startValue: Number(createStartInput?.value || 0)
   };
   try {
-    payload.ipCooldownHours = getCooldownPayload(adminCooldownSelect);
+    payload.mode = getCooldownPayload(adminCooldownSelect);
   } catch (error) {
     await showAlert(error.message || 'Invalid counting mode');
     return;

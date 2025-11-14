@@ -11,8 +11,8 @@ const {
   deleteAllCounters,
   deleteCountersByMode,
   countCounters,
-  parseRequestedCooldown,
-  describeCooldownLabel,
+  parseRequestedMode,
+  describeModeLabel,
   getLastHitTimestamp,
   countHitsSince,
   exportCounters,
@@ -48,7 +48,7 @@ app.get('/api/config', (req, res) => {
     version: getVersion(),
     adminPageSize: DEFAULT_PAGE_SIZE,
     defaultMode,
-    defaultCooldownLabel: describeCooldownLabel(defaultMode)
+    defaultCooldownLabel: describeModeLabel(defaultMode)
   });
 });
 
@@ -216,11 +216,19 @@ app.post('/api/counters', (req, res) => {
 
   const runtimeConfig = getConfig();
   const defaultMode = getDefaultMode(runtimeConfig);
-  const { label = '', startValue = 0, ipCooldownHours = defaultMode } = req.body || {};
+  const {
+    label = '',
+    startValue = 0,
+    mode
+  } = req.body || {};
+  const requestedModeInput = typeof mode === 'string' ? mode : defaultMode;
   const normalizedLabel = typeof label === 'string' ? label.trim().slice(0, 80) : '';
   const parsedStart = Number(startValue);
-  const cooldownResult = parseRequestedCooldown(ipCooldownHours);
-  const requestedMode = cooldownResult.value === 0 ? 'unlimited' : 'unique';
+  const modeResult = parseRequestedMode(requestedModeInput);
+  if (modeResult.error) {
+    return res.status(400).json({ error: modeResult.error });
+  }
+  const requestedMode = modeResult.mode;
   if (!isModeAllowed(requestedMode, runtimeConfig)) {
     return res.status(400).json({ error: 'mode_not_allowed' });
   }
@@ -228,14 +236,11 @@ app.post('/api/counters', (req, res) => {
   if (!Number.isFinite(parsedStart) || parsedStart < 0) {
     return res.status(400).json({ error: 'startValue must be a positive number' });
   }
-  if (cooldownResult.error) {
-    return res.status(400).json({ error: cooldownResult.error });
-  }
 
   const counter = createCounter({
     label: normalizedLabel,
     startValue: Math.floor(parsedStart),
-    ipCooldownHours: cooldownResult.value
+    mode: requestedMode
   });
 
   const baseUrl = getBaseUrl(req);
@@ -373,7 +378,7 @@ function getVersion() {
 function serializeCounter(counter, options = {}) {
   if (!counter) return null;
   const { includeNote = false } = options;
-  const mode = counter.ip_cooldown_hours === 0 ? 'unlimited' : 'unique';
+  const mode = counter.count_mode === 'unlimited' ? 'unlimited' : 'unique';
   const payload = {
     id: counter.id,
     label: counter.label,
@@ -381,7 +386,7 @@ function serializeCounter(counter, options = {}) {
     value: counter.value,
     createdAt: counter.created_at,
     cooldownMode: mode,
-    cooldownLabel: describeCooldownLabel(mode)
+    cooldownLabel: describeModeLabel(mode)
   };
   if (includeNote) {
     payload.note = counter.note || '';

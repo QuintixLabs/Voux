@@ -63,32 +63,28 @@ Environment variables. You can tweak some of these options later from `/settings
 | `SHOW_PUBLIC_GUIDES` | `true` | Controls if public guide cards are shown on the main page. |
 | `DEFAULT_ALLOWED_MODES` | `unique,unlimited` | Comma-separated list of modes to allow (`unique`, `unlimited`). This just seeds the runtime setting; you can change it later in the dashboard. |
 
-SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers. If you delete it, Voux creates a fresh empty file at the next start, but all counters will be gone.
+SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings.html`). If you delete the DB file, Voux creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
 
 When `PRIVATE_MODE=true`, the public builder hides the “Generate counter” form and all creation/deletion happens through `/admin.html` with your admin token.
 You can choose which counting modes are available (unique vs every visit) at any time from `/settings.html`; only the allowed modes show up when users generate counters, and the admin dashboard can bulk-delete all counters that belong to a given mode.
 
 ## 🧩 API quick reference
 
-- `GET /api/config` – returns `{ privateMode, adminPageSize, allowedModes, defaultMode }` so UIs know how to behave.
-- `POST /api/counters` – body: `{ "label": "Blog Views", "startValue": 25, "ipCooldownHours": "never" }` (requires `X-Voux-Admin` when `PRIVATE_MODE` is `true`, and defaults to the first allowed mode if you omit `ipCooldownHours`).
-- `GET /api/counters?page=1&pageSize=20&mode=unique` – paginated list (admin only). Pass `mode=unique` or `mode=unlimited` to filter.
-- `GET /api/counters/:id` – metadata (without private notes) and embed snippet for a specific counter.
-- `GET /embed/:id.js` – script users place on their site.
-- `DELETE /api/counters/:id` – remove one counter (admin only).
-- `DELETE /api/counters` – remove every counter (admin only). Pass `?mode=unique` or `?mode=unlimited` to delete only that type.
-- `PATCH /api/counters/:id` – update a counter’s label, value, note, or unlimited-mode cooldown (admin only).
-- `POST /api/counters/:id/value` – set a counter’s value to a new number (admin only).
-- `GET /api/settings` – current runtime config (admin only).
-- `POST /api/settings` – toggle private mode or guide cards (admin only).
+- `GET /api/config` – tells the UI what's enabled: `{ privateMode, showGuides, allowedModes, defaultMode, adminPageSize }`.
+- `POST /api/counters` – create a counter (admin token required when private mode is on). Body at minimum: `{ "label": "Blog Views", "startValue": 0, "mode": "unique" }`.
+- `GET /api/counters?page=1&pageSize=20&mode=unique` – paginated list of counters (admin only). Pass `mode=unique` or `mode=unlimited` to filter by counting mode.
+- `GET /api/counters/:id` – fetch a single counter plus its embed snippet (public; notes are omitted).
+- `GET /embed/:id.js` – the script you drop into your site.
+- `DELETE /api/counters/:id` – delete a single counter (admin only).
+- `DELETE /api/counters?mode=unique` – delete every counter that uses the given mode (admin only). Omit `mode` to delete everything.
+- `PATCH /api/counters/:id` – edit a counter's label, value, or note (admin only).
+- `POST /api/counters/:id/value` – set a counter's value directly (admin only).
+- `GET /api/settings` – fetch the current runtime config (admin only).
+- `POST /api/settings` – update runtime flags (private mode, guide cards, allowed modes, etc.).
 - `GET /api/counters/export` – download every counter as JSON (admin only).
 - `POST /api/counters/import` – restore counters from a JSON backup (admin only).
-- Admin dashboard: open `/admin.html`, paste your admin token, and manage counters through the UI (includes pagination controls).
 
-If `ADMIN_TOKEN` is set, include `X-Voux-Admin: <token>` when calling any admin endpoint.
-
-Use the browser dashboard at `/admin.html` for a token-protected UI to list and delete counters.
-When `PRIVATE_MODE=true`, that dashboard is also where you create new counters.
+Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/admin.html`, sign in once, and use the dashboard (it already calls these endpoints under the hood).
 
 ### 🎨 Styling embeds
 
@@ -118,23 +114,12 @@ When the script runs it replaces the inner script with the label/value spans, so
 ```
 And that's it. Your counter is now styled and ready to use. You can change the font, colors, or layout any way you like.
 
-### 🧹 Clearing IP dedupe data
+### 🧹 Clearing saved IPs
 
-The `hits` table only stores `counter_id`, `ip`, and the last timestamp for deduplication. To wipe it (for privacy or to reset the cooldown), run:
+Voux keeps a simple list of "which IP hit which counter, and when" so it can avoid double-counting unique visitors. To wipe that list (for privacy or to give everyone a fresh start), run:
 
 ```bash
 npm run clear-hits
 ```
 
-Counters remain untouched; only the IP records used for dedupe are removed.
-
-### 🧮 Counting modes
-
-- `"unique"` – each IP can increment once.
-- `"unlimited"` – every visit increments. You can optionally add a cooldown (in seconds) so the same IP must wait before it bumps the counter again.
-
-The settings page lets you choose which modes are available (unique only, every visit only, or both). Counters store the mode individually, the admin dashboard lists it for each entry, and you can filter/delete counters by mode whenever needed.
-
-### 💾 Backups
-
-Open `/settings.html` to download a JSON backup of every counter or restore from a previous export. Exported files include each counter’s id, label, note, value, theme, and counting mode. When “Replace existing counters” is checked, Voux clears the current counters before importing.
+This keeps your counters and their values. It only clears the saved IP/timestamp pairs so future visits count again.

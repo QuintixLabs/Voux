@@ -12,9 +12,6 @@ const dbPath = path.join(DATA_DIR, 'counters.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
-require('./migrations/001_add_ip_cooldown')();
-require('./migrations/002_add_note')();
-
 db.exec(`
   CREATE TABLE IF NOT EXISTS counters (
     id TEXT PRIMARY KEY,
@@ -23,7 +20,7 @@ db.exec(`
     note TEXT,
     value INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
-    ip_cooldown_hours REAL
+    count_mode TEXT NOT NULL DEFAULT 'unique'
   );
 
   CREATE TABLE IF NOT EXISTS hits (
@@ -35,34 +32,18 @@ db.exec(`
   );
 `);
 
-function ensureIpCooldownColumn() {
-  try {
-    const columns = db.prepare('PRAGMA table_info(counters)').all();
-    const hasColumn = columns.some((column) => column.name === 'ip_cooldown_hours');
-    if (!hasColumn) {
-      db.prepare('ALTER TABLE counters ADD COLUMN ip_cooldown_hours REAL').run();
-    }
-  } catch (err) {
-    console.error('Failed to ensure ip_cooldown_hours column', err);
-  }
-}
-
-const baseSelectFields = 'id, label, theme, note, value, created_at, ip_cooldown_hours';
+const baseSelectFields = 'id, label, theme, note, value, created_at, count_mode';
 
 const listCountersStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters ORDER BY created_at DESC`);
 const getCounterStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters WHERE id = ?`);
 const getLastHitStmt = db.prepare('SELECT last_hit FROM hits WHERE counter_id = ? ORDER BY last_hit DESC LIMIT 1');
-const countHitsSinceStmt = db.prepare(
-  'SELECT COUNT(*) as total FROM hits WHERE counter_id = ? AND last_hit >= ?'
-);
+const countHitsSinceStmt = db.prepare('SELECT COUNT(*) as total FROM hits WHERE counter_id = ? AND last_hit >= ?');
 const insertCounterStmt = db.prepare(
-  'INSERT INTO counters (id, label, theme, note, value, created_at, ip_cooldown_hours) VALUES (@id, @label, @theme, @note, @value, @created_at, @ip_cooldown_hours)'
+  'INSERT INTO counters (id, label, theme, note, value, created_at, count_mode) VALUES (@id, @label, @theme, @note, @value, @created_at, @count_mode)'
 );
-
-ensureIpCooldownColumn();
 const upsertCounterStmt = db.prepare(
-  'INSERT INTO counters (id, label, theme, note, value, created_at, ip_cooldown_hours) VALUES (@id, @label, @theme, @note, @value, @created_at, @ip_cooldown_hours) '
-    + 'ON CONFLICT(id) DO UPDATE SET label=excluded.label, theme=excluded.theme, note=excluded.note, value=excluded.value, created_at=excluded.created_at, ip_cooldown_hours=excluded.ip_cooldown_hours'
+  'INSERT INTO counters (id, label, theme, note, value, created_at, count_mode) VALUES (@id, @label, @theme, @note, @value, @created_at, @count_mode) '
+    + 'ON CONFLICT(id) DO UPDATE SET label=excluded.label, theme=excluded.theme, note=excluded.note, value=excluded.value, created_at=excluded.created_at, count_mode=excluded.count_mode'
 );
 const incrementCounterStmt = db.prepare('UPDATE counters SET value = value + 1 WHERE id = ?');
 const getHitStmt = db.prepare('SELECT last_hit FROM hits WHERE counter_id = ? AND ip = ?');
@@ -79,8 +60,8 @@ const updateCounterMetaStmt = db.prepare('UPDATE counters SET label = @label, va
 const countCountersStmt = db.prepare('SELECT COUNT(*) as total FROM counters');
 const deleteAllCountersStmt = db.prepare('DELETE FROM counters');
 const deleteCountersByModeStmt = {
-  unique: db.prepare('DELETE FROM counters WHERE ip_cooldown_hours IS NULL OR ip_cooldown_hours <> 0'),
-  unlimited: db.prepare('DELETE FROM counters WHERE ip_cooldown_hours = 0')
+  unique: db.prepare("DELETE FROM counters WHERE count_mode <> 'unlimited'"),
+  unlimited: db.prepare("DELETE FROM counters WHERE count_mode = 'unlimited'")
 };
 
 function buildCounterQuery({ search, mode, limit, offset, count = false }) {
@@ -93,9 +74,9 @@ function buildCounterQuery({ search, mode, limit, offset, count = false }) {
     params.pattern = normalizedSearch;
   }
   if (mode === 'unique') {
-    conditions.push('(ip_cooldown_hours IS NULL OR ip_cooldown_hours <> 0)');
+    conditions.push("count_mode <> 'unlimited'");
   } else if (mode === 'unlimited') {
-    conditions.push('(ip_cooldown_hours = 0)');
+    conditions.push("count_mode = 'unlimited'");
   }
   if (conditions.length) {
     sql += ` WHERE ${conditions.join(' AND ')}`;
@@ -113,7 +94,7 @@ const recordHitTx = db.transaction((counterId, ip, now) => {
   if (!counter) {
     return null;
   }
-  const effectiveCooldownMs = resolveCooldownMs(counter);
+  const effectiveCooldownMs = counter.count_mode === 'unlimited' ? 0 : null;
 
   let shouldIncrement = true;
   let existingHit = null;
@@ -142,14 +123,14 @@ const recordHitTx = db.transaction((counterId, ip, now) => {
   return { counter: updated, incremented: shouldIncrement };
 });
 
-function createCounter({ label, theme = 'plain', startValue, ipCooldownHours }) {
+function createCounter({ label, theme = 'plain', startValue, mode }) {
   const initialValue =
     typeof startValue === 'number' && Number.isFinite(startValue) && startValue >= 0
       ? Math.floor(startValue)
       : 0;
-  const cooldownResult = parseRequestedCooldown(ipCooldownHours);
-  if (cooldownResult.error) {
-    throw new Error(cooldownResult.error);
+  const modeResult = parseRequestedMode(mode);
+  if (modeResult.error) {
+    throw new Error(modeResult.error);
   }
   const counter = {
     id: generateId(8),
@@ -158,7 +139,7 @@ function createCounter({ label, theme = 'plain', startValue, ipCooldownHours }) 
     note: null,
     value: initialValue,
     created_at: Date.now(),
-    ip_cooldown_hours: cooldownResult.value
+    count_mode: modeResult.mode
   };
   insertCounterStmt.run(counter);
   return counter;
@@ -282,13 +263,10 @@ function normalizeImportedCounter(raw) {
   }
   const createdAtRaw = Number(raw.created_at);
   const created_at = Number.isFinite(createdAtRaw) && createdAtRaw > 0 ? createdAtRaw : Date.now();
-  let cooldown = raw.ip_cooldown_hours;
-  if (cooldown === '' || cooldown === undefined) {
-    cooldown = null;
-  }
-  if (cooldown !== null) {
-    const coerced = Number(cooldown);
-    cooldown = Number.isFinite(coerced) ? coerced : null;
+  const modeInput = raw.count_mode ?? raw.mode ?? raw.ip_cooldown_hours;
+  const modeResult = parseRequestedMode(modeInput);
+  if (modeResult.error) {
+    return null;
   }
   return {
     id: id.slice(0, 64),
@@ -297,7 +275,7 @@ function normalizeImportedCounter(raw) {
     note: note || null,
     value: Math.floor(value),
     created_at,
-    ip_cooldown_hours: cooldown
+    count_mode: modeResult.mode
   };
 }
 
@@ -317,8 +295,8 @@ module.exports = {
   importCounters,
   updateCounterValue,
   updateCounterMetadata,
-  describeCooldownLabel,
-  parseRequestedCooldown
+  describeModeLabel,
+  parseRequestedMode
 };
 
 function generateId(length = 8) {
@@ -331,38 +309,20 @@ function generateId(length = 8) {
   return id;
 }
 
-function resolveCooldownMs(counter) {
-  const mode = normalizeMode(counter?.ip_cooldown_hours);
-  return mode === 'unlimited' ? 0 : null;
-}
-
-function normalizeMode(value) {
-  if (value === 0 || value === '0') {
-    return 'unlimited';
-  }
-  return 'unique';
-}
-
-function describeCooldownLabel(mode) {
+function describeModeLabel(mode) {
   return mode === 'unlimited' ? 'Every visit' : 'Unique visitors';
 }
 
-function parseRequestedCooldown(input) {
+function parseRequestedMode(input) {
   if (input === undefined || input === null || input === '' || input === 'default') {
-    return { value: null };
+    return { mode: 'unique' };
   }
   const normalized = String(input).trim().toLowerCase();
   if (normalized === 'unique') {
-    return { value: null };
+    return { mode: 'unique' };
   }
   if (normalized === 'unlimited') {
-    return { value: 0 };
+    return { mode: 'unlimited' };
   }
-  if (normalized === 'never') {
-    return { value: null };
-  }
-  if (normalized === '0') {
-    return { value: 0 };
-  }
-  return { error: 'ipCooldownHours must be "unique" or "unlimited"' };
+  return { error: 'mode must be "unique" or "unlimited"' };
 }
