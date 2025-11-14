@@ -22,18 +22,16 @@ if (!tokenData) {
 }
 
 function init(token) {
-  setTogglesDisabled(true);
   fetchSettings(token)
     .then(({ config }) => {
       populateForm(config);
       settingsPanel?.classList.remove('hidden');
       setStatus('');
-      setTogglesDisabled(false);
       togglePrivate?.addEventListener('change', () =>
-        handleToggleChange(token, { privateMode: togglePrivate.checked }, togglePrivate.checked ? 'Private instance enabled' : 'Private instance disabled')
+        handleToggleChange(token, { privateMode: togglePrivate.checked }, togglePrivate.checked ? 'Private instance enabled' : 'Private instance disabled', togglePrivate)
       );
       toggleGuides?.addEventListener('change', () =>
-        handleToggleChange(token, { showGuides: toggleGuides.checked }, toggleGuides.checked ? 'Guide cards shown' : 'Guide cards hidden')
+        handleToggleChange(token, { showGuides: toggleGuides.checked }, toggleGuides.checked ? 'Guide cards shown' : 'Guide cards hidden', toggleGuides)
       );
       allowModeUniqueInput?.addEventListener('change', (event) => handleAllowedModesChange(token, event.target));
       allowModeUnlimitedInput?.addEventListener('change', (event) => handleAllowedModesChange(token, event.target));
@@ -67,10 +65,10 @@ function setupBackupControls(token) {
   downloadBackupBtn?.addEventListener('click', () => handleBackupDownload(token));
   restoreFileInput?.addEventListener('change', (event) => handleBackupRestore(token, event));
 }
-async function handleToggleChange(token, patch, successMessage = 'Updated') {
+async function handleToggleChange(token, patch, successMessage = 'Updated', control) {
   try {
     setStatus('');
-    setTogglesDisabled(true);
+    if (control) control.disabled = true;
     const res = await fetch('/api/settings', {
       method: 'POST',
       headers: {
@@ -88,7 +86,7 @@ async function handleToggleChange(token, patch, successMessage = 'Updated') {
     await showAlert(error.message || 'Failed to save settings');
     resetStatusAfterDelay();
   } finally {
-    setTogglesDisabled(false);
+    if (control) control.disabled = false;
   }
 }
 
@@ -103,13 +101,6 @@ function resetStatusAfterDelay() {
   }, 1200);
 }
 
-function setTogglesDisabled(disabled) {
-  if (togglePrivate) togglePrivate.disabled = disabled;
-  if (toggleGuides) toggleGuides.disabled = disabled;
-  if (allowModeUniqueInput) allowModeUniqueInput.disabled = disabled;
-  if (allowModeUnlimitedInput) allowModeUnlimitedInput.disabled = disabled;
-}
-
 function handleAllowedModesChange(token, sourceInput) {
   const allowed = {
     unique: allowModeUniqueInput?.checked !== false,
@@ -120,7 +111,7 @@ function handleAllowedModesChange(token, sourceInput) {
     showToast('Keep at least one mode enabled.', 'danger');
     return;
   }
-  handleToggleChange(token, { allowedModes: allowed }, 'Allowed modes updated');
+  handleToggleChange(token, { allowedModes: allowed }, 'Allowed modes updated', sourceInput);
 }
 
 function loadStoredToken() {
