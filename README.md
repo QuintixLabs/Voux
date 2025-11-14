@@ -17,7 +17,7 @@
 - One-line `<script async src="...">` embed; wrap it with your own element (e.g. `<span class="counter-widget">…</span>`) when you need classes for styling.
 - SQLite storage (lives in `data/counters.db`) so you can run it entirely on your own machine.
 - Separate `hits` table tracks the IP + last-hit timestamp used for deduplication.
-- Admin dashboard has pagination, search, inline edits for label/value, and optional private notes so you can tag each counter.
+- Admin dashboard has pagination, search, inline edits for label/value, and optional notes (visible only to admins) so you can tag each counter.
 
 ## 🚀 Getting started
 
@@ -69,7 +69,7 @@ When `PRIVATE_MODE=true`, the public builder hides the “Generate counter” fo
 - `GET /api/config` – returns `{ privateMode, adminPageSize }` so UIs know how to behave.
 - `POST /api/counters` – body: `{ "label": "Blog Views", "startValue": 25, "ipCooldownHours": "never" }` (requires `X-Voux-Admin` when `PRIVATE_MODE` is `true`).
 - `GET /api/counters?page=1&pageSize=20` – paginated list (admin only).
-- `GET /api/counters/:id` – metadata and embed snippet for a specific counter.
+- `GET /api/counters/:id` – metadata (without private notes) and embed snippet for a specific counter.
 - `GET /embed/:id.js` – script users place on their site.
 - `DELETE /api/counters/:id` – remove one counter (admin only).
 - `DELETE /api/counters` – remove every counter (admin only).

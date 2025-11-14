@@ -62,7 +62,7 @@ app.get('/api/counters', requireAdmin, (req, res) => {
   const offset = (safePage - 1) * pageSize;
   const dayStart = getDayStart();
   const counters = listCountersPage(pageSize, offset, searchQuery).map((counter) =>
-    serializeCounterWithStats(counter, dayStart)
+    serializeCounterWithStats(counter, dayStart, { includeNote: true })
   );
 
   res.json({
@@ -158,7 +158,7 @@ app.patch('/api/counters/:id', requireAdmin, (req, res) => {
     return res.status(500).json({ error: 'update_failed' });
   }
   const updated = getCounter(req.params.id);
-  res.json({ counter: serializeCounterWithStats(updated, getDayStart()) });
+  res.json({ counter: serializeCounterWithStats(updated, getDayStart(), { includeNote: true }) });
 });
 
 app.get('/api/settings', requireAdmin, (req, res) => {
@@ -215,7 +215,7 @@ app.post('/api/counters', (req, res) => {
   const embedUrl = `${baseUrl}/embed/${counter.id}.js`;
   const embedCode = `<script async src="${embedUrl}"></script>`;
   res.status(201).json({
-    counter: serializeCounter(counter),
+    counter: serializeCounter(counter, { includeNote: true }),
     embedCode,
     embedUrl
   });
@@ -343,23 +343,27 @@ function getVersion() {
   }
 }
 
-function serializeCounter(counter) {
+function serializeCounter(counter, options = {}) {
   if (!counter) return null;
+  const { includeNote = false } = options;
   const mode = counter.ip_cooldown_hours === 0 ? 'unlimited' : 'unique';
-  return {
+  const payload = {
     id: counter.id,
     label: counter.label,
     theme: counter.theme,
-    note: counter.note || '',
     value: counter.value,
     createdAt: counter.created_at,
     cooldownMode: mode,
     cooldownLabel: describeCooldownLabel(mode)
   };
+  if (includeNote) {
+    payload.note = counter.note || '';
+  }
+  return payload;
 }
 
-function serializeCounterWithStats(counter, dayStart) {
-  const base = serializeCounter(counter);
+function serializeCounterWithStats(counter, dayStart, options = {}) {
+  const base = serializeCounter(counter, options);
   if (!base) return base;
   const lastHit = getLastHitTimestamp(counter.id);
   const hitsToday = dayStart ? countHitsSince(counter.id, dayStart) : 0;
