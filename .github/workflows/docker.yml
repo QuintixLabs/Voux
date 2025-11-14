@@ -24,7 +24,7 @@ jobs:
 
       - name: Build image
         run: |
-          IMAGE=ghcr.io/${{ github.repository }}/voux:latest
+          IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/voux:latest
           docker build -t "$IMAGE" .
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
