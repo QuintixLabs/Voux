@@ -6,7 +6,7 @@
 
 <p align="center">
 <a href="#-features">Features</a> •
-  <a href="#-self-hosting-voux">Self hosting Voux</a> •
+<a href="#-self-hosting">Self hosting</a> •
 <a href="#-configuration">Configuration</a> •
 <a href="#-api-quick-reference">API quick reference</a> 
 <!--<a href="#-styling-embeds">Styling embeds</a> •
@@ -22,7 +22,7 @@
 
 So yeah... it's pretty good `:)`
 
-## 🏡 Self hosting Voux
+## 🏡 Self hosting
 
 ### `📦 Manual installation`
 
