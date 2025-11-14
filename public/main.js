@@ -10,6 +10,8 @@ const noticeCard = document.querySelector('#noticeCard');
 const cooldownSelect = document.querySelector('#cooldownSelect');
 let isPrivateMode = false;
 let showGuides = true;
+let defaultMode = 'unique';
+let allowedModes = { unique: true, unlimited: true };
 
 function modalApi() {
   return window.VouxModal;
@@ -23,7 +25,6 @@ async function showAlert(message, options) {
   }
 }
 
-// no additional change handler needed; dropdown is simple
 
 if (form) {
   form.addEventListener('submit', async (event) => {
@@ -127,6 +128,12 @@ async function initConfig() {
     const data = await response.json();
     isPrivateMode = Boolean(data.privateMode);
     showGuides = data.showGuides !== undefined ? Boolean(data.showGuides) : true;
+    allowedModes = normalizeAllowedModes(data.allowedModes);
+    defaultMode = data.defaultMode === 'unlimited' && allowedModes.unlimited !== false ? 'unlimited' : 'unique';
+    if (cooldownSelect) {
+      applyAllowedModesToSelect(cooldownSelect);
+      cooldownSelect.value = defaultMode;
+    }
 
     if (isPrivateMode) {
       form?.classList.add('hidden');
@@ -159,10 +166,7 @@ function getSelectedCooldown(selectEl) {
     return 'unique';
   }
   const value = selectEl.value;
-  if (value === 'unique') {
-    return 'unique';
-  }
-  if (value === 'unlimited') {
+  if (value === 'unlimited' && allowedModes.unlimited !== false) {
     return 'unlimited';
   }
   return 'unique';
@@ -176,4 +180,36 @@ function appendPreviewParam(url) {
   } catch (_) {
     return url.includes('?') ? `${url}&preview=1` : `${url}?preview=1`;
   }
+}
+
+function applyAllowedModesToSelect(selectEl) {
+  if (!selectEl) return;
+  const options = Array.from(selectEl.options);
+  let firstAllowed = null;
+  options.forEach((option) => {
+    const mode = option.value === 'unlimited' ? 'unlimited' : 'unique';
+    const allowed = allowedModes[mode] !== false;
+    option.disabled = !allowed;
+    option.hidden = !allowed;
+    if (allowed && !firstAllowed) {
+      firstAllowed = mode;
+    }
+  });
+  if (!firstAllowed) {
+    firstAllowed = 'unique';
+  }
+  const currentMode = selectEl.value === 'unlimited' ? 'unlimited' : 'unique';
+  if (allowedModes[currentMode] === false) {
+    selectEl.value = firstAllowed;
+  }
+}
+
+function normalizeAllowedModes(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return { unique: true, unlimited: true };
+  }
+  return {
+    unique: raw.unique !== false,
+    unlimited: raw.unlimited !== false
+  };
 }

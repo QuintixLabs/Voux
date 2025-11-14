@@ -9,6 +9,7 @@ const {
   recordHit,
   deleteCounter,
   deleteAllCounters,
+  deleteCountersByMode,
   countCounters,
   parseRequestedCooldown,
   describeCooldownLabel,
@@ -41,27 +42,32 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/config', (req, res) => {
   const runtimeConfig = getConfig();
+  const defaultMode = getDefaultMode(runtimeConfig);
   res.json({
     ...runtimeConfig,
     version: getVersion(),
     adminPageSize: DEFAULT_PAGE_SIZE,
-    defaultMode: 'unique',
-    defaultCooldownLabel: describeCooldownLabel('unique')
+    defaultMode,
+    defaultCooldownLabel: describeCooldownLabel(defaultMode)
   });
 });
 
 app.get('/api/counters', requireAdmin, (req, res) => {
+  const modeFilter = normalizeModeFilter(req.query.mode);
+  if (req.query.mode !== undefined && !modeFilter) {
+    return res.status(400).json({ error: 'invalid_mode' });
+  }
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const pageSizeRaw = parseInt(req.query.pageSize, 10);
   const pageSize = Math.max(1, Math.min(pageSizeRaw || DEFAULT_PAGE_SIZE, 100));
   const searchQuery = extractSearchQuery(req.query.q ?? req.query.search);
   const totalOverall = countCounters();
-  const totalMatching = searchQuery ? countCounters(searchQuery) : totalOverall;
+  const totalMatching = searchQuery || modeFilter ? countCounters(searchQuery, modeFilter) : totalOverall;
   const totalPages = Math.max(1, Math.ceil(Math.max(totalMatching, 1) / pageSize));
   const safePage = Math.min(page, totalPages);
   const offset = (safePage - 1) * pageSize;
   const dayStart = getDayStart();
-  const counters = listCountersPage(pageSize, offset, searchQuery).map((counter) =>
+  const counters = listCountersPage(pageSize, offset, searchQuery, modeFilter).map((counter) =>
     serializeCounterWithStats(counter, dayStart, { includeNote: true })
   );
 
@@ -166,11 +172,18 @@ app.get('/api/settings', requireAdmin, (req, res) => {
 });
 
 app.post('/api/settings', requireAdmin, (req, res) => {
-  const { privateMode, showGuides, homeTitle } = req.body || {};
+  const { privateMode, showGuides, homeTitle, allowedModes } = req.body || {};
   const patch = {};
   if (typeof privateMode === 'boolean') patch.privateMode = privateMode;
   if (typeof showGuides === 'boolean') patch.showGuides = showGuides;
   if (typeof homeTitle === 'string') patch.homeTitle = homeTitle.trim().slice(0, 80);
+  if (allowedModes && typeof allowedModes === 'object') {
+    const normalizedModes = normalizeAllowedModesPatch(allowedModes);
+    if (!normalizedModes) {
+      return res.status(400).json({ error: 'at_least_one_mode' });
+    }
+    patch.allowedModes = normalizedModes;
+  }
   if (Object.keys(patch).length === 0) {
     return res.status(400).json({ error: 'no_valid_settings' });
   }
@@ -179,6 +192,14 @@ app.post('/api/settings', requireAdmin, (req, res) => {
 });
 
 app.delete('/api/counters', requireAdmin, (req, res) => {
+  const modeFilter = normalizeModeFilter(req.query.mode);
+  if (req.query.mode !== undefined && !modeFilter) {
+    return res.status(400).json({ error: 'invalid_mode' });
+  }
+  if (modeFilter) {
+    const deletedFiltered = deleteCountersByMode(modeFilter);
+    return res.json({ ok: true, deleted: deletedFiltered, mode: modeFilter });
+  }
   const deletedCount = deleteAllCounters();
   res.json({ ok: true, deleted: deletedCount });
 });
@@ -193,10 +214,16 @@ app.post('/api/counters', (req, res) => {
     }
   }
 
-  const { label = '', startValue = 0, ipCooldownHours } = req.body || {};
+  const runtimeConfig = getConfig();
+  const defaultMode = getDefaultMode(runtimeConfig);
+  const { label = '', startValue = 0, ipCooldownHours = defaultMode } = req.body || {};
   const normalizedLabel = typeof label === 'string' ? label.trim().slice(0, 80) : '';
   const parsedStart = Number(startValue);
   const cooldownResult = parseRequestedCooldown(ipCooldownHours);
+  const requestedMode = cooldownResult.value === 0 ? 'unlimited' : 'unique';
+  if (!isModeAllowed(requestedMode, runtimeConfig)) {
+    return res.status(400).json({ error: 'mode_not_allowed' });
+  }
 
   if (!Number.isFinite(parsedStart) || parsedStart < 0) {
     return res.status(400).json({ error: 'startValue must be a positive number' });
@@ -382,4 +409,40 @@ function getDayStart() {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   return now.getTime();
+}
+
+function normalizeModeFilter(value) {
+  if (value === undefined || value === null) return null;
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === undefined || raw === null) return null;
+  const normalized = String(raw).trim().toLowerCase();
+  if (normalized === 'unique' || normalized === 'unlimited') {
+    return normalized;
+  }
+  return null;
+}
+
+function getDefaultMode(runtimeConfig = getConfig()) {
+  const allowed = runtimeConfig?.allowedModes || {};
+  return allowed.unique !== false ? 'unique' : 'unlimited';
+}
+
+function isModeAllowed(mode, runtimeConfig = getConfig()) {
+  const allowed = runtimeConfig?.allowedModes || {};
+  if (mode === 'unlimited') {
+    return allowed.unlimited !== false;
+  }
+  return allowed.unique !== false;
+}
+
+function normalizeAllowedModesPatch(input) {
+  if (!input || typeof input !== 'object') return null;
+  const normalized = {
+    unique: input.unique !== false,
+    unlimited: input.unlimited !== false
+  };
+  if (!normalized.unique && !normalized.unlimited) {
+    return null;
+  }
+  return normalized;
 }

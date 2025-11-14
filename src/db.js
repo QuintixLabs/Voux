@@ -50,16 +50,6 @@ function ensureIpCooldownColumn() {
 const baseSelectFields = 'id, label, theme, note, value, created_at, ip_cooldown_hours';
 
 const listCountersStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters ORDER BY created_at DESC`);
-const listCountersPageStmt = db.prepare(
-  `SELECT ${baseSelectFields} FROM counters ORDER BY created_at DESC LIMIT ? OFFSET ?`
-);
-const listCountersSearchStmt = db.prepare(
-  `SELECT ${baseSelectFields}
-   FROM counters
-   WHERE LOWER(id) LIKE @pattern OR LOWER(label) LIKE @pattern OR (note IS NOT NULL AND LOWER(note) LIKE @pattern)
-   ORDER BY created_at DESC
-   LIMIT @limit OFFSET @offset`
-);
 const getCounterStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters WHERE id = ?`);
 const getLastHitStmt = db.prepare('SELECT last_hit FROM hits WHERE counter_id = ? ORDER BY last_hit DESC LIMIT 1');
 const countHitsSinceStmt = db.prepare(
@@ -87,10 +77,36 @@ const deleteCounterStmt = db.prepare('DELETE FROM counters WHERE id = ?');
 const updateCounterValueStmt = db.prepare('UPDATE counters SET value = ? WHERE id = ?');
 const updateCounterMetaStmt = db.prepare('UPDATE counters SET label = @label, value = @value, note = @note WHERE id = @id');
 const countCountersStmt = db.prepare('SELECT COUNT(*) as total FROM counters');
-const countCountersSearchStmt = db.prepare(
-  'SELECT COUNT(*) as total FROM counters WHERE LOWER(id) LIKE ? OR LOWER(label) LIKE ? OR (note IS NOT NULL AND LOWER(note) LIKE ?)'
-);
 const deleteAllCountersStmt = db.prepare('DELETE FROM counters');
+const deleteCountersByModeStmt = {
+  unique: db.prepare('DELETE FROM counters WHERE ip_cooldown_hours IS NULL OR ip_cooldown_hours <> 0'),
+  unlimited: db.prepare('DELETE FROM counters WHERE ip_cooldown_hours = 0')
+};
+
+function buildCounterQuery({ search, mode, limit, offset, count = false }) {
+  let sql = count ? 'SELECT COUNT(*) as total FROM counters' : `SELECT ${baseSelectFields} FROM counters`;
+  const conditions = [];
+  const params = {};
+  const normalizedSearch = normalizeSearch(search);
+  if (normalizedSearch) {
+    conditions.push('(LOWER(id) LIKE @pattern OR LOWER(label) LIKE @pattern OR (note IS NOT NULL AND LOWER(note) LIKE @pattern))');
+    params.pattern = normalizedSearch;
+  }
+  if (mode === 'unique') {
+    conditions.push('(ip_cooldown_hours IS NULL OR ip_cooldown_hours <> 0)');
+  } else if (mode === 'unlimited') {
+    conditions.push('(ip_cooldown_hours = 0)');
+  }
+  if (conditions.length) {
+    sql += ` WHERE ${conditions.join(' AND ')}`;
+  }
+  if (!count) {
+    sql += ' ORDER BY created_at DESC LIMIT @limit OFFSET @offset';
+    params.limit = limit;
+    params.offset = offset;
+  }
+  return { sql, params };
+}
 
 const recordHitTx = db.transaction((counterId, ip, now) => {
   const counter = getCounterStmt.get(counterId);
@@ -152,21 +168,14 @@ function listCounters() {
   return listCountersStmt.all();
 }
 
-function listCountersPage(limit, offset, search) {
-  const normalized = normalizeSearch(search);
-  if (normalized) {
-    return listCountersSearchStmt.all({ pattern: normalized, limit, offset });
-  }
-  return listCountersPageStmt.all(limit, offset);
+function listCountersPage(limit, offset, search, mode) {
+  const { sql, params } = buildCounterQuery({ search, mode, limit, offset });
+  return db.prepare(sql).all(params);
 }
 
-function countCounters(search) {
-  const normalized = normalizeSearch(search);
-  if (normalized) {
-    const { total } = countCountersSearchStmt.get(normalized, normalized, normalized);
-    return total;
-  }
-  const { total } = countCountersStmt.get();
+function countCounters(search, mode) {
+  const { sql, params } = buildCounterQuery({ search, mode, count: true });
+  const { total } = db.prepare(sql).get(params);
   return total;
 }
 
@@ -211,6 +220,13 @@ const deleteAllCounters = db.transaction(() => {
   deleteAllCountersStmt.run();
   return total;
 });
+
+function deleteCountersByMode(mode) {
+  const statement = deleteCountersByModeStmt[mode];
+  if (!statement) return 0;
+  const result = statement.run();
+  return result.changes || 0;
+}
 
 function getLastHitTimestamp(counterId) {
   const row = getLastHitStmt.get(counterId);
@@ -293,6 +309,7 @@ module.exports = {
   recordHit,
   deleteCounter,
   deleteAllCounters,
+  deleteCountersByMode,
   countCounters,
   getLastHitTimestamp,
   countHitsSince,

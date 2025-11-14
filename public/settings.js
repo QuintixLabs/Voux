@@ -5,6 +5,8 @@ const settingsPanel = document.getElementById('settingsPanel');
 const togglePrivate = document.getElementById('togglePrivateMode');
 const toggleGuides = document.getElementById('toggleShowGuides');
 const statusLabel = document.getElementById('settingsStatus');
+const allowModeUniqueInput = document.getElementById('allowModeUnique');
+const allowModeUnlimitedInput = document.getElementById('allowModeUnlimited');
 const downloadBackupBtn = document.getElementById('downloadBackup');
 const restoreFileInput = document.getElementById('restoreFile');
 const backupStatusLabel = document.getElementById('backupStatus');
@@ -33,6 +35,8 @@ function init(token) {
       toggleGuides?.addEventListener('change', () =>
         handleToggleChange(token, { showGuides: toggleGuides.checked }, toggleGuides.checked ? 'Guide cards shown' : 'Guide cards hidden')
       );
+      allowModeUniqueInput?.addEventListener('change', (event) => handleAllowedModesChange(token, event.target));
+      allowModeUnlimitedInput?.addEventListener('change', (event) => handleAllowedModesChange(token, event.target));
       setupBackupControls(token);
     })
     .catch(() => {
@@ -55,6 +59,8 @@ async function fetchSettings(token) {
 function populateForm(config) {
   if (togglePrivate) togglePrivate.checked = Boolean(config.privateMode);
   if (toggleGuides) toggleGuides.checked = Boolean(config.showGuides);
+  if (allowModeUniqueInput) allowModeUniqueInput.checked = config.allowedModes ? config.allowedModes.unique !== false : true;
+  if (allowModeUnlimitedInput) allowModeUnlimitedInput.checked = config.allowedModes ? config.allowedModes.unlimited !== false : true;
 }
 
 function setupBackupControls(token) {
@@ -100,6 +106,21 @@ function resetStatusAfterDelay() {
 function setTogglesDisabled(disabled) {
   if (togglePrivate) togglePrivate.disabled = disabled;
   if (toggleGuides) toggleGuides.disabled = disabled;
+  if (allowModeUniqueInput) allowModeUniqueInput.disabled = disabled;
+  if (allowModeUnlimitedInput) allowModeUnlimitedInput.disabled = disabled;
+}
+
+function handleAllowedModesChange(token, sourceInput) {
+  const allowed = {
+    unique: allowModeUniqueInput?.checked !== false,
+    unlimited: allowModeUnlimitedInput?.checked !== false
+  };
+  if (!allowed.unique && !allowed.unlimited) {
+    if (sourceInput) sourceInput.checked = true;
+    showToast('Keep at least one mode enabled.', 'danger');
+    return;
+  }
+  handleToggleChange(token, { allowedModes: allowed }, 'Allowed modes updated');
 }
 
 function loadStoredToken() {

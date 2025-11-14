@@ -17,7 +17,9 @@
 - One-line `<script async src="...">` embed; wrap it with your own element (e.g. `<span class="counter-widget">…</span>`) when you need classes for styling.
 - SQLite storage (lives in `data/counters.db`) so you can run it entirely on your own machine.
 - Separate `hits` table tracks the IP + last-hit timestamp used for deduplication.
-- Admin dashboard has pagination, search, inline edits for label/value, and optional notes (visible only to admins) so you can tag each counter.
+- Admin dashboard has pagination, search, inline edits for label/value, optional cooldowns for every-visit counters, and private notes so you can tag each counter.
+- Runtime settings let you toggle private mode, hide/show public guides, and choose the default counting mode for everyone using your instance.
+- Instance owners can allow/disallow each counting mode and bulk-delete all counters that use a specific mode.
 
 ## 🚀 Getting started
 
@@ -59,21 +61,23 @@ Environment variables. You can tweak some of these options later from `/settings
 | `PRIVATE_MODE` | `false` | If `true`, only admins can create new counters. |
 | `ADMIN_PAGE_SIZE` | `5` | How many counters show on each page in the admin panel. |
 | `SHOW_PUBLIC_GUIDES` | `true` | Controls if public guide cards are shown on the main page. |
+| `DEFAULT_ALLOWED_MODES` | `unique,unlimited` | Comma-separated list of modes to allow (`unique`, `unlimited`). This just seeds the runtime setting; you can change it later in the dashboard. |
 
 SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers. If you delete it, Voux creates a fresh empty file at the next start, but all counters will be gone.
 
 When `PRIVATE_MODE=true`, the public builder hides the “Generate counter” form and all creation/deletion happens through `/admin.html` with your admin token.
+You can choose which counting modes are available (unique vs every visit) at any time from `/settings.html`; only the allowed modes show up when users generate counters, and the admin dashboard can bulk-delete all counters that belong to a given mode.
 
 ## 🧩 API quick reference
 
-- `GET /api/config` – returns `{ privateMode, adminPageSize }` so UIs know how to behave.
-- `POST /api/counters` – body: `{ "label": "Blog Views", "startValue": 25, "ipCooldownHours": "never" }` (requires `X-Voux-Admin` when `PRIVATE_MODE` is `true`).
-- `GET /api/counters?page=1&pageSize=20` – paginated list (admin only).
+- `GET /api/config` – returns `{ privateMode, adminPageSize, allowedModes, defaultMode }` so UIs know how to behave.
+- `POST /api/counters` – body: `{ "label": "Blog Views", "startValue": 25, "ipCooldownHours": "never" }` (requires `X-Voux-Admin` when `PRIVATE_MODE` is `true`, and defaults to the first allowed mode if you omit `ipCooldownHours`).
+- `GET /api/counters?page=1&pageSize=20&mode=unique` – paginated list (admin only). Pass `mode=unique` or `mode=unlimited` to filter.
 - `GET /api/counters/:id` – metadata (without private notes) and embed snippet for a specific counter.
 - `GET /embed/:id.js` – script users place on their site.
 - `DELETE /api/counters/:id` – remove one counter (admin only).
-- `DELETE /api/counters` – remove every counter (admin only).
-- `PATCH /api/counters/:id` – update a counter’s label, value, or note (admin only).
+- `DELETE /api/counters` – remove every counter (admin only). Pass `?mode=unique` or `?mode=unlimited` to delete only that type.
+- `PATCH /api/counters/:id` – update a counter’s label, value, note, or unlimited-mode cooldown (admin only).
 - `POST /api/counters/:id/value` – set a counter’s value to a new number (admin only).
 - `GET /api/settings` – current runtime config (admin only).
 - `POST /api/settings` – toggle private mode or guide cards (admin only).
@@ -127,9 +131,9 @@ Counters remain untouched; only the IP records used for dedupe are removed.
 ### 🧮 Counting modes
 
 - `"unique"` – each IP can increment once.
-- `"unlimited"` – every visit increments (no dedupe).
+- `"unlimited"` – every visit increments. You can optionally add a cooldown (in seconds) so the same IP must wait before it bumps the counter again.
 
-Counters store this per ID, and the admin dashboard lists the mode for each counter.
+The settings page lets you choose which modes are available (unique only, every visit only, or both). Counters store the mode individually, the admin dashboard lists it for each entry, and you can filter/delete counters by mode whenever needed.
 
 ### 💾 Backups
 

@@ -7,6 +7,7 @@ const dashboardSubtitle = document.querySelector('#dashboardSubtitle');
 const adminControls = document.querySelector('#adminControls');
 const counterListEl = document.querySelector('#counterList');
 const deleteAllBtn = document.querySelector('#deleteAll');
+const deleteFilteredBtn = document.querySelector('#deleteFiltered');
 const paginationEl = document.querySelector('#adminPagination');
 const prevPageBtn = document.querySelector('#prevPage');
 const nextPageBtn = document.querySelector('#nextPage');
@@ -20,6 +21,7 @@ const createStartInput = document.querySelector('#adminStartValue');
 const adminEmbedSnippet = document.querySelector('#adminEmbedSnippet');
 const createCard = document.querySelector('#createCard');
 const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
+const modeFilterSelect = document.querySelector('#modeFilter');
 let toastContainer = document.querySelector('.toast-stack');
 if (!toastContainer) {
   toastContainer = document.createElement('div');
@@ -39,7 +41,11 @@ const state = {
   searchQuery: '',
   pageSize: 20,
   privateMode: false,
-  loadingLogin: false
+  loadingLogin: false,
+  allowedModes: { unique: true, unlimited: true },
+  modeFilter: 'all',
+  autoRefreshTimer: null,
+  editPanelsOpen: 0
 };
 
 let searchDebounce = null;
@@ -96,7 +102,10 @@ function init() {
     }
   });
   deleteAllBtn?.addEventListener('click', handleDeleteAll);
+  deleteFilteredBtn?.addEventListener('click', handleDeleteFiltered);
   createForm?.addEventListener('submit', handleCreateCounter);
+  modeFilterSelect?.addEventListener('change', handleModeFilterChange);
+  adminCooldownSelect?.addEventListener('change', refreshAdminModeControls);
   counterSearchInput?.addEventListener('input', handleSearchInput);
   counterSearchInput?.addEventListener('search', handleSearchInput);
   counterSearchClear?.addEventListener('click', handleSearchClear);
@@ -112,6 +121,7 @@ function init() {
       }
     })
     .catch((err) => console.warn('Admin init failed', err));
+  updateDeleteFilteredState();
 }
 
 async function fetchConfig() {
@@ -124,13 +134,15 @@ async function fetchConfig() {
       state.pageSize = Number(data.adminPageSize) || state.pageSize;
     }
     state.privateMode = Boolean(data.privateMode);
+    state.allowedModes = normalizeAllowedModes(data.allowedModes);
     if (dashboardSubtitle) {
       dashboardSubtitle.textContent = state.privateMode
         ? 'Private instance'
         : 'Public instance';
     }
     updateCreateCardVisibility();
-    adminCooldownSelect?.dispatchEvent(new Event('change'));
+    refreshAdminModeControls();
+    updateDeleteFilteredState();
   } catch (error) {
     console.warn('Failed to fetch config', error);
   }
@@ -156,6 +168,15 @@ function handleSearchClear() {
   toggleSearchClear();
   if (!state.searchQuery) return;
   state.searchQuery = '';
+  if (state.token) {
+    refreshCounters(1);
+  }
+}
+
+function handleModeFilterChange() {
+  if (!modeFilterSelect) return;
+  state.modeFilter = modeFilterSelect.value;
+  updateDeleteFilteredState();
   if (state.token) {
     refreshCounters(1);
   }
@@ -208,18 +229,30 @@ function handleAuthFailure(error) {
   showLoginError(error?.message || 'Invalid admin token.');
 }
 
-async function refreshCounters(page = 1) {
+async function refreshCounters(page = 1, options = {}) {
+  const { silent = false } = options;
   if (!state.token) throw new Error('Admin token missing.');
-  const data = await fetchCounters(page);
-  renderCounterList(data.counters || []);
-  state.page = data.pagination?.page || 1;
-  state.totalPages = data.pagination?.totalPages || 1;
-  state.total = data.pagination?.total || (data.counters?.length ?? 0);
-  state.totalOverall = data.totals?.overall ?? state.totalOverall ?? state.total;
-  updatePagination();
-  updateCounterTotal();
-  deleteAllBtn.disabled = false;
-  adminControls?.classList.remove('hidden');
+  try {
+    const data = await fetchCounters(page);
+    renderCounterList(data.counters || []);
+    state.page = data.pagination?.page || 1;
+    state.totalPages = data.pagination?.totalPages || 1;
+    state.total = data.pagination?.total || (data.counters?.length ?? 0);
+    state.totalOverall = data.totals?.overall ?? state.totalOverall ?? state.total;
+    updatePagination();
+    updateCounterTotal();
+    deleteAllBtn.disabled = false;
+    adminControls?.classList.remove('hidden');
+    if (!silent) {
+      scheduleAutoRefresh();
+    }
+  } catch (error) {
+    if (silent) {
+      console.warn('Auto refresh failed', error);
+      return;
+    }
+    throw error;
+  }
 }
 
 async function fetchCounters(page) {
@@ -229,6 +262,9 @@ async function fetchCounters(page) {
   });
   if (state.searchQuery) {
     params.append('q', state.searchQuery);
+  }
+  if (state.modeFilter && state.modeFilter !== 'all') {
+    params.append('mode', state.modeFilter);
   }
   const url = `/api/counters?${params.toString()}`;
   const res = await fetch(url, {
@@ -319,6 +355,7 @@ async function handleCreateCounter(event) {
 
 function renderCounterList(counters) {
   if (!counterListEl) return;
+  state.editPanelsOpen = 0;
   counterListEl.innerHTML = '';
   if (!counters.length) {
     const empty = document.createElement('p');
@@ -429,7 +466,11 @@ function renderCounterList(counters) {
 
     editPanel.append(fieldsWrapper, editActions);
 
+    let isEditOpen = false;
+
     const toggleEdit = (open) => {
+      if (isEditOpen === open) return;
+      isEditOpen = open;
       editPanel.classList.toggle('hidden', !open);
       editBtn.classList.toggle('active', open);
       editBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -437,6 +478,7 @@ function renderCounterList(counters) {
         labelInput.focus();
         labelInput.setSelectionRange(labelInput.value.length, labelInput.value.length);
       }
+      changeEditPanelCount(open ? 1 : -1);
     };
 
     const submitEdit = async () => {
@@ -555,7 +597,7 @@ function updatePagination() {
 
 function updateCounterTotal() {
   if (!counterTotalValue) return;
-  const total = Math.max(0, Number(state.totalOverall ?? state.total) || 0);
+  const total = Math.max(0, Number(state.total) || 0);
   counterTotalValue.textContent = total.toLocaleString();
 }
 
@@ -566,6 +608,7 @@ function showDashboard() {
 }
 
 function hideDashboard() {
+  stopAutoRefresh();
   loginCard?.classList.remove('hidden');
   dashboardCard?.classList.add('hidden');
   adminControls?.classList.add('hidden');
@@ -639,7 +682,38 @@ function authHeaders() {
 
 function getCooldownPayload(selectEl) {
   if (!selectEl) return 'unique';
-  return selectEl.value === 'unlimited' ? 'unlimited' : 'unique';
+  const mode = selectEl.value === 'unlimited' ? 'unlimited' : 'unique';
+  if (!isModeAllowed(mode, state.allowedModes)) {
+    return getFirstAllowedMode(state.allowedModes);
+  }
+  return mode;
+}
+
+async function handleDeleteFiltered() {
+  if (!state.token || state.modeFilter === 'all') return;
+  const label = state.modeFilter === 'unique' ? 'unique counters' : 'every-visit counters';
+  const confirmed = await showConfirm({
+    title: 'Delete filtered counters?',
+    message: `This removes every ${label} currently on this instance. Continue?`,
+    confirmLabel: 'Delete filtered',
+    variant: 'danger'
+  });
+  if (!confirmed) return;
+  try {
+    deleteFilteredBtn.disabled = true;
+    const res = await fetch(`/api/counters?mode=${state.modeFilter}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    });
+    if (res.status === 401) throw new Error('Invalid admin token.');
+    if (!res.ok) throw new Error('Failed to delete counters');
+    await refreshCounters(1);
+    showToast(`Deleted ${label}`);
+  } catch (error) {
+    await showAlert(error.message || 'Failed to delete counters');
+  } finally {
+    updateDeleteFilteredState();
+  }
 }
 
 function formatNumber(value) {
@@ -733,6 +807,21 @@ function updateCreateCardVisibility() {
   }
 }
 
+function updateDeleteFilteredState() {
+  if (modeFilterSelect) {
+    modeFilterSelect.value = state.modeFilter;
+  }
+  if (!deleteFilteredBtn) return;
+  const disabled = state.modeFilter === 'all';
+  deleteFilteredBtn.disabled = disabled;
+  deleteFilteredBtn.classList.toggle('hidden', disabled);
+}
+
+function refreshAdminModeControls() {
+  if (!adminCooldownSelect) return;
+  applyAllowedModesToSelect(adminCooldownSelect, state.allowedModes);
+}
+
 function buildEditField(labelText, control) {
   const wrapper = document.createElement('label');
   wrapper.className = 'counter-edit__field';
@@ -741,4 +830,76 @@ function buildEditField(labelText, control) {
   title.textContent = labelText;
   wrapper.append(title, control);
   return wrapper;
+}
+
+function scheduleAutoRefresh(delay = 5000) {
+  cancelAutoRefresh();
+  state.autoRefreshTimer = setTimeout(async () => {
+    if (!state.token) return;
+    if (state.editPanelsOpen > 0) {
+      scheduleAutoRefresh(delay);
+      return;
+    }
+    try {
+      await refreshCounters(state.page, { silent: true });
+    } catch (_) {
+      // already logged in refreshCounters
+    }
+    scheduleAutoRefresh(delay);
+  }, delay);
+}
+
+function cancelAutoRefresh() {
+  if (state.autoRefreshTimer) {
+    clearTimeout(state.autoRefreshTimer);
+    state.autoRefreshTimer = null;
+  }
+}
+
+function changeEditPanelCount(delta) {
+  state.editPanelsOpen = Math.max(0, state.editPanelsOpen + delta);
+}
+
+function applyAllowedModesToSelect(selectEl, allowed) {
+  if (!selectEl) return;
+  const options = Array.from(selectEl.options);
+  let firstAllowed = null;
+  options.forEach((option) => {
+    const mode = option.value === 'unlimited' ? 'unlimited' : 'unique';
+    const isAllowed = isModeAllowed(mode, allowed);
+    option.disabled = !isAllowed;
+    option.hidden = !isAllowed;
+    if (isAllowed && !firstAllowed) {
+      firstAllowed = mode;
+    }
+  });
+  if (!firstAllowed) {
+    firstAllowed = 'unique';
+  }
+  const current = selectEl.value === 'unlimited' ? 'unlimited' : 'unique';
+  if (!isModeAllowed(current, allowed)) {
+    selectEl.value = firstAllowed;
+  }
+}
+
+function getFirstAllowedMode(allowed) {
+  if (allowed?.unique !== false) return 'unique';
+  return 'unlimited';
+}
+
+function normalizeAllowedModes(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return { unique: true, unlimited: true };
+  }
+  return {
+    unique: raw.unique !== false,
+    unlimited: raw.unlimited !== false
+  };
+}
+
+function isModeAllowed(mode, allowed) {
+  if (mode === 'unlimited') {
+    return allowed?.unlimited !== false;
+  }
+  return allowed?.unique !== false;
 }

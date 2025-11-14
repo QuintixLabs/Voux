@@ -9,7 +9,8 @@ const defaultConfig = {
   showGuides:
     process.env.SHOW_PUBLIC_GUIDES === undefined
       ? true
-      : String(process.env.SHOW_PUBLIC_GUIDES).toLowerCase() === 'true'
+      : String(process.env.SHOW_PUBLIC_GUIDES).toLowerCase() === 'true',
+  allowedModes: normalizeAllowedModes(process.env.DEFAULT_ALLOWED_MODES)
 };
 
 let config = loadConfig();
@@ -33,6 +34,16 @@ function sanitizeConfig(raw) {
   }
   if (typeof raw.showGuides === 'boolean') {
     safe.showGuides = raw.showGuides;
+  }
+  if (raw && typeof raw.allowedModes === 'object') {
+    const normalized = {
+      unique: raw.allowedModes.unique !== false,
+      unlimited: raw.allowedModes.unlimited !== false
+    };
+    if (!normalized.unique && !normalized.unlimited) {
+      normalized.unique = true;
+    }
+    safe.allowedModes = normalized;
   }
   return safe;
 }
@@ -62,3 +73,19 @@ module.exports = {
   getConfig,
   updateConfig
 };
+
+function normalizeAllowedModes(envValue) {
+  const normalized = String(envValue || '').trim().toLowerCase();
+  if (!normalized) {
+    return { unique: true, unlimited: true };
+  }
+  const parts = normalized.split(',').map((part) => part.trim()).filter(Boolean);
+  const allowed = {
+    unique: parts.includes('unique'),
+    unlimited: parts.includes('unlimited')
+  };
+  if (!allowed.unique && !allowed.unlimited) {
+    allowed.unique = true;
+  }
+  return allowed;
+}

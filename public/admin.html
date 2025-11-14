@@ -105,7 +105,10 @@
                 <span class="counter-total__label">Total</span>
                 <span class="counter-total__value" id="counterTotalValue">0</span>
               </div>
-              <button type="button" id="deleteAll" class="danger ghost deleteclass"><i class="ri-indeterminate-circle-line"></i> Delete all counters</button>
+              <div class="admin-panel__delete-group">
+                <button type="button" id="deleteFiltered" class="danger ghost deleteclass hidden" disabled><i class="ri-delete-bin-line"></i> Delete filtered</button>
+                <button type="button" id="deleteAll" class="danger ghost deleteclass"><i class="ri-indeterminate-circle-line"></i> Delete all counters</button>
+              </div>
             </div>
           </div>
           <div class="admin-search">
@@ -115,6 +118,16 @@
               <input type="text" id="counterSearchInput" placeholder="Search by label or ID" autocomplete="off" spellcheck="false" />
               <button type="button" class="ghost admin-search__clear hidden" id="counterSearchClear">Clear</button>
             </div>
+          </div>
+          <div class="admin-filters">
+            <label class="admin-filter">
+              <span>Counting mode</span>
+              <select id="modeFilter">
+                <option value="all">All modes</option>
+                <option value="unique">Unique visitors</option>
+                <option value="unlimited">Every visit</option>
+              </select>
+            </label>
           </div>
           <div id="adminControls" class="hidden admin-controls">
             <div id="counterList" class="counter-list">
