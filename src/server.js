@@ -30,13 +30,13 @@ const CREATION_LIMIT_COUNT = Math.max(
   1,
   Number.isFinite(Number(process.env.COUNTER_CREATE_LIMIT))
     ? Number(process.env.COUNTER_CREATE_LIMIT)
-    : 5
+    : 5 // 5 counters
 );
 const CREATION_LIMIT_WINDOW_MS = Math.max(
   1000,
   Number.isFinite(Number(process.env.COUNTER_CREATE_WINDOW_MS))
     ? Number(process.env.COUNTER_CREATE_WINDOW_MS)
-    : 60 * 1000
+    : 60 * 1000 // 1 min
 );
 
 const creationTracker = new Map();
