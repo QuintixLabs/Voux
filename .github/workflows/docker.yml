@@ -25,9 +25,13 @@ jobs:
 
       - name: Build image
         run: |
-          IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/voux:latest
-          docker build -t "$IMAGE" .
+          IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/voux
+          VERSION=${GITHUB_REF_NAME}
+          docker build -t "$IMAGE:latest" -t "$IMAGE:${VERSION}" .
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Push image
-        run: docker push "$IMAGE"
+        run: |
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:${VERSION}"
