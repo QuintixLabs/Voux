@@ -71,6 +71,10 @@ npm start
 
 By default, both commands run at: [http://localhost:8787](http://localhost:8787). You can change this by setting the **PORT** value in `.env`.
 
+### 🖌️ Branding
+
+If you re-theme or rebrand your instance, please leave a short note on the page (e.g., in the footer) that says `"Powered by Voux."` That way people know what software is running, even if the colors/logos are yours.
+
 ## 🔧 Configuration
 
 Environment variables. You can tweak some of these options later from `/settings.html` without editing `.env`.
