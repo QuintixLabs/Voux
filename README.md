@@ -6,24 +6,31 @@
 
 <p align="center">
 <a href="#-features">Features</a> •
-  <a href="#-getting-started">Getting Started</a> •
-<a href="#-clearing-ip-dedupe-data">Clearing IP dedupe data</a> •
-<a href="#-counting-modes">Counting modes</a>
+  <a href="#-self-hosting-voux">Self hosting Voux</a> •
+<a href="#-configuration">Configuration</a> •
+<a href="#-api-quick-reference">API quick reference</a> 
+<!--<a href="#-styling-embeds">Styling embeds</a> •
+<a href="#-clearing-saved-ips">Clearing saved IPs</a>--->
 </p>
 
 ## ✨ Features
 
-- JSON API + dashboard to create counters and fetch their metadata.
-- One-line `<script async src="...">` embed; wrap it with your own element (e.g. `<span class="counter-widget">…</span>`) when you need classes for styling.
-- SQLite storage (lives in `data/counters.db`) so you can run it entirely on your own machine.
-- Separate `hits` table tracks the IP + last-hit timestamp used for deduplication.
-- Admin dashboard has pagination, search, inline edits for label/value, optional cooldowns for every-visit counters, and private notes so you can tag each counter.
-- Runtime settings let you toggle private mode, hide/show public guides, and choose the default counting mode for everyone using your instance.
-- Instance owners can allow/disallow each counting mode and bulk-delete all counters that use a specific mode.
+- Generate counters easily and embed them with one `<script>`.
+- Data lives in `data/counters.db` or a JSON backup.
+- Admin UI handles search, pagination, inline edits, notes, mode filters, and auto-refreshing stats.
+- Toggle the instance between `public/private` however you like.
 
-## 🚀 Getting started
+So yeah... it's pretty good `:)`
 
-Make sure you are running Node.js 22 (the version we test with). If you use [fnm](https://github.com/Schniz/fnm):
+## 🏡 Self hosting Voux
+
+First, download Voux and enter the project folder:
+```bash
+git clone https://github.com/QuintixLabs/Voux.git
+cd Voux
+```
+
+Make sure you are running `Node.js 22`. If you use [fnm](https://github.com/Schniz/fnm). :
 
 ```bash
 fnm install 22
@@ -31,24 +38,43 @@ fnm use 22
 node -v
 ```
 
-Then install and start Voux:
+## 1. Install Voux
+Use one of these:
 
 ```bash
-npm install
-cp .env.example .env
-# edit .env and set ADMIN_TOKEN to something secret
-npm run dev
-# open http://localhost:8787
+npm install                # normal install
+npm install --production   # for production installs
 ```
 
-For production or when running on your machine:
+## 2. Create your .env file
 
 ```bash
-npm install --production
+cp .env.example .env
+```
+
+Open `.env` and set your settings.
+This is where you configure your admin token, site URL, port, and other options.
+You must set `ADMIN_TOKEN` to something secret before running the server.
+
+## 3. Start Voux
+**Development (auto-reload) :**
+```bash
+npm run dev
+```
+
+**Production:**
+```bash
 npm start
 ```
 
-## ⚙️ Configuration
+By default, both commands run at:
+```
+http://localhost:8787
+```
+
+You can change this by setting the **PORT** value in `.env`.
+
+## 🔧 Configuration
 
 Environment variables. You can tweak some of these options later from `/settings.html` without editing `.env`.
 
@@ -57,16 +83,13 @@ Environment variables. You can tweak some of these options later from `/settings
 | ---- | -------- | ------------ |
 | `PORT` | `8787` | The web server port number. |
 | `PUBLIC_BASE_URL` | based on request | Lets you set a fixed site URL (like `https://counter.yourdomain.com`). |
-| `ADMIN_TOKEN` | `unset` | A secret key needed to access admin tools and the `/admin.html` page. |
+| `ADMIN_TOKEN` | `unset` | A secret key is needed to access admin tools and the `/admin.html` page. |
 | `PRIVATE_MODE` | `false` | If `true`, only admins can create new counters. |
 | `ADMIN_PAGE_SIZE` | `5` | How many counters show on each page in the admin panel. |
 | `SHOW_PUBLIC_GUIDES` | `true` | Controls if public guide cards are shown on the main page. |
-| `DEFAULT_ALLOWED_MODES` | `unique,unlimited` | Comma-separated list of modes to allow (`unique`, `unlimited`). This just seeds the runtime setting; you can change it later in the dashboard. |
+| `DEFAULT_ALLOWED_MODES` | `unique,unlimited` | Comma-separated list of modes to allow (`unique`, `unlimited`) for counters. You can change it later in the dashboard. |
 
-SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings.html`). If you delete the DB file, Voux creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
-
-When `PRIVATE_MODE=true`, the public builder hides the “Generate counter” form and all creation/deletion happens through `/admin.html` with your admin token.
-You can choose which counting modes are available (unique vs every visit) at any time from `/settings.html`; only the allowed modes show up when users generate counters, and the admin dashboard can bulk-delete all counters that belong to a given mode.
+SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings.html`). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
 
 ## 🧩 API quick reference
 
@@ -85,6 +108,9 @@ You can choose which counting modes are available (unique vs every visit) at any
 - `POST /api/counters/import` – restore counters from a JSON backup (admin only).
 
 Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/admin.html`, sign in once, and use the dashboard (it already calls these endpoints under the hood).
+
+#
+
 
 ### 🎨 Styling embeds
 
