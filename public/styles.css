@@ -509,7 +509,7 @@ body.modal-open {
       font-size: 0.875rem;
     }
 
-    .instructions code {
+.instructions code {
       font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
       font-size: 0.8125rem;
       line-height: 1.7;
@@ -526,6 +526,38 @@ body.modal-open {
       font-size: 0.8125rem;
       color: var(--text-primary);
     }
+
+.self-host-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.self-host-list li {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.self-host-list li::before {
+  content: '•';
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--text-primary);
+  margin-top: 0.15rem;
+}
+
+.self-host-list li .code-inline {
+  flex-shrink: 0;
+}
 
     .admin-panel {
       background: var(--bg-tertiary);

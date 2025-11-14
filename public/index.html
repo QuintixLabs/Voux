@@ -149,9 +149,12 @@
     <details class="card instructions config-guard expander" id="selfHostCard">
       <summary>
         <span>Self-hosting Voux</span>
+
         <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
       </summary>
       <div class="expander__content">
+        <p><span class="code-inline">📦 Manual installation</span></p>
+        
         <p>Running your own copy is easy. First, download Voux and enter the project folder:</p>
 
         <p><strong>1. Clone the project</strong></p>
@@ -199,6 +202,24 @@ npm install --production   # for production installs</code></pre>
         </div>
 
         <p>By default, both commands run at: <a href="http://localhost:8787" target="_blank">http://localhost:8787</a> You can change this by setting the <strong>PORT</strong> value in <span class="code-inline">.env</span>.</p>
+
+        
+        <p><span class="code-inline">🐋 Docker</span></p>
+        <p>Or run Voux via Docker and pull the prebuilt image from GHCR:</p>
+        <div class="code-snippet">
+          <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
+          <pre><code class="language-bash">docker run -d \
+  --name voux \
+  -p 8787:8787 \
+  -e ADMIN_TOKEN=your-secret \
+  -v $(pwd)/data:/app/data \
+  ghcr.io/quintixlabs/voux/voux:latest</code></pre>
+        </div>
+        <ul class="self-host-list">
+          <li><span class="code-inline">ADMIN_TOKEN</span> to your own password (do not leave it as the example).</li>
+          <li>Mount <span class="code-inline">./data</span> so counters survive restarts.</li>
+          <li>Add more <span class="code-inline">-e VAR=value</span> flags for more settings if you need them.</li>
+        </ul>
       </div>
     </details>
 

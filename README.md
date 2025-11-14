@@ -24,6 +24,8 @@ So yeah... it's pretty good `:)`
 
 ## 🏡 Self hosting Voux
 
+### `📦 Manual installation`
+
 ### 1. Clone the project
 
 First, download Voux and enter the project folder:
@@ -71,7 +73,20 @@ npm start
 
 By default, both commands run at: [http://localhost:8787](http://localhost:8787). You can change this by setting the **PORT** value in `.env`.
 
-### 🖌️ Branding
+### `🐋 Docker`
+
+Or run Voux via Docker:
+
+```bash
+docker run -d \
+  --name voux \
+  -p 8787:8787 \
+  -e ADMIN_TOKEN=your-secret \
+  -v $(pwd)/data:/app/data \
+  ghcr.io/quintixlabs/voux/voux:latest
+```
+
+## 🖌️ Branding
 
 If you re-theme or rebrand your instance, please leave a short note on the page (e.g., in the footer) that says `"Powered by Voux."` That way people know what software is running, even if the colors/logos are yours.
 
