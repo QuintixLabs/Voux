@@ -152,43 +152,53 @@
         <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
       </summary>
       <div class="expander__content">
-        <p>Running your own copy is easy. Use Node.js 22 (install and switch with <a href="https://github.com/Schniz/fnm" target="_blank">fnm</a> or any manager). The SQLite file stays inside the project folder, so you do not need any extra services.</p>
+        <p>Running your own copy is easy. First, download Voux and enter the project folder:</p>
 
-        <p><strong>1. Grab the project</strong></p>
+        <p><strong>1. Clone the project</strong></p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
           <pre><code class="language-bash">git clone https://github.com/QuintixLabs/Voux.git
-cd voux
-fnm install 22
+cd voux</code></pre>
+        </div>
+
+        <p>Make sure you are running <span class="code-inline">Node.js 22</span>. If you use <a href="https://github.com/Schniz/fnm" target="_blank">fnm</a>. :</p>
+
+        <div class="code-snippet">
+          <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
+          <pre><code class="language-bash">fnm install 22
 fnm use 22
-npm install</code></pre>
+node -v</code></pre>
         </div>
 
-        <p><strong>2. Drop in your settings</strong></p>
-        <p>The <span class="code-inline">.env</span> file is where you store your admin password and all settings for Voux. 
-        You must update a few values in it before running the server. For more informations on the settings check them <a href="https://github.com/QuintixLabs/Voux?tab=readme-ov-file#%EF%B8%8F-configuration" target="_blank">here</a></p>
+        <p><strong>2. Install Voux</strong></p>
+        <p>Use one of these:</p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
-          <pre><code class="language-bash">cp .env.example .env
-$EDITOR .env   # set ADMIN_TOKEN, etc.</code></pre>
+          <pre><code class="language-bash">npm install                # normal install
+npm install --production   # for production installs</code></pre>
         </div>
 
-        <p><strong>3. Run it</strong></p>
+        <p><strong>3. Create your .env file</strong></p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
-          <pre><code class="language-bash">npm run dev   # dev server with reload
-npm start     # production build</code></pre>
+          <pre><code class="language-bash">cp .env.example .env</code></pre>
         </div>
+        <p>Open <span class="code-inline">.env</span> and set your settings. This is where you configure your admin token, site URL, port, and other options. You must set ADMIN_TOKEN to something secret before running the server.</p>
 
-        <p><strong>4. Tweak optional vars</strong></p>
+        <p><strong>4. Start Voux</strong></p>
+        <p>Development (auto-reload) :</p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
-          <pre><code class="language-bash">PORT=8787
-PUBLIC_BASE_URL=https://counter.yourdomain.com</code></pre>
+          <pre><code class="language-bash">npm run dev</code></pre>
         </div>
 
-        <p><strong>5. Share it</strong> with a Cloudflared tunnel, reverse proxy, or any static IP. Point your embed script at that URL and you are done.</p>
-        <p class="hint">Need more tips? Check the <a href="https://github.com/QuintixLabs/Voux" target="_blank" rel="noreferrer" style="color: var(--accent); text-decoration: underline;">GitHub repo</a> any time.</p>
+        <p>Production :</p>
+        <div class="code-snippet">
+          <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
+          <pre><code class="language-bash">npm start</code></pre>
+        </div>
+
+        <p>By default, both commands run at: <a href="http://localhost:8787" target="_blank">http://localhost:8787</a> You can change this by setting the <strong>PORT</strong> value in <span class="code-inline">.env</span>.</p>
       </div>
     </details>
 

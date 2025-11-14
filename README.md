@@ -24,6 +24,8 @@ So yeah... it's pretty good `:)`
 
 ## 🏡 Self hosting Voux
 
+### 1. Clone the project
+
 First, download Voux and enter the project folder:
 ```bash
 git clone https://github.com/QuintixLabs/Voux.git
@@ -38,7 +40,7 @@ fnm use 22
 node -v
 ```
 
-## 1. Install Voux
+### 2. Install Voux
 Use one of these:
 
 ```bash
@@ -46,7 +48,7 @@ npm install                # normal install
 npm install --production   # for production installs
 ```
 
-## 2. Create your .env file
+### 3. Create your .env file
 
 ```bash
 cp .env.example .env
@@ -56,7 +58,7 @@ Open `.env` and set your settings.
 This is where you configure your admin token, site URL, port, and other options.
 You must set `ADMIN_TOKEN` to something secret before running the server.
 
-## 3. Start Voux
+### 4. Start Voux
 **Development (auto-reload) :**
 ```bash
 npm run dev
@@ -67,12 +69,7 @@ npm run dev
 npm start
 ```
 
-By default, both commands run at:
-```
-http://localhost:8787
-```
-
-You can change this by setting the **PORT** value in `.env`.
+By default, both commands run at: [http://localhost:8787](http://localhost:8787). You can change this by setting the **PORT** value in `.env`.
 
 ## 🔧 Configuration
 
