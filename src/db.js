@@ -30,6 +30,16 @@ db.exec(`
     PRIMARY KEY (counter_id, ip),
     FOREIGN KEY (counter_id) REFERENCES counters(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS counter_daily (
+    counter_id TEXT NOT NULL,
+    day INTEGER NOT NULL,
+    hits INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (counter_id, day),
+    FOREIGN KEY (counter_id) REFERENCES counters(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_counter_daily_day ON counter_daily(day);
 `);
 
 const baseSelectFields = 'id, label, theme, note, value, created_at, count_mode';
@@ -51,6 +61,18 @@ const upsertHitStmt = db.prepare(`
   INSERT INTO hits (counter_id, ip, last_hit)
   VALUES (?, ?, ?)
   ON CONFLICT(counter_id, ip) DO UPDATE SET last_hit = excluded.last_hit
+`);
+const upsertDailyStmt = db.prepare(`
+  INSERT INTO counter_daily (counter_id, day, hits)
+  VALUES (?, ?, 1)
+  ON CONFLICT(counter_id, day) DO UPDATE SET hits = counter_daily.hits + 1
+`);
+const getDailyTrendStmt = db.prepare(`
+  SELECT day, hits
+  FROM counter_daily
+  WHERE counter_id = ?
+  ORDER BY day DESC
+  LIMIT ?
 `);
 const pruneHitsStmt = db.prepare('DELETE FROM hits WHERE last_hit < ?');
 const clearHitsStmt = db.prepare('DELETE FROM hits');
@@ -117,6 +139,7 @@ const recordHitTx = db.transaction((counterId, ip, now) => {
     if (ip) {
       upsertHitStmt.run(counterId, ip, now);
     }
+    recordDailyHit(counterId, now);
   }
 
   const updated = getCounterStmt.get(counterId);
@@ -222,6 +245,22 @@ function countHitsSince(counterId, sinceTimestamp) {
   return row && typeof row.total === 'number' ? row.total : 0;
 }
 
+function getCounterDailyTrend(counterId, days = 7) {
+  const limit = Math.max(1, Math.min(30, Number(days) || 7));
+  const rows = getDailyTrendStmt.all(counterId, limit);
+  const map = new Map(rows.map((row) => [row.day, row.hits]));
+  const trend = [];
+  const todayStart = getDayStartTimestamp(Date.now());
+  for (let i = limit - 1; i >= 0; i -= 1) {
+    const dayStart = todayStart - i * DAY_MS;
+    trend.push({
+      day: dayStart,
+      hits: map.get(dayStart) || 0
+    });
+  }
+  return trend;
+}
+
 function exportCounters() {
   return listCountersStmt.all();
 }
@@ -291,6 +330,7 @@ module.exports = {
   countCounters,
   getLastHitTimestamp,
   countHitsSince,
+  getCounterDailyTrend,
   exportCounters,
   importCounters,
   updateCounterValue,
@@ -325,4 +365,20 @@ function parseRequestedMode(input) {
     return { mode: 'unlimited' };
   }
   return { error: 'mode must be "unique" or "unlimited"' };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function getDayStartTimestamp(timestamp) {
+  const target = timestamp ? new Date(timestamp) : new Date();
+  target.setHours(0, 0, 0, 0);
+  return target.getTime();
+}
+
+function recordDailyHit(counterId, now) {
+  try {
+    upsertDailyStmt.run(counterId, getDayStartTimestamp(now));
+  } catch (error) {
+    console.warn('Failed to record daily hit', error);
+  }
 }

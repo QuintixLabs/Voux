@@ -130,6 +130,15 @@
               </select>
             </label>
           </div>
+          <div class="activity-range" id="activityRangeControls">
+            <span class="activity-range__label">Stats range</span>
+            <div class="activity-range__options">
+              <button type="button" data-range="today" class="activity-range__button">Today</button>
+              <button type="button" data-range="7d" class="activity-range__button activity-range__button--active">7 days</button>
+              <button type="button" data-range="30d" class="activity-range__button">30 days</button>
+              <button type="button" data-range="all" class="activity-range__button">All time</button>
+            </div>
+          </div>
           <div id="adminControls" class="hidden admin-controls">
             <div id="counterList" class="counter-list">
               <p class="hint">No counters yet.</p>

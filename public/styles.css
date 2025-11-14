@@ -664,6 +664,47 @@ body.modal-open {
   color: var(--text-primary);
 }
 
+.activity-range {
+  margin: 0.85rem 0 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.activity-range__label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.activity-range__options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.activity-range__button {
+  border-radius: 12px;
+  border: 1px solid var(--border-primary);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  padding: 0.35rem 0.85rem;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.activity-range__button--active {
+  border-color: rgba(96, 165, 250, 0.8);
+  background: rgba(96, 165, 250, 0.15);
+  color: #dbeafe;
+}
+
+.activity-range__button:not(.activity-range__button--active):hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
 .admin-panel__actions {
   display: flex;
   gap: 0.75rem;
@@ -931,6 +972,30 @@ body.modal-open {
       margin-top: 0.45rem;
     }
 
+    .counter-status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin: 0.25rem 0 0.1rem;
+    }
+
+    .counter-status__badge {
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: 0px;
+      padding: 0.15rem 0.65rem;
+      border: 1px solid var(--border-primary);
+      background: var(--bg-tertiary);
+      color: var(--text-tertiary);
+    }
+
+    .counter-status__badge--inactive {
+      border-color: rgba(248, 113, 113, 0.5);
+      color: #fca5a5;
+      background: rgba(185, 28, 28, 0.08);
+    }
+
     .counter-meta__stat {
       display: inline-flex;
       align-items: center;
@@ -954,6 +1019,113 @@ body.modal-open {
       font-weight: 600;
       color: var(--text-primary);
     }
+
+    .counter-activity {
+      margin-top: 0.6rem;
+      position: relative;
+    }
+
+    .counter-activity__label {
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-bottom: 0.3rem;
+    }
+
+    .activity-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.35rem;
+      min-height: 58px;
+    }
+
+    .activity-bar {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .activity-bar__track {
+      width: 100%;
+      height: 52px;
+      border-radius: 8px;
+      border: 1px solid var(--border-primary);
+      background: var(--bg-tertiary);
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+    }
+
+    .activity-bar__fill {
+      width: 100%;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.12));
+      border-radius: 8px 8px 0 0;
+      transition: height 0.2s ease, opacity 0.2s ease;
+    }
+
+    .activity-bar__fill--empty {
+      opacity: 0.35;
+    }
+
+.activity-bar__fill[data-level='low'] {
+  background: linear-gradient(180deg, rgba(96, 165, 250, 0.65), rgba(37, 99, 235, 0.15));
+}
+
+.activity-bar__fill[data-level='mid'] {
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.85), rgba(37, 99, 235, 0.3));
+}
+
+.activity-bar__fill[data-level='high'] {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.3));
+}
+
+.activity-bar__fill[data-level='max'] {
+  background: linear-gradient(180deg, rgba(74, 222, 128, 1), rgba(22, 163, 74, 0.45));
+}
+
+    .activity-bar__label {
+      font-size: 0.65rem;
+      color: var(--text-tertiary);
+    }
+
+    .activity-bar:hover .activity-bar__track {
+      border-color: var(--border-hover);
+    }
+
+.activity-tooltip {
+  position: absolute;
+  bottom: calc(80% + 0.45rem);
+  transform: translate(-50%, 0.2rem);
+  background: rgba(15, 17, 21, 0.95);
+  border: 1px solid var(--border-primary);
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: auto;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.activity-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(15, 17, 21, 0.95);
+}
+
+.activity-tooltip--visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
 
     .counter-copy-button {
       border: 1px solid var(--border-primary);

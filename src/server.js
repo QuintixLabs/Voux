@@ -15,6 +15,7 @@ const {
   describeModeLabel,
   getLastHitTimestamp,
   countHitsSince,
+  getCounterDailyTrend,
   exportCounters,
   importCounters,
   updateCounterValue,
@@ -40,6 +41,15 @@ const CREATION_LIMIT_WINDOW_MS = Math.max(
 );
 
 const creationTracker = new Map();
+const DAY_MS = 24 * 60 * 60 * 1000;
+const ACTIVITY_WINDOW_DAYS = 30;
+const INACTIVE_THRESHOLD_DAYS = Math.max(
+  1,
+  Number.isFinite(Number(process.env.INACTIVE_DAYS_THRESHOLD))
+    ? Number(process.env.INACTIVE_DAYS_THRESHOLD)
+    : 14
+);
+const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const LABEL_LIMIT = 80;
 const NOTE_LIMIT = 200;
 
@@ -459,10 +469,14 @@ function serializeCounterWithStats(counter, dayStart, options = {}) {
   if (!base) return base;
   const lastHit = getLastHitTimestamp(counter.id);
   const hitsToday = dayStart ? countHitsSince(counter.id, dayStart) : 0;
+  const activityTrend = formatActivityTrend(getCounterDailyTrend(counter.id, ACTIVITY_WINDOW_DAYS));
+  const inactivity = buildInactiveStatus(counter, lastHit);
   return {
     ...base,
     lastHit,
-    hitsToday
+    hitsToday,
+    activity: activityTrend,
+    inactive: inactivity
   };
 }
 
@@ -510,4 +524,67 @@ function normalizeAllowedModesPatch(input) {
     return null;
   }
   return normalized;
+}
+
+function formatActivityTrend(trend = []) {
+  const chronological = Array.isArray(trend) ? trend.slice(-ACTIVITY_WINDOW_DAYS) : [];
+  const total30d = chronological.reduce((sum, item) => sum + (item.hits || 0), 0);
+  const recentWeek = chronological.slice(-7);
+  const weekOrdered = orderWeekByLabel(recentWeek);
+  const total7d = recentWeek.reduce((sum, item) => sum + (item.hits || 0), 0);
+  const maxHits = weekOrdered.reduce((peak, item) => Math.max(peak, item.hits || 0), 0);
+  return {
+    trend: weekOrdered,
+    total7d,
+    total30d,
+    maxHits
+  };
+}
+
+function orderWeekByLabel(days = []) {
+  const map = new Map();
+  days.forEach((entry) => {
+    const idx = getWeekdayIndex(entry.day);
+    if (idx === null || idx === undefined) return;
+    map.set(idx, entry);
+  });
+  const ordered = [];
+  for (let i = 0; i < weekdayLabels.length; i += 1) {
+    const found = map.get(i);
+    ordered.push({
+      day: found?.day || null,
+      hits: found?.hits || 0,
+      label: weekdayLabels[i]
+    });
+  }
+  return ordered;
+}
+
+function getWeekdayIndex(timestamp) {
+  if (timestamp === null || timestamp === undefined) return null;
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return null;
+  const weekDay = date.getDay(); // 0 Sunday, 6 Saturday
+  return (weekDay + 6) % 7; // convert to Monday=0
+}
+
+function buildInactiveStatus(counter, lastHit) {
+  const reference = lastHit || counter.created_at || 0;
+  if (!reference) {
+    return {
+      isInactive: true,
+      days: INACTIVE_THRESHOLD_DAYS,
+      label: `Inactive ${INACTIVE_THRESHOLD_DAYS}d`,
+      thresholdDays: INACTIVE_THRESHOLD_DAYS
+    };
+  }
+  const elapsedMs = Date.now() - reference;
+  const days = Math.max(0, Math.floor(elapsedMs / DAY_MS));
+  const isInactive = elapsedMs >= INACTIVE_THRESHOLD_DAYS * DAY_MS;
+  return {
+    isInactive,
+    days,
+    label: isInactive ? `Inactive ${Math.max(1, days)}d` : '',
+    thresholdDays: INACTIVE_THRESHOLD_DAYS
+  };
 }

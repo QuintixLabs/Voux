@@ -22,6 +22,7 @@ const adminEmbedSnippet = document.querySelector('#adminEmbedSnippet');
 const createCard = document.querySelector('#createCard');
 const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
 const modeFilterSelect = document.querySelector('#modeFilter');
+const activityRangeControls = document.querySelector('#activityRangeControls');
 let toastContainer = document.querySelector('.toast-stack');
 if (!toastContainer) {
   toastContainer = document.createElement('div');
@@ -31,6 +32,12 @@ if (!toastContainer) {
 
 const STORAGE_KEY = 'vouxAdminAuth';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000; // 12h
+const RANGE_LABELS = {
+  today: 'Today',
+  '7d': '7 days',
+  '30d': '30 days',
+  all: 'All time'
+};
 
 const state = {
   token: '',
@@ -45,7 +52,10 @@ const state = {
   allowedModes: { unique: true, unlimited: true },
   modeFilter: 'all',
   autoRefreshTimer: null,
-  editPanelsOpen: 0
+  editPanelsOpen: 0,
+  activityRange: '7d',
+  latestCounters: [],
+  debugInactive: new URLSearchParams(window.location.search).has('debugInactive') // use ?debugInactive in the browser to preview the inactive badge
 };
 
 let searchDebounce = null;
@@ -109,6 +119,7 @@ function init() {
   counterSearchInput?.addEventListener('input', handleSearchInput);
   counterSearchInput?.addEventListener('search', handleSearchInput);
   counterSearchClear?.addEventListener('click', handleSearchClear);
+  activityRangeControls?.addEventListener('click', handleActivityRangeClick);
   toggleSearchClear();
   // no extra change handler needed for simple dropdown
   fetchConfig()
@@ -122,6 +133,7 @@ function init() {
     })
     .catch((err) => console.warn('Admin init failed', err));
   updateDeleteFilteredState();
+  updateActivityRangeButtons();
 }
 
 async function fetchConfig() {
@@ -187,6 +199,16 @@ function toggleSearchClear() {
   counterSearchClear.classList.toggle('hidden', counterSearchInput.value.trim().length === 0);
 }
 
+function handleActivityRangeClick(event) {
+  const button = event.target.closest('button[data-range]');
+  if (!button) return;
+  const range = button.dataset.range;
+  if (!range || range === state.activityRange) return;
+  state.activityRange = range;
+  updateActivityRangeButtons();
+  renderCounterList(state.latestCounters);
+}
+
 async function onLoginSubmit(event) {
   event.preventDefault();
   hideLoginError();
@@ -234,7 +256,8 @@ async function refreshCounters(page = 1, options = {}) {
   if (!state.token) throw new Error('Admin token missing.');
   try {
     const data = await fetchCounters(page);
-    renderCounterList(data.counters || []);
+    state.latestCounters = data.counters || [];
+    renderCounterList(state.latestCounters);
     state.page = data.pagination?.page || 1;
     state.totalPages = data.pagination?.totalPages || 1;
     state.total = data.pagination?.total || (data.counters?.length ?? 0);
@@ -353,11 +376,12 @@ async function handleCreateCounter(event) {
   }
 }
 
-function renderCounterList(counters) {
+function renderCounterList(counters = state.latestCounters) {
   if (!counterListEl) return;
+  const list = Array.isArray(counters) ? counters : [];
   state.editPanelsOpen = 0;
   counterListEl.innerHTML = '';
-  if (!counters.length) {
+  if (!list.length) {
     const empty = document.createElement('p');
     empty.className = 'hint';
     empty.textContent = state.searchQuery
@@ -367,7 +391,7 @@ function renderCounterList(counters) {
     return;
   }
   const fragment = document.createDocumentFragment();
-  counters.forEach((counter) => {
+  list.forEach((counter) => {
     const row = document.createElement('div');
     row.className = 'counter-row';
 
@@ -402,19 +426,20 @@ function renderCounterList(counters) {
     const stats = document.createElement('div');
     stats.className = 'counter-meta__stats';
 
-    const todayStat = document.createElement('span');
-    todayStat.className = 'counter-meta__stat';
-    todayStat.innerHTML = `<span class="counter-meta__stat-label">Today</span><span class="counter-meta__stat-value">${formatNumber(
-      counter.hitsToday ?? 0
-    )}</span>`;
-
     const lastHitStat = document.createElement('span');
     lastHitStat.className = 'counter-meta__stat';
     lastHitStat.innerHTML = `<span class="counter-meta__stat-label">Last hit</span><span class="counter-meta__stat-value">${formatLastHit(
       counter.lastHit
     )}</span>`;
 
-    stats.append(todayStat, lastHitStat);
+    const rangeStat = document.createElement('span');
+    rangeStat.className = 'counter-meta__stat';
+    const rangeLabel = getRangeStatLabel();
+    const rangeValue = getRangeStatValue(counter);
+    rangeStat.innerHTML = `<span class="counter-meta__stat-label">${rangeLabel}</span><span class="counter-meta__stat-value">${formatNumber(
+      rangeValue
+    )}</span>`;
+    stats.append(lastHitStat, rangeStat);
 
     const actions = document.createElement('div');
     actions.className = 'counter-actions';
@@ -540,13 +565,24 @@ function renderCounterList(counters) {
     actions.append(editBtn);
 
     meta.append(label, id);
+    const statusLine = buildStatusBadges(counter, { forceInactive: state.debugInactive });
+    if (statusLine) {
+      meta.append(statusLine);
+    }
     if (counter.note) {
       const note = document.createElement('div');
       note.className = 'counter-meta__note';
       note.textContent = counter.note;
       meta.append(note);
     }
-    meta.append(value, mode, stats, actions, editPanel);
+    meta.append(value, mode, stats);
+
+    const activityBlock = buildActivityBlock(counter.activity);
+    if (activityBlock) {
+      meta.append(activityBlock);
+    }
+
+    meta.append(actions, editPanel);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -811,10 +847,25 @@ function updateDeleteFilteredState() {
   if (modeFilterSelect) {
     modeFilterSelect.value = state.modeFilter;
   }
-  if (!deleteFilteredBtn) return;
-  const disabled = state.modeFilter === 'all';
-  deleteFilteredBtn.disabled = disabled;
-  deleteFilteredBtn.classList.toggle('hidden', disabled);
+  const isGlobal = state.modeFilter === 'all';
+  if (deleteFilteredBtn) {
+    deleteFilteredBtn.disabled = isGlobal;
+    deleteFilteredBtn.classList.toggle('hidden', isGlobal);
+  }
+  if (deleteAllBtn) {
+    deleteAllBtn.classList.toggle('hidden', !isGlobal);
+    deleteAllBtn.disabled = !isGlobal;
+  }
+}
+
+function updateActivityRangeButtons() {
+  if (!activityRangeControls) return;
+  const buttons = activityRangeControls.querySelectorAll('button[data-range]');
+  buttons.forEach((button) => {
+    const isActive = button.dataset.range === state.activityRange;
+    button.classList.toggle('activity-range__button--active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+  });
 }
 
 function refreshAdminModeControls() {
@@ -830,6 +881,154 @@ function buildEditField(labelText, control) {
   title.textContent = labelText;
   wrapper.append(title, control);
   return wrapper;
+}
+
+function buildStatusBadges(counter, options = {}) {
+  if (!counter) return null;
+  const { forceInactive = false } = options;
+  const info = counter.inactive || {};
+  const isInactive = forceInactive || info.isInactive;
+  const badges = [];
+  if (isInactive) {
+    const badge = document.createElement('span');
+    badge.className = 'counter-status__badge counter-status__badge--inactive';
+    badge.textContent = forceInactive ? 'Inactive (preview)' : info.label || 'Inactive';
+    badges.push(badge);
+  }
+  if (!badges.length) return null;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'counter-status';
+  badges.forEach((badge) => wrapper.appendChild(badge));
+  return wrapper;
+}
+
+function buildActivityBlock(activity) {
+  if (!activity || !Array.isArray(activity.trend) || activity.trend.length === 0) {
+    return null;
+  }
+  const wrapper = document.createElement('div');
+  wrapper.className = 'counter-activity';
+  const label = document.createElement('p');
+  label.className = 'counter-activity__label';
+  label.textContent = 'Weekly activity';
+  const bars = document.createElement('div');
+  bars.className = 'activity-bars';
+  const maxHits = Math.max(1, Number(activity.maxHits) || 0);
+  const tooltip = document.createElement('div');
+  tooltip.className = 'activity-tooltip';
+  let tooltipAnchor = null;
+  let hideTimeout = null;
+
+  const showTooltip = (bar, day) => {
+    if (!day) return;
+    tooltip.textContent = `${day.label || 'Day'}: ${formatNumber(day.hits)} hits`;
+    const trackRect = bar.getBoundingClientRect();
+    const parentRect = wrapper.getBoundingClientRect();
+    const center = trackRect.left - parentRect.left + trackRect.width / 2;
+    tooltip.style.left = `${center}px`;
+    tooltip.classList.add('activity-tooltip--visible');
+    tooltipAnchor = bar;
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+  };
+
+  const scheduleHide = () => {
+    if (hideTimeout) return;
+    hideTimeout = setTimeout(() => {
+      tooltip.classList.remove('activity-tooltip--visible');
+      tooltipAnchor = null;
+      hideTimeout = null;
+    }, 250);
+  };
+
+  const cancelHide = () => {
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+  };
+
+  wrapper.addEventListener('mouseleave', scheduleHide);
+  wrapper.addEventListener('focusout', scheduleHide);
+  tooltip.addEventListener('mouseenter', cancelHide);
+  tooltip.addEventListener('mouseleave', scheduleHide);
+
+  activity.trend.forEach((day) => {
+    const bar = document.createElement('div');
+    bar.className = 'activity-bar';
+    const track = document.createElement('span');
+    track.className = 'activity-bar__track';
+    const fill = document.createElement('span');
+    fill.className = 'activity-bar__fill';
+    const ratio = maxHits > 0 ? day.hits / maxHits : 0;
+    if (ratio > 0) {
+      fill.style.height = `${Math.max(12, ratio * 100)}%`;
+      fill.dataset.level = resolveActivityLevel(day.hits, ratio);
+    } else {
+      fill.style.height = '4px';
+      fill.classList.add('activity-bar__fill--empty');
+      fill.dataset.level = 'low';
+    }
+    track.appendChild(fill);
+    const dayLabel = document.createElement('span');
+    dayLabel.className = 'activity-bar__label';
+    dayLabel.textContent = day.label || '';
+    bar.tabIndex = 0;
+    bar.setAttribute('role', 'button');
+    bar.setAttribute('aria-label', `${day.label || 'Day'} has ${formatNumber(day.hits)} hits`);
+    const handleEnter = () => {
+      if (tooltipAnchor === bar) {
+        cancelHide();
+        return;
+      }
+      cancelHide();
+      showTooltip(bar, day);
+    };
+    const handleLeave = () => {
+      if (tooltipAnchor === bar) {
+        scheduleHide();
+      }
+    };
+    bar.addEventListener('mouseenter', handleEnter);
+    bar.addEventListener('mouseleave', handleLeave);
+    bar.addEventListener('focus', handleEnter);
+    bar.addEventListener('blur', handleLeave);
+    bar.addEventListener('click', handleEnter);
+    bar.append(track, dayLabel);
+    bars.appendChild(bar);
+  });
+  wrapper.append(label, bars, tooltip);
+  return wrapper;
+}
+
+function resolveActivityLevel(hits, ratio) {
+  const count = Number(hits) || 0;
+  if (count >= 50) return 'max';
+  if (count >= 20) return 'high';
+  if (count >= 5) return 'mid';
+  if (count >= 1 && ratio >= 0.8) return 'mid';
+  return 'low';
+}
+
+function getRangeStatLabel() {
+  return RANGE_LABELS[state.activityRange] || RANGE_LABELS['7d'];
+}
+
+function getRangeStatValue(counter) {
+  if (!counter) return 0;
+  switch (state.activityRange) {
+    case 'today':
+      return counter.hitsToday ?? 0;
+    case '30d':
+      return counter.activity?.total30d ?? counter.activity?.total7d ?? counter.hitsToday ?? 0;
+    case 'all':
+      return counter.value ?? 0;
+    case '7d':
+    default:
+      return counter.activity?.total7d ?? counter.hitsToday ?? 0;
+  }
 }
 
 function scheduleAutoRefresh(delay = 5000) {
