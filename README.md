@@ -96,14 +96,14 @@ If you re-theme or rebrand your instance, please leave a short note on the page 
 
 ## 🔧 Configuration
 
-Environment variables. You can tweak some of these options later from `/settings.html` without editing `.env`.
+Environment variables. You can tweak some of these options later from `/settings` without editing `.env`.
 
 
 | Name | Default | What it does |
 | ---- | -------- | ------------ |
 | `PORT` | `8787` | The web server port number. |
 | `PUBLIC_BASE_URL` | based on request | Lets you set a fixed site URL (like `https://counter.yourdomain.com`). |
-| `ADMIN_TOKEN` | `unset` | A secret key is needed to access admin tools and the `/admin.html` page. |
+| `ADMIN_TOKEN` | `unset` | A secret key is needed to access admin tools and the `/admin` page. |
 | `PRIVATE_MODE` | `false` | If `true`, only admins can create new counters. |
 | `ADMIN_PAGE_SIZE` | `5` | How many counters show on each page in the admin panel. |
 | `SHOW_PUBLIC_GUIDES` | `true` | Controls if public guide cards are shown on the main page. |
@@ -111,11 +111,11 @@ Environment variables. You can tweak some of these options later from `/settings
 | `COUNTER_CREATE_LIMIT` | `5` | How many counters a single IP can create before hitting the one-minute cooldown. |
 | `COUNTER_CREATE_WINDOW_MS` | `60000` | Window length (in ms) for the above limit. Leave it alone unless you need a different window. |
 | `INACTIVE_DAYS_THRESHOLD` | `14` | Days with no hits before a counter shows an "Inactive" badge in the dashboard. |
-| `BRAND_NAME` | `Voux` | Default display name (used in titles, hero text). You can override it in `/settings.html`. |
+| `BRAND_NAME` | `Voux` | Default display name (used in titles, hero text). You can override it in `/settings`. |
 | `HOME_TITLE` | `Voux · Simple Free & Open Source Hit Counter...` | The homepage `<title>` tag value. Editable in settings. |
 | `UNLIMITED_THROTTLE_SECONDS` | `0` | Seconds to wait before counting the same IP again in "Every visit" mode. `0` disables throttling. |
 
-SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings.html`, which now includes the 30-day activity summaries). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
+SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings`, which now includes the 30-day activity summaries). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
 
 ## 🧩 API quick reference
 
@@ -137,7 +137,7 @@ SQLite lives in `data/counters.db`. Back it up occasionally if you care about th
 - `DELETE /api/api-keys/:id` – revoke a key (admin only).
 - `POST /api/counters/purge-inactive` – delete counters that haven’t seen hits in X days (admin only).
 
-Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/admin.html`, sign in once, and use the dashboard (it already calls these endpoints under the hood). Owner API keys use the `X-Voux-Key: <token>` header and can only touch the counters you assign to them.
+Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/admin`, sign in once, and use the dashboard (it already calls these endpoints under the hood). Owner API keys use the `X-Voux-Key: <token>` header and can only touch the counters you assign to them.
 
 #
 

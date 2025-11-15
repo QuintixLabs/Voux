@@ -11,7 +11,7 @@
   menuButton.addEventListener('click', (event) => {
     event.preventDefault();
     if (!hasValidToken()) {
-      window.location.href = '/admin.html';
+    window.location.href = '/admin';
       return;
     }
     toggleMenu();
@@ -27,7 +27,7 @@
   logoutBtn?.addEventListener('click', () => {
     clearStoredToken();
     closeMenu();
-    window.location.href = '/admin.html';
+    window.location.href = '/admin';
   });
 
   function toggleMenu() {
