@@ -43,32 +43,13 @@ jobs:
             .
 
       - name: Publish GitHub release
-        uses: actions/github-script@v7
         env:
           VERSION: ${{ env.VERSION }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const tag = process.env.VERSION;
-            if (!tag) {
-              core.setFailed('Missing VERSION env var');
-            } else {
-              try {
-                await github.request('POST /repos/{owner}/{repo}/releases', {
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  tag_name: tag,
-                  name: tag,
-                  generate_release_notes: true,
-                  draft: false,
-                  prerelease: false
-                });
-                core.info(`Published GitHub release ${tag}`);
-              } catch (error) {
-                if (error.status === 422) {
-                  core.info(`Release ${tag} already exists, skipping.`);
-                } else {
-                  throw error;
-                }
-              }
-            }
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "$VERSION" ]; then
+            echo "VERSION env var missing"
+            exit 1
+          fi
+          gh release create "$VERSION" --generate-notes --title "$VERSION" || \
+            echo "Release $VERSION already exists"
