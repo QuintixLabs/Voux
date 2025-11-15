@@ -98,8 +98,18 @@ function populateForm(config) {
   if (throttleSelect) {
     const value = Number(config.unlimitedThrottleSeconds);
     const safe = Number.isFinite(value) ? String(value) : '0';
-    const validValues = Array.from(throttleSelect.options).map((opt) => opt.value);
-    throttleSelect.value = validValues.includes(safe) ? safe : '0';
+    let option = throttleSelect.querySelector(`option[value="${safe}"]`);
+    if (!option) {
+      option = document.createElement('option');
+      option.value = safe;
+      const seconds = Number(safe);
+      const labelSeconds = Number.isFinite(seconds) ? seconds : 0;
+      const pretty = labelSeconds === 1 ? '1 second' : `${labelSeconds} seconds`;
+      option.textContent = `Throttle to ${pretty} per visitor`;
+      option.dataset.custom = 'true';
+      throttleSelect.appendChild(option);
+    }
+    throttleSelect.value = safe;
   }
 }
 

@@ -113,7 +113,7 @@ Environment variables. You can tweak some of these options later from `/settings
 | `INACTIVE_DAYS_THRESHOLD` | `14` | Days with no hits before a counter shows an "Inactive" badge in the dashboard. |
 | `BRAND_NAME` | `Voux` | Default display name (used in titles, hero text). You can override it in `/settings`. |
 | `HOME_TITLE` | `Voux · Simple Free & Open Source Hit Counter...` | The homepage `<title>` tag value. Editable in settings. |
-| `UNLIMITED_THROTTLE_SECONDS` | `0` | Seconds to wait before counting the same IP again in "Every visit" mode. `0` disables throttling. |
+| `UNLIMITED_THROTTLE_SECONDS` | `0` | Seconds to wait before counting the same IP again in "Every visit" mode. `0` disables throttling. Applies only on first boot, once `data/config.json` exists, update the throttle from `/settings` or edit that file (`config.json`) (deleting it will regenerate from `.env`). |
 
 SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings`, which now includes the 30-day activity summaries). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
 
