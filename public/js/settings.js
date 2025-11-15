@@ -43,7 +43,7 @@ let tokenData = loadStoredToken();
 let statusTimeout = null;
 
 if (!tokenData) {
-  window.location.href = '/admin';
+  window.location.href = '/dashboard';
 } else {
   init(tokenData.token);
 }
@@ -71,7 +71,7 @@ function init(token) {
     })
     .catch(() => {
       clearStoredToken();
-      window.location.href = '/admin';
+      window.location.href = '/dashboard';
     });
 }
 

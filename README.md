@@ -103,7 +103,7 @@ Environment variables. You can tweak some of these options later from `/settings
 | ---- | -------- | ------------ |
 | `PORT` | `8787` | The web server port number. |
 | `PUBLIC_BASE_URL` | based on request | Lets you set a fixed site URL (like `https://counter.yourdomain.com`). |
-| `ADMIN_TOKEN` | `unset` | A secret key is needed to access admin tools and the `/admin` page. |
+| `ADMIN_TOKEN` | `unset` | A secret key is needed to access admin tools and the `/dashboard` page. |
 | `PRIVATE_MODE` | `false` | If `true`, only admins can create new counters. |
 | `ADMIN_PAGE_SIZE` | `5` | How many counters show on each page in the admin panel. |
 | `SHOW_PUBLIC_GUIDES` | `true` | Controls if public guide cards are shown on the main page. |
@@ -137,7 +137,7 @@ SQLite lives in `data/counters.db`. Back it up occasionally if you care about th
 - `DELETE /api/api-keys/:id` – revoke a key (admin only).
 - `POST /api/counters/purge-inactive` – delete counters that haven’t seen hits in X days (admin only).
 
-Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/admin`, sign in once, and use the dashboard (it already calls these endpoints under the hood). Owner API keys use the `X-Voux-Key: <token>` header and can only touch the counters you assign to them.
+Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/dashboard`, sign in once, and use the dashboard (it already calls these endpoints under the hood). Owner API keys use the `X-Voux-Key: <token>` header and can only touch the counters you assign to them.
 
 #
 
