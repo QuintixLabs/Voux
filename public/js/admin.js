@@ -241,21 +241,36 @@ async function attemptLogin(fromStored) {
     adminTokenInput.value = '';
     showDashboard();
   } catch (error) {
-    handleAuthFailure(error);
+    handleAuthFailure(error, fromStored);
   } finally {
     setLoginLoading(false);
   }
 }
 
-function handleAuthFailure(error) {
-  clearStoredToken();
-  state.token = '';
-  hideDashboard();
-  const message = error?.message && error.message.toLowerCase().includes('token')
-    ? 'Incorrect password. Try again.'
-    : error?.message || 'Unable to authenticate.';
-  showLoginError(message);
-  adminTokenInput?.focus();
+function handleAuthFailure(error, fromStored) {
+  const code = error?.code;
+  if (code === 'unauthorized') {
+    clearStoredToken();
+    state.token = '';
+    hideDashboard();
+    const message = error?.message || 'Incorrect password. Try again.';
+    showLoginError(message);
+    adminTokenInput?.focus();
+    return;
+  }
+  if (code === 'rate_limit') {
+    const retry = error?.retryAfterSeconds
+      ? ` Try again in about ${Math.ceil(error.retryAfterSeconds)}s.`
+      : '';
+    showLoginError(`${error?.message || 'Too many attempts.'}${retry}`);
+    return;
+  }
+  if (fromStored) {
+    showToast(error?.message || 'Unable to reach the server. Retrying…', 'error');
+    setTimeout(() => attemptLogin(true), Math.max(1500, (error?.retryAfterSeconds || 1) * 1000));
+  } else {
+    showLoginError(error?.message || 'Unable to reach the server. Try again.');
+  }
 }
 
 async function refreshCounters(page = 1, options = {}) {
@@ -302,18 +317,21 @@ async function fetchCounters(page) {
   });
   if (res.status === 401 || res.status === 403) {
     const err = await res.json().catch(() => ({}));
-    const message = err?.message || 'Invalid admin token.';
-    throw new Error(message);
+    const unauthorized = new Error(err?.message || 'Invalid admin token.');
+    unauthorized.code = 'unauthorized';
+    throw unauthorized;
   }
   if (res.status === 429) {
     const err = await res.json().catch(() => ({}));
-    const message = err?.message || 'Too many attempts. Try again soon.';
-    const rateError = new Error(message);
+    const rateError = new Error(err?.message || 'Too many attempts. Try again soon.');
     rateError.retryAfterSeconds = err?.retryAfterSeconds;
+    rateError.code = 'rate_limit';
     throw rateError;
   }
   if (!res.ok) {
-    throw new Error('Failed to load counters');
+    const generic = new Error('Failed to load counters');
+    generic.code = 'network';
+    throw generic;
   }
   return res.json();
 }
