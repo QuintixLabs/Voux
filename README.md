@@ -20,6 +20,7 @@
 - Admin UI handles search, pagination, inline edits, notes, mode filters, and auto-refreshing stats.
 - Toggle the instance between `public/private` however you like.
 - 7-day activity charts plus inactive badges so you can spot stale counters at a glance.
+- Owner API keys so collaborators can manage their counters without the master admin token.
 
 So yeah... it's pretty good `:)`
 
@@ -126,8 +127,11 @@ SQLite lives in `data/counters.db`. Back it up occasionally if you care about th
 - `POST /api/settings` – update runtime flags (private mode, guide cards, allowed modes, etc.).
 - `GET /api/counters/export` – download every counter plus its 30-day activity summary as JSON (admin only).
 - `POST /api/counters/import` – restore counters (and optional activity data) from a JSON backup (admin only).
+- `GET /api/api-keys` – list owner API keys (admin only).
+- `POST /api/api-keys` – create a new key (admin only).
+- `DELETE /api/api-keys/:id` – revoke a key (admin only).
 
-Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/admin.html`, sign in once, and use the dashboard (it already calls these endpoints under the hood).
+Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/admin.html`, sign in once, and use the dashboard (it already calls these endpoints under the hood). Owner API keys use the `X-Voux-Key: <token>` header and can only touch the counters you assign to them.
 
 #
 

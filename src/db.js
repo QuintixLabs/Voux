@@ -40,6 +40,17 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_counter_daily_day ON counter_daily(day);
+
+  CREATE TABLE IF NOT EXISTS api_keys (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    token_hash TEXT NOT NULL,
+    scope TEXT NOT NULL DEFAULT 'global',
+    allowed_counters TEXT,
+    created_at INTEGER NOT NULL,
+    last_used_at INTEGER,
+    disabled INTEGER NOT NULL DEFAULT 0
+  );
 `);
 
 const baseSelectFields = 'id, label, theme, note, value, created_at, count_mode';
@@ -92,6 +103,14 @@ const deleteCountersByModeStmt = {
   unique: db.prepare("DELETE FROM counters WHERE count_mode <> 'unlimited'"),
   unlimited: db.prepare("DELETE FROM counters WHERE count_mode = 'unlimited'")
 };
+const insertApiKeyStmt = db.prepare(`
+  INSERT INTO api_keys (id, name, token_hash, scope, allowed_counters, created_at, last_used_at, disabled)
+  VALUES (@id, @name, @token_hash, @scope, @allowed_counters, @created_at, NULL, 0)
+`);
+const listApiKeysStmt = db.prepare('SELECT id, name, scope, allowed_counters, created_at, last_used_at, disabled FROM api_keys ORDER BY created_at DESC');
+const deleteApiKeyStmt = db.prepare('DELETE FROM api_keys WHERE id = ?');
+const selectApiKeyByHashStmt = db.prepare('SELECT id, name, scope, allowed_counters, created_at, last_used_at, disabled FROM api_keys WHERE token_hash = ? AND disabled = 0');
+const updateApiKeyUsageStmt = db.prepare('UPDATE api_keys SET last_used_at = ? WHERE id = ?');
 
 function buildCounterQuery({ search, mode, limit, offset, count = false }) {
   let sql = count ? 'SELECT COUNT(*) as total FROM counters' : `SELECT ${baseSelectFields} FROM counters`;
@@ -364,6 +383,64 @@ function normalizeDailyEntry(raw) {
   };
 }
 
+function createApiKey({ name, scope = 'global', counters = [] }) {
+  const trimmedName = String(name || '').trim().slice(0, 80);
+  if (!trimmedName) {
+    throw new Error('name_required');
+  }
+  const normalizedScope = scope === 'limited' ? 'limited' : 'global';
+  let allowed = [];
+  if (normalizedScope === 'limited') {
+    allowed = Array.isArray(counters)
+      ? counters
+          .map((value) => String(value || '').trim().slice(0, 64))
+          .filter(Boolean)
+      : [];
+    if (!allowed.length) {
+      throw new Error('counters_required');
+    }
+  }
+  const token = generateApiKeyToken();
+  const record = {
+    id: `key_${generateId(10)}`,
+    name: trimmedName,
+    token_hash: hashToken(token),
+    scope: normalizedScope,
+    allowed_counters: allowed.length ? JSON.stringify(allowed) : null,
+    created_at: Date.now()
+  };
+  insertApiKeyStmt.run(record);
+  const key = normalizeApiKeyRow({ ...record, last_used_at: null, disabled: 0 });
+  return { token, key };
+}
+
+function listApiKeys() {
+  return listApiKeysStmt.all().map(normalizeApiKeyRow);
+}
+
+function deleteApiKey(id) {
+  if (!id) return false;
+  const result = deleteApiKeyStmt.run(id);
+  return result.changes > 0;
+}
+
+function findApiKeyByToken(token) {
+  if (!token) return null;
+  const hash = hashToken(token);
+  const row = selectApiKeyByHashStmt.get(hash);
+  if (!row || row.disabled) return null;
+  return normalizeApiKeyRow(row);
+}
+
+function recordApiKeyUsage(id) {
+  if (!id) return;
+  try {
+    updateApiKeyUsageStmt.run(Date.now(), id);
+  } catch (error) {
+    console.warn('Failed to record API key usage', error);
+  }
+}
+
 module.exports = {
   createCounter,
   listCounters,
@@ -383,6 +460,11 @@ module.exports = {
   importCounters,
   updateCounterValue,
   updateCounterMetadata,
+  createApiKey,
+  listApiKeys,
+  deleteApiKey,
+  findApiKeyByToken,
+  recordApiKeyUsage,
   describeModeLabel,
   parseRequestedMode
 };
@@ -429,4 +511,37 @@ function recordDailyHit(counterId, now) {
   } catch (error) {
     console.warn('Failed to record daily hit', error);
   }
+}
+
+function generateApiKeyToken() {
+  const random = crypto.randomBytes(10).toString('hex');
+  return `voux_${random}`;
+}
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
+
+function normalizeApiKeyRow(row) {
+  if (!row) return null;
+  let allowed = [];
+  if (row.allowed_counters) {
+    try {
+      const parsed = JSON.parse(row.allowed_counters);
+      if (Array.isArray(parsed)) {
+        allowed = parsed.map((item) => String(item)).filter(Boolean);
+      }
+    } catch (_) {
+      allowed = [];
+    }
+  }
+  return {
+    id: row.id,
+    name: row.name,
+    scope: row.scope === 'limited' ? 'limited' : 'global',
+    allowedCounters: allowed,
+    createdAt: row.created_at || 0,
+    lastUsedAt: row.last_used_at || null,
+    disabled: Boolean(row.disabled)
+  };
 }

@@ -1460,6 +1460,88 @@ body.modal-open {
   margin-top: 0.5rem;
 }
 
+.api-keys-list {
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+}
+
+.api-keys-list:empty::before {
+  content: 'No API keys yet.';
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+}
+
+.api-key-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.65rem 0.5rem;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.api-key-row:last-child {
+  border-bottom: none;
+}
+
+.api-key-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.api-key-meta strong {
+  font-size: 0.95rem;
+}
+
+.api-key-meta small {
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+}
+
+.api-key-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.api-key-form {
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--bg-secondary);
+}
+
+.api-key-form textarea {
+  min-height: 80px;
+}
+
+#apiKeyCountersField.hidden {
+  display: none;
+}
+
+.api-keys-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.api-keys-pagination.hidden {
+  display: none;
+}
+
 .toggle--inline {
   margin-top: 0.5rem;
 }

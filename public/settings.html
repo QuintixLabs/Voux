@@ -109,6 +109,37 @@
       </div>
       <p class="hint" id="backupStatus" aria-live="polite"></p>
     </section>
+
+    <section class="card" id="apiKeysCard">
+      <h2>Owner API keys</h2>
+      <p>Create scoped keys so collaborators can reset or delete their own counters without the main admin password.</p>
+      <div id="apiKeysList" class="api-keys-list" aria-live="polite"></div>
+      <div id="apiKeysPagination" class="api-keys-pagination hidden">
+        <button type="button" id="apiKeysPrev" class="ghost"><i class="ri-arrow-left-line"></i></button>
+        <span id="apiKeysPageInfo" class="pagination-info">Page 1</span>
+        <button type="button" id="apiKeysNext" class="ghost"><i class="ri-arrow-right-line"></i></button>
+      </div>
+      <form id="apiKeyForm" class="api-key-form" action="javascript:void(0);">
+        <div class="field">
+          <label for="apiKeyName">Key name</label>
+          <input type="text" id="apiKeyName" maxlength="80" placeholder="Blog A" required />
+        </div>
+        <div class="field">
+          <label for="apiKeyScope">Scope</label>
+          <select id="apiKeyScope">
+            <option value="global">Full access (all counters)</option>
+            <option value="limited">Specific counters only</option>
+          </select>
+        </div>
+        <div class="field hidden" id="apiKeyCountersField">
+          <label for="apiKeyCounters">Allowed counter IDs</label>
+          <textarea id="apiKeyCounters" rows="3" placeholder="one-id-per-line"></textarea>
+          <small class="hint">Only required for limited keys.</small>
+        </div>
+        <button type="submit"><i class="ri-key-line"></i> Generate key</button>
+      </form>
+      <p class="hint" id="apiKeyStatus"></p>
+    </section>
   </main>
 
   <div data-footer-root></div>

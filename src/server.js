@@ -18,6 +18,9 @@ const {
   getCounterDailyTrend,
   exportDailyActivity,
   importDailyActivity,
+  createApiKey,
+  listApiKeys,
+  deleteApiKey,
   exportCounters,
   importCounters,
   updateCounterValue,
@@ -25,7 +28,11 @@ const {
 } = require('./db');
 const { getConfig, updateConfig } = require('./configStore');
 const requireAdmin = require('./middleware/requireAdmin');
-const { verifyAdmin } = require('./middleware/requireAdmin');
+const {
+  verifyAdmin,
+  requireAdminOrKey,
+  hasCounterAccess
+} = require('./middleware/requireAdmin');
 
 const PORT = process.env.PORT || 8787;
 const DEFAULT_PAGE_SIZE = Number(process.env.ADMIN_PAGE_SIZE) || 5;
@@ -145,7 +152,10 @@ app.post('/api/counters/import', requireAdmin, (req, res) => {
   }
 });
 
-app.delete('/api/counters/:id', requireAdmin, (req, res) => {
+app.delete('/api/counters/:id', requireAdminOrKey, (req, res) => {
+  if (!hasCounterAccess(req.auth, req.params.id)) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
   const removed = deleteCounter(req.params.id);
   if (!removed) {
     return res.status(404).json({ error: 'counter_not_found' });
@@ -153,11 +163,14 @@ app.delete('/api/counters/:id', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/counters/:id/value', requireAdmin, (req, res) => {
+app.post('/api/counters/:id/value', requireAdminOrKey, (req, res) => {
   const { value } = req.body || {};
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
     return res.status(400).json({ error: 'invalid_value' });
+  }
+  if (!hasCounterAccess(req.auth, req.params.id)) {
+    return res.status(403).json({ error: 'forbidden' });
   }
   const updated = updateCounterValue(req.params.id, Math.floor(parsed));
   if (!updated) {
@@ -166,10 +179,13 @@ app.post('/api/counters/:id/value', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-app.patch('/api/counters/:id', requireAdmin, (req, res) => {
+app.patch('/api/counters/:id', requireAdminOrKey, (req, res) => {
   const counter = getCounter(req.params.id);
   if (!counter) {
     return res.status(404).json({ error: 'counter_not_found' });
+  }
+  if (!hasCounterAccess(req.auth, counter.id)) {
+    return res.status(403).json({ error: 'forbidden' });
   }
   const { label, value, note } = req.body || {};
   const nextLabel =
@@ -225,6 +241,42 @@ app.post('/api/settings', requireAdmin, (req, res) => {
   }
   const updated = updateConfig(patch);
   res.json({ config: updated, version: getVersion() });
+});
+
+app.get('/api/api-keys', requireAdmin, (req, res) => {
+  const keys = listApiKeys();
+  res.json({ keys });
+});
+
+app.post('/api/api-keys', requireAdmin, (req, res) => {
+  const { name, scope = 'global', counters } = req.body || {};
+  try {
+    const allowed = Array.isArray(counters)
+      ? counters
+      : typeof counters === 'string'
+      ? counters
+          .split(/[\n,]/)
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : [];
+    const result = createApiKey({ name, scope, counters: allowed });
+    res.status(201).json({ key: result.key, token: result.token });
+  } catch (error) {
+    const message = error.message === 'counters_required'
+      ? 'Provide at least one counter ID for limited keys.'
+      : error.message === 'name_required'
+      ? 'Name is required.'
+      : error.message || 'failed_to_create_key';
+    res.status(400).json({ error: message });
+  }
+});
+
+app.delete('/api/api-keys/:id', requireAdmin, (req, res) => {
+  const removed = deleteApiKey(req.params.id);
+  if (!removed) {
+    return res.status(404).json({ error: 'api_key_not_found' });
+  }
+  res.json({ ok: true });
 });
 
 app.delete('/api/counters', requireAdmin, (req, res) => {

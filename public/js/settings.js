@@ -10,7 +10,25 @@ const allowModeUnlimitedInput = document.getElementById('allowModeUnlimited');
 const downloadBackupBtn = document.getElementById('downloadBackup');
 const restoreFileInput = document.getElementById('restoreFile');
 const backupStatusLabel = document.getElementById('backupStatus');
+const apiKeysCard = document.getElementById('apiKeysCard');
+const apiKeysList = document.getElementById('apiKeysList');
+const apiKeyForm = document.getElementById('apiKeyForm');
+const apiKeyNameInput = document.getElementById('apiKeyName');
+const apiKeyScopeSelect = document.getElementById('apiKeyScope');
+const apiKeyCountersField = document.getElementById('apiKeyCountersField');
+const apiKeyCountersInput = document.getElementById('apiKeyCounters');
+const apiKeyStatusLabel = document.getElementById('apiKeyStatus');
+const apiKeysPagination = document.getElementById('apiKeysPagination');
+const apiKeysPrevBtn = document.getElementById('apiKeysPrev');
+const apiKeysNextBtn = document.getElementById('apiKeysNext');
+const apiKeysPageInfo = document.getElementById('apiKeysPageInfo');
 let backupBusy = false;
+let activeAdminToken = null;
+const apiKeyPager = {
+  list: [],
+  page: 1,
+  pageSize: 3
+};
 
 let tokenData = loadStoredToken();
 let statusTimeout = null;
@@ -22,6 +40,7 @@ if (!tokenData) {
 }
 
 function init(token) {
+  activeAdminToken = token;
   fetchSettings(token)
     .then(({ config }) => {
       populateForm(config);
@@ -36,6 +55,7 @@ function init(token) {
       allowModeUniqueInput?.addEventListener('change', (event) => handleAllowedModesChange(token, event.target));
       allowModeUnlimitedInput?.addEventListener('change', (event) => handleAllowedModesChange(token, event.target));
       setupBackupControls(token);
+      setupApiKeys(token);
     })
     .catch(() => {
       clearStoredToken();
@@ -64,6 +84,16 @@ function populateForm(config) {
 function setupBackupControls(token) {
   downloadBackupBtn?.addEventListener('click', () => handleBackupDownload(token));
   restoreFileInput?.addEventListener('change', (event) => handleBackupRestore(token, event));
+}
+
+function setupApiKeys(token) {
+  if (!apiKeysCard) return;
+  loadApiKeys(token);
+  apiKeyForm?.addEventListener('submit', (event) => handleApiKeyCreate(token, event));
+  apiKeyScopeSelect?.addEventListener('change', updateApiKeyScopeState);
+  apiKeysPrevBtn?.addEventListener('click', () => changeApiKeyPage(-1));
+  apiKeysNextBtn?.addEventListener('click', () => changeApiKeyPage(1));
+  updateApiKeyScopeState();
 }
 async function handleToggleChange(token, patch, successMessage = 'Updated', control) {
   try {
@@ -299,4 +329,185 @@ function setBackupStatus(message) {
   if (backupStatusLabel) {
     backupStatusLabel.textContent = message || '';
   }
+}
+
+function formatTimestamp(value) {
+  if (!value) return 'never';
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'never';
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  } catch (_) {
+    return 'never';
+  }
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function loadApiKeys(token) {
+  if (!apiKeysList) return;
+  try {
+    apiKeysList.innerHTML = '<p class="hint">Loading keys…</p>';
+    const res = await fetch('/api/api-keys', {
+      headers: { 'x-voux-admin': token }
+    });
+    if (!res.ok) throw new Error('Failed to load API keys');
+    const data = await res.json();
+    apiKeyPager.list = Array.isArray(data.keys) ? data.keys : [];
+    apiKeyPager.page = 1;
+    renderApiKeys();
+    setApiKeyStatus('');
+  } catch (error) {
+    apiKeysList.innerHTML = '<p class="hint error">Unable to load API keys.</p>';
+    setApiKeyStatus('');
+    console.warn(error);
+  }
+}
+
+function renderApiKeys() {
+  if (!apiKeysList) return;
+  const keys = apiKeyPager.list || [];
+  const totalPages = Math.max(1, Math.ceil(keys.length / apiKeyPager.pageSize));
+  apiKeyPager.page = Math.min(Math.max(1, apiKeyPager.page), totalPages);
+  const start = (apiKeyPager.page - 1) * apiKeyPager.pageSize;
+  const visible = keys.slice(start, start + apiKeyPager.pageSize);
+
+  apiKeysList.innerHTML = '';
+  if (!visible.length) {
+    apiKeysList.innerHTML = '';
+  }
+  visible.forEach((key) => {
+    const row = document.createElement('div');
+    row.className = 'api-key-row';
+    const meta = document.createElement('div');
+    meta.className = 'api-key-meta';
+    const scopeLabel = key.scope === 'limited'
+      ? `Limited · ${key.allowedCounters?.length || 0} counters`
+      : 'Full access';
+    const detail = document.createElement('small');
+    const allowedText = key.scope === 'limited' && key.allowedCounters?.length
+      ? `Allowed: ${key.allowedCounters.join(', ')}`
+      : '';
+    const timeline = document.createElement('small');
+    timeline.textContent = `Created ${formatTimestamp(key.createdAt)} · Last used ${formatTimestamp(key.lastUsedAt)}`;
+    meta.innerHTML = `<strong>${escapeHtml(key.name || key.id)}</strong><small>${scopeLabel}</small>`;
+    if (allowedText) {
+      detail.textContent = allowedText;
+      meta.appendChild(detail);
+    }
+    meta.appendChild(timeline);
+    const actions = document.createElement('div');
+    actions.className = 'api-key-actions';
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'danger ghost';
+    deleteBtn.innerHTML = '<i class="ri-delete-bin-line"></i>';
+    deleteBtn.addEventListener('click', () => handleApiKeyDelete(key.id));
+    actions.appendChild(deleteBtn);
+    row.append(meta, actions);
+    apiKeysList.appendChild(row);
+  });
+
+  if (keys.length > apiKeyPager.pageSize && apiKeysPagination && apiKeysPrevBtn && apiKeysNextBtn && apiKeysPageInfo) {
+    apiKeysPagination.classList.remove('hidden');
+    apiKeysPrevBtn.disabled = apiKeyPager.page <= 1;
+    apiKeysNextBtn.disabled = apiKeyPager.page >= totalPages;
+    apiKeysPageInfo.textContent = `Page ${apiKeyPager.page} / ${totalPages}`;
+  } else if (apiKeysPagination) {
+    apiKeysPagination.classList.add('hidden');
+  }
+}
+
+async function handleApiKeyCreate(token, event) {
+  event.preventDefault();
+  if (!apiKeyNameInput || !apiKeyScopeSelect) return;
+  const name = apiKeyNameInput.value.trim();
+  const scope = apiKeyScopeSelect.value === 'limited' ? 'limited' : 'global';
+  let allowed = [];
+  if (scope === 'limited' && apiKeyCountersInput) {
+    allowed = apiKeyCountersInput.value
+      .split(/[\n,]/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+  }
+  try {
+    setApiKeyStatus('Creating key…');
+    const res = await fetch('/api/api-keys', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-voux-admin': token
+      },
+      body: JSON.stringify({ name, scope, counters: allowed })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to create key');
+    }
+    const payload = await res.json();
+    setApiKeyStatus('');
+    showToast('API key generated');
+    if (payload.token) {
+      await showAlert(`Copy your new API key now:\n${payload.token}`, { title: 'API key created' });
+    }
+    apiKeyForm?.reset();
+    updateApiKeyScopeState();
+    loadApiKeys(token);
+  } catch (error) {
+    setApiKeyStatus('');
+    await showAlert(error.message || 'Failed to create API key');
+  }
+}
+
+async function handleApiKeyDelete(id) {
+  if (!id) return;
+  const confirmed = await modalConfirm({
+    title: 'Delete API key?',
+    message: 'This key will immediately stop working.',
+    confirmLabel: 'Delete key',
+    variant: 'danger'
+  });
+  if (!confirmed) return;
+  const token = activeAdminToken;
+  if (!token) {
+    await showAlert('Log in again to manage API keys.');
+    return;
+  }
+  try {
+    const res = await fetch(`/api/api-keys/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-voux-admin': token }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete API key');
+    }
+    showToast('API key deleted');
+    loadApiKeys(token);
+  } catch (error) {
+    await showAlert(error.message || 'Failed to delete API key');
+  }
+}
+
+function updateApiKeyScopeState() {
+  if (!apiKeyScopeSelect || !apiKeyCountersField) return;
+  apiKeyCountersField.classList.toggle('hidden', apiKeyScopeSelect.value !== 'limited');
+}
+
+function setApiKeyStatus(message) {
+  if (apiKeyStatusLabel) {
+    apiKeyStatusLabel.textContent = message || '';
+  }
+}
+
+function changeApiKeyPage(delta) {
+  apiKeyPager.page += delta;
+  renderApiKeys();
 }
