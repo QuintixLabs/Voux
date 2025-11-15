@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Page Not Found · Voux</title>
+  <title data-page-title="Page Not Found">Voux · Page Not Found</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 
-<body>
+<body data-page="404">
   <header class="site-nav">
     <a class="brand" href="/">
       <img src="/assets/logo-text.png" alt="Voux" />
@@ -53,6 +53,7 @@
 
   <div data-footer-root></div>
 
+  <script src="/js/brand.js" defer></script>
   <script src="/js/modal.js" defer></script>
   <script src="/js/nav.js" defer></script>
   <script src="/js/footer.js" defer></script>

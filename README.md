@@ -21,6 +21,7 @@
 - Toggle the instance between `public/private` however you like.
 - 7-day activity charts plus inactive badges so you can spot stale counters at a glance.
 - Owner API keys so collaborators can manage their counters without the master admin token.
+- Branding/SEO controls let you rename the instance and tweak homepage meta tags without editing files.
 
 So yeah... it's pretty good `:)`
 
@@ -108,7 +109,9 @@ Environment variables. You can tweak some of these options later from `/settings
 | `DEFAULT_ALLOWED_MODES` | `unique,unlimited` | Comma-separated list of modes to allow (`unique`, `unlimited`) for counters. You can change it later in the dashboard. |
 | `COUNTER_CREATE_LIMIT` | `5` | How many counters a single IP can create before hitting the one-minute cooldown. |
 | `COUNTER_CREATE_WINDOW_MS` | `60000` | Window length (in ms) for the above limit. Leave it alone unless you need a different window. |
-| `INACTIVE_DAYS_THRESHOLD` | `14` | Days with no hits before a counter shows an “Inactive” badge in the dashboard. |
+| `INACTIVE_DAYS_THRESHOLD` | `14` | Days with no hits before a counter shows an "Inactive" badge in the dashboard. |
+| `BRAND_NAME` | `Voux` | Default display name (used in titles, hero text). You can override it in `/settings.html`. |
+| `HOME_TITLE` | `Voux · Simple Free & Open Source Hit Counter...` | The homepage `<title>` tag value. Editable in settings. |
 
 SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings.html`, which now includes the 30-day activity summaries). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
 

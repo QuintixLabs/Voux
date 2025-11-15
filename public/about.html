@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Voux · About</title>
+  <title data-page-title="About">Voux · About</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 
-<body>
+<body data-page="about">
   <header class="site-nav">
     <a class="brand" href="/">
       <img src="/assets/logo-text.png" alt="Voux" />
@@ -46,10 +46,10 @@
         <span class="eyebrow-logo">
           <img src="/assets/logo.png" alt="Voux logo" />
         </span>
-        <span>Voux · About</span>
+        <span data-brand-text data-brand-page="About">Voux · About</span>
       </p>
-      <h1>What is Voux?</h1>
-      <p>Voux is a self-hosted counter generator. It runs on your hardware, lets you style embeds any way you want, and keeps the data with you.</p>
+      <h1>What is <span data-brand-inline>Voux</span>?</h1>
+      <p><span data-brand-inline>Voux</span> is a self-hosted counter generator. It runs on your hardware, lets you style embeds any way you want, and keeps the data with you.</p>
     </header>
 
     <section class="card">
@@ -58,12 +58,12 @@
       A long time ago there was a site called Cutercounter where you could make simple unique-visit counters, but it shut down. 
       So I switched to freehitcounters.org for a while, but I wanted something I could control myself. 
       If a service goes down or changes, I don't want to depend on it. 
-      So I built Voux to be my own version that anyone can run and trust.</p>
+      So I built <span data-brand-inline>Voux</span> to be my own version that anyone can run and trust.</p>
     </section>
 
     <section class="card">
       <h2>Self-hosted or community instances</h2>
-      <p>You can run Voux yourself, or you can use a public instance hosted by someone else. 
+      <p>You can run <span data-brand-inline>Voux</span> yourself, or you can use a public instance hosted by someone else. 
       Those hosts control their own databases, policies, and uptime. If you join their instance, you trust them, not us, with your data.</p>
     </section>
 
@@ -79,6 +79,7 @@
   <script src="/js/modal.js" defer></script>
   <script src="/js/nav.js" defer></script>
   <script src="/js/footer.js" defer></script>
+  <script src="/js/brand.js" defer></script>
 </body>
 
 </html>

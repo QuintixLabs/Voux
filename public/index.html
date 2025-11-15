@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Voux · Simple Free & Open Source Hit Counter for Blogs and Websites</title>
+  <title data-home-title="true">Voux · Simple Free & Open Source Hit Counter for Blogs and Websites</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet" />
@@ -26,10 +26,11 @@
 	<meta name="twitter:title" content="Voux">
 	<meta name="twitter:card" content="summary">
   <meta name="twitter:description" content="Create your own self-hosted counter with Voux. Free, open source, and easy to add to any blog or website.">
+  <meta name="twitter:image" content="/assets/banner-2.png">
 
 </head>
 
-<body class="config-pending">
+<body class="config-pending" data-page="home">
   <header class="site-nav">
     <a class="brand" href="/">
       <img src="/assets/logo-text.png" alt="Voux" />
@@ -61,7 +62,7 @@
         <span class="eyebrow-logo">
           <img src="/assets/logo.png" alt="Voux logo" />
         </span>
-        <span>Voux · Home</span>
+        <span data-brand-text data-brand-page="Home">Voux · Home</span>
       </p>
       <h1>Build your own counter.</h1>
       <p>A simple, self-hosted view counter for blogs and websites. Easy to use, private, and fully customizable.</p>
@@ -96,7 +97,7 @@
 
     <section class="card hidden private-card config-guard" id="privateDashboardCard">
       <h2>Private instance is active</h2>
-      <p>You've locked Voux so only admins can create counters. Head to the dashboard to manage everything.</p>
+      <p>You've locked <span data-brand-inline>Voux</span> so only admins can create counters. Head to the dashboard to manage everything.</p>
       <a class="nav-link" href="/admin.html">Go to dashboard</a>
     </section>
 
@@ -119,7 +120,7 @@
         <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
       </summary>
       <div class="expander__content">
-        <p>Styling your counter with <b>Voux</b> is super simple. All you need to do is wrap your counter script inside an element. We'll use a <span class="code-inline">&lt;span&gt;</span> in this example:</p>
+        <p>Styling your counter with <b data-brand-inline>Voux</b> is super simple. All you need to do is wrap your counter script inside an element. We'll use a <span class="code-inline">&lt;span&gt;</span> in this example:</p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
           <pre><code class="language-markup">&lt;span class="counter-widget"&gt;
@@ -148,14 +149,14 @@
 
     <details class="card instructions config-guard expander" id="selfHostCard">
       <summary>
-        <span>Self-hosting Voux</span>
+        <span>Self-hosting <span data-brand-inline>Voux</span></span>
 
         <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
       </summary>
       <div class="expander__content">
         <p><span class="code-inline">📦 Manual installation</span></p>
         
-        <p>Running your own copy is easy. First, download Voux and enter the project folder:</p>
+        <p>Running your own copy is easy. First, download <span data-brand-inline>Voux</span> and enter the project folder:</p>
 
         <p><strong>1. Clone the project</strong></p>
         <div class="code-snippet">
@@ -173,7 +174,7 @@ fnm use 22
 node -v</code></pre>
         </div>
 
-        <p><strong>2. Install Voux</strong></p>
+        <p><strong>2. Install <span data-brand-inline>Voux</span></strong></p>
         <p>Use one of these:</p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
@@ -190,7 +191,7 @@ npm install --production   # for production installs</code></pre>
         This is where you configure your admin token, site URL, port, and other options. 
         You must set ADMIN_TOKEN to something secret before running the server. For more settings check <a href="https://github.com/QuintixLabs/Voux?tab=readme-ov-file#-configuration" target="_blank">Github</a></p>
 
-        <p><strong>4. Start Voux</strong></p>
+        <p><strong>4. Start <span data-brand-inline>Voux</span></strong></p>
         <p>Development (auto-reload) :</p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
@@ -207,7 +208,7 @@ npm install --production   # for production installs</code></pre>
 
         
         <p><span class="code-inline">🐋 Docker</span></p>
-        <p>Or run Voux via Docker and pull the prebuilt image from GHCR:</p>
+        <p>Or run <span data-brand-inline>Voux</span> via Docker and pull the prebuilt image from GHCR:</p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
           <pre><code class="language-bash">docker run -d \
@@ -233,6 +234,7 @@ npm install --production   # for production installs</code></pre>
   <script src="/js/nav.js" defer></script>
   <script src="/js/footer.js" defer></script>
   <script src="/js/main.js" type="module"></script>
+  <script src="/js/brand.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>

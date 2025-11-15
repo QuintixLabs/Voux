@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Voux · Settings</title>
+  <title data-page-title="Settings">Voux · Settings</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 
-<body>
+<body data-page="settings">
   <header class="site-nav">
     <a class="brand" href="/">
       <img src="/assets/logo-text.png" alt="Voux" />
@@ -46,7 +46,7 @@
         <span class="eyebrow-logo">
           <img src="/assets/logo.png" alt="Voux logo" />
         </span>
-        <span>Voux · Settings</span>
+        <span data-brand-text data-brand-page="Settings">Voux · Settings</span>
       </p>
           <h1>Instance Controls</h1>
           <p>Manage your instance options and behavior. Only logged-in admins can make changes.</p>
@@ -97,6 +97,24 @@
       <p class="hint" id="settingsStatus">Loading…</p>
     </section>
 
+    <section class="card" id="brandingCard">
+      <h2>Branding</h2>
+      <form id="brandingForm" class="api-key-form" action="javascript:void(0);">
+        <div class="field">
+          <label for="brandNameInput">Brand display name</label>
+          <input type="text" id="brandNameInput" maxlength="80" placeholder="Voux" />
+          <small class="hint">Used anywhere you see "Brand · Page".</small>
+        </div>
+        <div class="field">
+          <label for="homeTitleInput">Homepage title</label>
+          <input type="text" id="homeTitleInput" maxlength="120" placeholder="Voux · Simple Free & Open Source Hit Counter" />
+          <small class="hint">Used on the homepage only.</small>
+        </div>
+        <button type="submit"><i class="ri-save-line"></i> Save branding</button>
+      </form>
+      <p class="hint" id="brandingStatus"></p>
+    </section>
+
     <section class="card" id="backupCard">
       <h2>Backup &amp; Restore</h2>
       <p>Download all counters as JSON or restore from a previous backup when moving servers.</p>
@@ -122,7 +140,7 @@
       <form id="apiKeyForm" class="api-key-form" action="javascript:void(0);">
         <div class="field">
           <label for="apiKeyName">Key name</label>
-          <input type="text" id="apiKeyName" maxlength="80" placeholder="Blog A" required />
+          <input type="text" id="apiKeyName" maxlength="80" placeholder="My API key" required />
         </div>
         <div class="field">
           <label for="apiKeyScope">Scope</label>
@@ -146,6 +164,7 @@
 
   <script src="/js/modal.js" defer></script>
   <script src="/js/nav.js" defer></script>
+  <script src="/js/brand.js" defer></script>
   <script src="/js/footer.js" defer></script>
   <script src="/js/settings.js" type="module"></script>
 </body>

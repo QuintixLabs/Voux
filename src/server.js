@@ -224,11 +224,12 @@ app.get('/api/settings', requireAdmin, (req, res) => {
 });
 
 app.post('/api/settings', requireAdmin, (req, res) => {
-  const { privateMode, showGuides, homeTitle, allowedModes } = req.body || {};
+  const { privateMode, showGuides, homeTitle, brandName, allowedModes } = req.body || {};
   const patch = {};
   if (typeof privateMode === 'boolean') patch.privateMode = privateMode;
   if (typeof showGuides === 'boolean') patch.showGuides = showGuides;
-  if (typeof homeTitle === 'string') patch.homeTitle = homeTitle.trim().slice(0, 80);
+  if (typeof homeTitle === 'string') patch.homeTitle = homeTitle.trim().slice(0, 120);
+  if (typeof brandName === 'string') patch.brandName = brandName.trim().slice(0, 80);
   if (allowedModes && typeof allowedModes === 'object') {
     const normalizedModes = normalizeAllowedModesPatch(allowedModes);
     if (!normalizedModes) {

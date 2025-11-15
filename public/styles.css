@@ -1516,6 +1516,7 @@ body.modal-open {
   border: 1px solid var(--border-primary);
   border-radius: 12px;
   padding: 1rem;
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;

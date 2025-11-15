@@ -28,13 +28,19 @@ function hydrateFooter(root, config) {
     yearEl.textContent = new Date().getFullYear();
   }
   const versionEl = root.querySelector('[data-footer-version]');
-if (versionEl) {
-  const version = config?.version;
-  versionEl.textContent = version
-    ? `Version: v${version}`
-    : 'Version: v?.?.?';
-}
-
+  if (versionEl) {
+    const version = config?.version;
+    versionEl.textContent = version ? `Version: v${version}` : 'Version: v?.?.?';
+  }
+  const brandName = (config?.brandName || 'Voux').trim() || 'Voux';
+  const brandHeading = root.querySelector('[data-brand-name]');
+  if (brandHeading) {
+    brandHeading.textContent = `About ${brandName}`;
+  }
+  const brandDesc = root.querySelector('[data-brand-description]');
+  if (brandDesc) {
+    brandDesc.textContent = `${brandName} is a free and open source counter for blogs and websites. You can host it yourself or use an instance run by someone else.`;
+  }
 }
 
 if (document.readyState === 'loading') {

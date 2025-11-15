@@ -18,10 +18,16 @@ const apiKeyScopeSelect = document.getElementById('apiKeyScope');
 const apiKeyCountersField = document.getElementById('apiKeyCountersField');
 const apiKeyCountersInput = document.getElementById('apiKeyCounters');
 const apiKeyStatusLabel = document.getElementById('apiKeyStatus');
+const brandingForm = document.getElementById('brandingForm');
+const brandNameInputField = document.getElementById('brandNameInput');
+const homeTitleInputField = document.getElementById('homeTitleInput');
+const brandingStatusLabel = document.getElementById('brandingStatus');
 const apiKeysPagination = document.getElementById('apiKeysPagination');
 const apiKeysPrevBtn = document.getElementById('apiKeysPrev');
 const apiKeysNextBtn = document.getElementById('apiKeysNext');
 const apiKeysPageInfo = document.getElementById('apiKeysPageInfo');
+const DEFAULT_BRAND_NAME = 'Voux';
+const DEFAULT_HOME_TITLE = 'Voux · Simple Free & Open Source Hit Counter for Blogs and Websites';
 let backupBusy = false;
 let activeAdminToken = null;
 const apiKeyPager = {
@@ -56,6 +62,7 @@ function init(token) {
       allowModeUnlimitedInput?.addEventListener('change', (event) => handleAllowedModesChange(token, event.target));
       setupBackupControls(token);
       setupApiKeys(token);
+      setupBrandingForm(token);
     })
     .catch(() => {
       clearStoredToken();
@@ -79,6 +86,10 @@ function populateForm(config) {
   if (toggleGuides) toggleGuides.checked = Boolean(config.showGuides);
   if (allowModeUniqueInput) allowModeUniqueInput.checked = config.allowedModes ? config.allowedModes.unique !== false : true;
   if (allowModeUnlimitedInput) allowModeUnlimitedInput.checked = config.allowedModes ? config.allowedModes.unlimited !== false : true;
+  if (brandNameInputField) brandNameInputField.value = config.brandName || DEFAULT_BRAND_NAME;
+  if (homeTitleInputField) {
+    homeTitleInputField.value = config.homeTitle || DEFAULT_HOME_TITLE;
+  }
 }
 
 function setupBackupControls(token) {
@@ -94,6 +105,11 @@ function setupApiKeys(token) {
   apiKeysPrevBtn?.addEventListener('click', () => changeApiKeyPage(-1));
   apiKeysNextBtn?.addEventListener('click', () => changeApiKeyPage(1));
   updateApiKeyScopeState();
+}
+
+function setupBrandingForm(token) {
+  if (!brandingForm) return;
+  brandingForm.addEventListener('submit', (event) => handleBrandingSubmit(token, event));
 }
 async function handleToggleChange(token, patch, successMessage = 'Updated', control) {
   try {
@@ -510,4 +526,47 @@ function setApiKeyStatus(message) {
 function changeApiKeyPage(delta) {
   apiKeyPager.page += delta;
   renderApiKeys();
+}
+
+async function handleBrandingSubmit(token, event) {
+  event.preventDefault();
+  if (!token) {
+    await showAlert('Log in again to update branding.');
+    return;
+  }
+  const payload = {
+    brandName:
+      (brandNameInputField?.value?.trim() || DEFAULT_BRAND_NAME).slice(0, 80),
+    homeTitle:
+      (homeTitleInputField?.value?.trim() || DEFAULT_HOME_TITLE).slice(0, 120)
+  };
+  if (brandNameInputField) brandNameInputField.value = payload.brandName;
+  if (homeTitleInputField) homeTitleInputField.value = payload.homeTitle;
+  try {
+    setBrandingStatus('Saving branding…');
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-voux-admin': token
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update branding');
+    }
+    await res.json().catch(() => ({}));
+    setBrandingStatus('');
+    showToast('Branding updated');
+  } catch (error) {
+    setBrandingStatus('');
+    await showAlert(error.message || 'Failed to update branding');
+  }
+}
+
+function setBrandingStatus(message) {
+  if (brandingStatusLabel) {
+    brandingStatusLabel.textContent = message || '';
+  }
 }

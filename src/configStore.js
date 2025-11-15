@@ -10,7 +10,13 @@ const defaultConfig = {
     process.env.SHOW_PUBLIC_GUIDES === undefined
       ? true
       : String(process.env.SHOW_PUBLIC_GUIDES).toLowerCase() === 'true',
-  allowedModes: normalizeAllowedModes(process.env.DEFAULT_ALLOWED_MODES)
+  allowedModes: normalizeAllowedModes(process.env.DEFAULT_ALLOWED_MODES),
+  brandName: sanitizeText(process.env.BRAND_NAME, 'Voux', 80),
+  homeTitle: sanitizeText(
+    process.env.HOME_TITLE,
+    'Voux · Simple Free & Open Source Hit Counter for Blogs and Websites',
+    120
+  )
 };
 
 let config = loadConfig();
@@ -44,6 +50,12 @@ function sanitizeConfig(raw) {
       normalized.unique = true;
     }
     safe.allowedModes = normalized;
+  }
+  if (typeof raw.brandName === 'string') {
+    safe.brandName = sanitizeText(raw.brandName, defaultConfig.brandName, 80);
+  }
+  if (typeof raw.homeTitle === 'string') {
+    safe.homeTitle = sanitizeText(raw.homeTitle, defaultConfig.homeTitle, 120);
   }
   return safe;
 }
@@ -88,4 +100,9 @@ function normalizeAllowedModes(envValue) {
     allowed.unique = true;
   }
   return allowed;
+}
+
+function sanitizeText(value, fallback, limit) {
+  const source = typeof value === 'string' ? value : fallback || '';
+  return source.trim().slice(0, limit || 120);
 }
