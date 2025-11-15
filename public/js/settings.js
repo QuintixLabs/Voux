@@ -298,7 +298,7 @@ async function handleBackupRestore(token, event) {
     return;
   }
   try {
-    setBackupStatus('Reading backup…');
+    setBackupStatus('Reading backup...');
     const text = await file.text();
     const parsed = JSON.parse(text);
     let payload = null;
@@ -324,7 +324,7 @@ async function handleBackupRestore(token, event) {
       showToast('Restore canceled', 'danger');
       return;
     }
-    setBackupStatus('Uploading backup…');
+    setBackupStatus('Uploading backup...');
     backupBusy = true;
     if (downloadBackupBtn) downloadBackupBtn.disabled = true;
     if (restoreFileInput) restoreFileInput.disabled = true;
@@ -372,7 +372,7 @@ async function handleThrottleChange(token) {
   if (!token || !throttleSelect) return;
   const value = Math.max(0, Number(throttleSelect.value) || DEFAULT_THROTTLE_SECONDS);
   try {
-    setStatus('Saving throttle…');
+    setStatus('');
     const res = await fetch('/api/settings', {
       method: 'POST',
       headers: {
@@ -457,7 +457,7 @@ function escapeHtml(value) {
 async function loadApiKeys(token) {
   if (!apiKeysList) return;
   try {
-    apiKeysList.innerHTML = '<p class="hint">Loading keys…</p>';
+    apiKeysList.innerHTML = '<p class="hint">Loading keys...</p>';
     const res = await fetch('/api/api-keys', {
       headers: { 'x-voux-admin': token }
     });
@@ -541,7 +541,7 @@ async function handleApiKeyCreate(token, event) {
       .filter(Boolean);
   }
   try {
-    setApiKeyStatus('Creating key…');
+    setApiKeyStatus('');
     const res = await fetch('/api/api-keys', {
       method: 'POST',
       headers: {
@@ -630,7 +630,7 @@ async function handleBrandingSubmit(token, event) {
   if (brandNameInputField) brandNameInputField.value = payload.brandName;
   if (homeTitleInputField) homeTitleInputField.value = payload.homeTitle;
   try {
-    setBrandingStatus('Saving branding…');
+    setBrandingStatus('');
     const res = await fetch('/api/settings', {
       method: 'POST',
       headers: {

@@ -52,9 +52,10 @@
       <p>Your central hub for creating and managing counters.</p>
     </header>
 
-    <section class="card" id="loginCard">
+    <section class="card login-card login-card--pending hidden" id="loginCard">
       <h2>Dashboard Login</h2>
       <p>Enter your password to continue. You'll stay signed in for 12 hours.</p>
+      <p id="loginStatus" class="hint hidden">Checking your session...</p>
       <form id="admin-form" class="admin-form" action="javascript:void(0);" novalidate>
         <input type="password" id="adminToken" placeholder="Password" autocomplete="current-password" required />
         <button type="submit">Log in</button>

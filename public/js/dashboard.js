@@ -3,6 +3,7 @@ const dashboardCard = document.querySelector('#dashboardCard');
 const adminForm = document.querySelector('#admin-form');
 const adminTokenInput = document.querySelector('#adminToken');
 const loginError = document.querySelector('#loginError');
+const loginStatus = document.querySelector('#loginStatus');
 const dashboardSubtitle = document.querySelector('#dashboardSubtitle');
 const adminControls = document.querySelector('#adminControls');
 const counterListEl = document.querySelector('#counterList');
@@ -129,10 +130,16 @@ function init() {
       if (stored) {
         state.token = stored;
         setTokenStoredState(true);
+        showStatusHint('Checking your session...');
         attemptLogin(true);
+      } else {
+        revealLoginCard();
       }
     })
-    .catch((err) => console.warn('Admin init failed', err));
+    .catch((err) => {
+      console.warn('Admin init failed', err);
+      revealLoginCard();
+    });
   updateDeleteFilteredState();
   updateActivityRangeButtons();
 }
@@ -223,6 +230,7 @@ async function onLoginSubmit(event) {
   if (token) {
     state.token = token;
   }
+  setLoginPending(true, 'Signing in...');
   await attemptLogin(false);
 }
 
@@ -244,6 +252,9 @@ async function attemptLogin(fromStored) {
     handleAuthFailure(error, fromStored);
   } finally {
     setLoginLoading(false);
+    if (!state.token) {
+      revealLoginCard();
+    }
   }
 }
 
@@ -255,21 +266,22 @@ function handleAuthFailure(error, fromStored) {
     hideDashboard();
     const message = error?.message || 'Incorrect password. Try again.';
     showLoginError(message);
+    revealLoginCard();
     adminTokenInput?.focus();
     return;
   }
   if (code === 'rate_limit') {
-    const retry = error?.retryAfterSeconds
-      ? ` Try again in about ${Math.ceil(error.retryAfterSeconds)}s.`
-      : '';
-    showLoginError(`${error?.message || 'Too many attempts.'}${retry}`);
+    showLoginError(error?.message || 'Too many attempts. Try again soon.');
+    revealLoginCard();
     return;
   }
   if (fromStored) {
-    showToast(error?.message || 'Unable to reach the server. Retrying…', 'error');
+    showToast(error?.message || 'Unable to reach the server. Retrying...', 'error');
+    setLoginPending(true, 'Reconnecting...');
     setTimeout(() => attemptLogin(true), Math.max(1500, (error?.retryAfterSeconds || 1) * 1000));
   } else {
     showLoginError(error?.message || 'Unable to reach the server. Try again.');
+    revealLoginCard();
   }
 }
 
@@ -673,6 +685,7 @@ function updateCounterTotal() {
 
 function showDashboard() {
   loginCard?.classList.add('hidden');
+  loginCard?.classList.remove('login-card--pending');
   dashboardCard?.classList.remove('hidden');
   hideLoginError();
 }
@@ -680,6 +693,7 @@ function showDashboard() {
 function hideDashboard() {
   cancelAutoRefresh();
   loginCard?.classList.remove('hidden');
+  loginCard?.classList.remove('login-card--pending');
   dashboardCard?.classList.add('hidden');
   adminControls?.classList.add('hidden');
   adminEmbedSnippet?.classList.add('hidden');
@@ -752,6 +766,29 @@ function setTokenStoredState(stored) {
   if (adminTokenInput) {
     adminTokenInput.placeholder = stored ? 'Token saved (expires in 12h)' : 'Admin token';
   }
+}
+
+function setLoginPending(pending, message) {
+  if (!loginCard) return;
+  loginCard.classList.toggle('login-card--pending', Boolean(pending));
+  if (pending) {
+    showStatusHint(message || 'Working...');
+  } else {
+    showStatusHint('');
+  }
+}
+
+function revealLoginCard() {
+  if (!loginCard) return;
+  loginCard.classList.remove('login-card--pending');
+  loginCard.classList.remove('hidden');
+  showStatusHint('');
+}
+
+function showStatusHint(message) {
+  if (!loginStatus) return;
+  loginStatus.textContent = message || '';
+  loginStatus.classList.toggle('hidden', !message);
 }
 
 function authHeaders() {
