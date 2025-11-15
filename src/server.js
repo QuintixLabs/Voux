@@ -10,6 +10,7 @@ const {
   deleteCounter,
   deleteAllCounters,
   deleteCountersByMode,
+  deleteInactiveCountersOlderThan,
   countCounters,
   parseRequestedMode,
   describeModeLabel,
@@ -21,6 +22,7 @@ const {
   createApiKey,
   listApiKeys,
   deleteApiKey,
+  setUnlimitedThrottle,
   exportCounters,
   importCounters,
   updateCounterValue,
@@ -61,6 +63,7 @@ const INACTIVE_THRESHOLD_DAYS = Math.max(
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const LABEL_LIMIT = 80;
 const NOTE_LIMIT = 200;
+setUnlimitedThrottle((getConfig().unlimitedThrottleSeconds || 0) * 1000);
 
 const app = express();
 app.set('trust proxy', true);
@@ -224,12 +227,16 @@ app.get('/api/settings', requireAdmin, (req, res) => {
 });
 
 app.post('/api/settings', requireAdmin, (req, res) => {
-  const { privateMode, showGuides, homeTitle, brandName, allowedModes } = req.body || {};
+  const { privateMode, showGuides, homeTitle, brandName, allowedModes, unlimitedThrottleSeconds } = req.body || {};
   const patch = {};
   if (typeof privateMode === 'boolean') patch.privateMode = privateMode;
   if (typeof showGuides === 'boolean') patch.showGuides = showGuides;
   if (typeof homeTitle === 'string') patch.homeTitle = homeTitle.trim().slice(0, 120);
   if (typeof brandName === 'string') patch.brandName = brandName.trim().slice(0, 80);
+  if (Number.isFinite(Number(unlimitedThrottleSeconds))) {
+    const value = Math.max(0, Math.round(Number(unlimitedThrottleSeconds)));
+    patch.unlimitedThrottleSeconds = value;
+  }
   if (allowedModes && typeof allowedModes === 'object') {
     const normalizedModes = normalizeAllowedModesPatch(allowedModes);
     if (!normalizedModes) {
@@ -241,6 +248,7 @@ app.post('/api/settings', requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'no_valid_settings' });
   }
   const updated = updateConfig(patch);
+  setUnlimitedThrottle((updated.unlimitedThrottleSeconds || 0) * 1000);
   res.json({ config: updated, version: getVersion() });
 });
 
@@ -278,6 +286,13 @@ app.delete('/api/api-keys/:id', requireAdmin, (req, res) => {
     return res.status(404).json({ error: 'api_key_not_found' });
   }
   res.json({ ok: true });
+});
+
+app.post('/api/counters/purge-inactive', requireAdmin, (req, res) => {
+  const requestedDays = Number(req.body?.days);
+  const safeDays = Math.max(1, Number.isFinite(requestedDays) ? Math.round(requestedDays) : INACTIVE_THRESHOLD_DAYS);
+  const removed = deleteInactiveCountersOlderThan(safeDays);
+  res.json({ ok: true, removed, days: safeDays });
 });
 
 app.delete('/api/counters', requireAdmin, (req, res) => {

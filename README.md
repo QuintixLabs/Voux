@@ -22,6 +22,7 @@
 - 7-day activity charts plus inactive badges so you can spot stale counters at a glance.
 - Owner API keys so collaborators can manage their counters without the master admin token.
 - Branding/SEO controls let you rename the instance and tweak homepage meta tags without editing files.
+- Optional per-IP throttling for “Every visit” counters to slow down spam refreshes.
 
 So yeah... it's pretty good `:)`
 
@@ -112,6 +113,7 @@ Environment variables. You can tweak some of these options later from `/settings
 | `INACTIVE_DAYS_THRESHOLD` | `14` | Days with no hits before a counter shows an "Inactive" badge in the dashboard. |
 | `BRAND_NAME` | `Voux` | Default display name (used in titles, hero text). You can override it in `/settings.html`. |
 | `HOME_TITLE` | `Voux · Simple Free & Open Source Hit Counter...` | The homepage `<title>` tag value. Editable in settings. |
+| `UNLIMITED_THROTTLE_SECONDS` | `0` | Seconds to wait before counting the same IP again in “Every visit” mode. `0` disables throttling. |
 
 SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings.html`, which now includes the 30-day activity summaries). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
 
@@ -133,6 +135,7 @@ SQLite lives in `data/counters.db`. Back it up occasionally if you care about th
 - `GET /api/api-keys` – list owner API keys (admin only).
 - `POST /api/api-keys` – create a new key (admin only).
 - `DELETE /api/api-keys/:id` – revoke a key (admin only).
+- `POST /api/counters/purge-inactive` – delete counters that haven’t seen hits in X days (admin only).
 
 Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/admin.html`, sign in once, and use the dashboard (it already calls these endpoints under the hood). Owner API keys use the `X-Voux-Key: <token>` header and can only touch the counters you assign to them.
 

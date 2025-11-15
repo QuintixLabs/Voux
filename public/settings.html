@@ -75,23 +75,39 @@
           <div class="mode-selector__head">
             <strong><i class="ri-checkbox-multiple-line"></i> Allowed counting modes</strong>
             <small>Pick the modes your instance should offer. Counters in disallowed modes keep working but new ones cannot be created.</small>
-          </div>
-          <div class="mode-selector__options">
-            <label class="mode-chip" for="allowModeUnique">
-              <input type="checkbox" id="allowModeUnique" />
-              <span>
-                <span class="mode-chip__title">Unique visitors</span>
-                <small>Counts one hit per IP.</small>
-              </span>
-            </label>
-            <label class="mode-chip" for="allowModeUnlimited">
-              <input type="checkbox" id="allowModeUnlimited" />
-              <span>
-                <span class="mode-chip__title">Every visit</span>
-                <small>Counts every refresh.</small>
-              </span>
-            </label>
-          </div>
+        </div>
+        <div class="mode-selector__options">
+          <label class="mode-chip" for="allowModeUnique">
+            <input type="checkbox" id="allowModeUnique" />
+            <span>
+              <span class="mode-chip__title">Unique visitors</span>
+              <small>Counts one hit per IP.</small>
+            </span>
+          </label>
+          <label class="mode-chip" for="allowModeUnlimited">
+            <input type="checkbox" id="allowModeUnlimited" />
+            <span>
+              <span class="mode-chip__title">Every visit</span>
+              <small>Counts every refresh.</small>
+            </span>
+          </label>
+        </div>
+      </div>
+        <div class="field">
+          <label for="throttleSelect">Every-visit throttle</label>
+          <select id="throttleSelect">
+            <option value="0">No throttle (count every refresh)</option>
+            <option value="5">Throttle to 5 seconds per visitor</option>
+            <option value="10">Throttle to 10 seconds per visitor</option>
+            <option value="15">Throttle to 15 seconds per visitor</option>
+            <option value="20">Throttle to 20 seconds per visitor</option>
+          </select>
+          <small class="hint">Limits how often the same IP can increment an "Every visit" counter. Unique mode is unaffected.</small>
+        </div>
+        <div class="field">
+          <label>Inactive counters</label>
+          <button type="button" id="purgeInactiveButton" class="danger ghost inactive-counters"><i class="ri-delete-bin-line"></i> Delete counters inactive for 14 days</button>
+          <small class="hint">Counters with no hits for 14 days will be permanently removed.</small>
         </div>
       </div>
       <p class="hint" id="settingsStatus">Loading…</p>

@@ -11,6 +11,7 @@ if (!fs.existsSync(DATA_DIR)) {
 const dbPath = path.join(DATA_DIR, 'counters.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
+let unlimitedThrottleMs = 0;
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS counters (
@@ -142,7 +143,7 @@ const recordHitTx = db.transaction((counterId, ip, now) => {
   if (!counter) {
     return null;
   }
-  const effectiveCooldownMs = counter.count_mode === 'unlimited' ? 0 : null;
+  const effectiveCooldownMs = counter.count_mode === 'unlimited' ? unlimitedThrottleMs : null;
 
   let shouldIncrement = true;
   let existingHit = null;
@@ -243,6 +244,22 @@ function updateCounterMetadata(id, { label, value, note }) {
 function deleteCounter(id) {
   const result = deleteCounterStmt.run(id);
   return result.changes > 0;
+}
+
+function deleteInactiveCountersOlderThan(days) {
+  const threshold = Date.now() - Math.max(1, days) * DAY_MS;
+  const counters = listCounters();
+  let removed = 0;
+  counters.forEach((counter) => {
+    const lastHit = getLastHitTimestamp(counter.id);
+    const reference = lastHit || counter.created_at;
+    if (reference !== null && reference < threshold) {
+      if (deleteCounter(counter.id)) {
+        removed += 1;
+      }
+    }
+  });
+  return removed;
 }
 
 const deleteAllCounters = db.transaction(() => {
@@ -450,6 +467,7 @@ module.exports = {
   deleteCounter,
   deleteAllCounters,
   deleteCountersByMode,
+  deleteInactiveCountersOlderThan,
   countCounters,
   getLastHitTimestamp,
   countHitsSince,
@@ -460,6 +478,7 @@ module.exports = {
   importCounters,
   updateCounterValue,
   updateCounterMetadata,
+  setUnlimitedThrottle,
   createApiKey,
   listApiKeys,
   deleteApiKey,
@@ -510,6 +529,15 @@ function recordDailyHit(counterId, now) {
     upsertDailyStmt.run(counterId, getDayStartTimestamp(now));
   } catch (error) {
     console.warn('Failed to record daily hit', error);
+  }
+}
+
+function setUnlimitedThrottle(seconds) {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value <= 0) {
+    unlimitedThrottleMs = 0;
+  } else {
+    unlimitedThrottleMs = Math.round(value);
   }
 }
 

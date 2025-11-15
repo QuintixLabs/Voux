@@ -147,6 +147,7 @@ async function fetchConfig() {
     }
     state.privateMode = Boolean(data.privateMode);
     state.allowedModes = normalizeAllowedModes(data.allowedModes);
+    state.throttleSeconds = Number(data.unlimitedThrottleSeconds) || 0;
     if (dashboardSubtitle) {
       dashboardSubtitle.textContent = state.privateMode
         ? 'Private instance'
@@ -155,6 +156,7 @@ async function fetchConfig() {
     updateCreateCardVisibility();
     refreshAdminModeControls();
     updateDeleteFilteredState();
+    renderAdminThrottleHint();
   } catch (error) {
     console.warn('Failed to fetch config', error);
   }
@@ -873,6 +875,17 @@ function refreshAdminModeControls() {
   applyAllowedModesToSelect(adminCooldownSelect, state.allowedModes);
 }
 
+function renderAdminThrottleHint() {
+  if (!adminThrottleHint) return;
+  if (!state.allowedModes.unlimited || state.throttleSeconds <= 0) {
+    adminThrottleHint.classList.add('hidden');
+    adminThrottleHint.textContent = '';
+    return;
+  }
+  adminThrottleHint.textContent = `Every visit mode counts at most once per visitor every ${state.throttleSeconds} seconds.`;
+  adminThrottleHint.classList.remove('hidden');
+}
+
 function buildEditField(labelText, control) {
   const wrapper = document.createElement('label');
   wrapper.className = 'counter-edit__field';
@@ -1063,11 +1076,17 @@ function applyAllowedModesToSelect(selectEl, allowed) {
   if (!selectEl) return;
   const options = Array.from(selectEl.options);
   let firstAllowed = null;
+  const label = state.throttleSeconds > 0
+    ? `Every visit (throttle ${state.throttleSeconds}s)`
+    : 'Every visit';
   options.forEach((option) => {
     const mode = option.value === 'unlimited' ? 'unlimited' : 'unique';
     const isAllowed = isModeAllowed(mode, allowed);
     option.disabled = !isAllowed;
     option.hidden = !isAllowed;
+    if (mode === 'unlimited') {
+      option.textContent = label;
+    }
     if (isAllowed && !firstAllowed) {
       firstAllowed = mode;
     }

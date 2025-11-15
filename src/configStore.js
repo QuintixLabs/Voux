@@ -16,7 +16,8 @@ const defaultConfig = {
     process.env.HOME_TITLE,
     'Voux · Simple Free & Open Source Hit Counter for Blogs and Websites',
     120
-  )
+  ),
+  unlimitedThrottleSeconds: sanitizeThrottle(process.env.UNLIMITED_THROTTLE_SECONDS)
 };
 
 let config = loadConfig();
@@ -56,6 +57,9 @@ function sanitizeConfig(raw) {
   }
   if (typeof raw.homeTitle === 'string') {
     safe.homeTitle = sanitizeText(raw.homeTitle, defaultConfig.homeTitle, 120);
+  }
+  if (Number.isFinite(Number(raw.unlimitedThrottleSeconds))) {
+    safe.unlimitedThrottleSeconds = sanitizeThrottle(raw.unlimitedThrottleSeconds);
   }
   return safe;
 }
@@ -105,4 +109,12 @@ function normalizeAllowedModes(envValue) {
 function sanitizeText(value, fallback, limit) {
   const source = typeof value === 'string' ? value : fallback || '';
   return source.trim().slice(0, limit || 120);
+}
+
+function sanitizeThrottle(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) {
+    return 0;
+  }
+  return Math.min(60, Math.max(1, Math.round(num)));
 }

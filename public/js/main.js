@@ -12,6 +12,7 @@ let isPrivateMode = false;
 let showGuides = true;
 let defaultMode = 'unique';
 let allowedModes = { unique: true, unlimited: true };
+let currentThrottleSeconds = 0;
 
 function modalApi() {
   return window.VouxModal;
@@ -133,6 +134,7 @@ async function initConfig() {
     showGuides = data.showGuides !== undefined ? Boolean(data.showGuides) : true;
     allowedModes = normalizeAllowedModes(data.allowedModes);
     defaultMode = data.defaultMode === 'unlimited' && allowedModes.unlimited !== false ? 'unlimited' : 'unique';
+    currentThrottleSeconds = Number(data.unlimitedThrottleSeconds) || 0;
     if (cooldownSelect) {
       applyAllowedModesToSelect(cooldownSelect);
       cooldownSelect.value = defaultMode;
@@ -210,11 +212,19 @@ function applyAllowedModesToSelect(selectEl) {
   if (!selectEl) return;
   const options = Array.from(selectEl.options);
   let firstAllowed = null;
+
+  const throttleLabel = currentThrottleSeconds > 0
+    ? `Every visit (throttle ${currentThrottleSeconds}s)`
+    : 'Every visit';
+
   options.forEach((option) => {
     const mode = option.value === 'unlimited' ? 'unlimited' : 'unique';
     const allowed = allowedModes[mode] !== false;
     option.disabled = !allowed;
     option.hidden = !allowed;
+    if (mode === 'unlimited') {
+      option.textContent = throttleLabel;
+    }
     if (allowed && !firstAllowed) {
       firstAllowed = mode;
     }

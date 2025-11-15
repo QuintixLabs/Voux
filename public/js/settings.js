@@ -22,12 +22,15 @@ const brandingForm = document.getElementById('brandingForm');
 const brandNameInputField = document.getElementById('brandNameInput');
 const homeTitleInputField = document.getElementById('homeTitleInput');
 const brandingStatusLabel = document.getElementById('brandingStatus');
+const throttleSelect = document.getElementById('throttleSelect');
+const purgeInactiveButton = document.getElementById('purgeInactiveButton');
 const apiKeysPagination = document.getElementById('apiKeysPagination');
 const apiKeysPrevBtn = document.getElementById('apiKeysPrev');
 const apiKeysNextBtn = document.getElementById('apiKeysNext');
 const apiKeysPageInfo = document.getElementById('apiKeysPageInfo');
 const DEFAULT_BRAND_NAME = 'Voux';
 const DEFAULT_HOME_TITLE = 'Voux · Simple Free & Open Source Hit Counter for Blogs and Websites';
+const DEFAULT_THROTTLE_SECONDS = 0;
 let backupBusy = false;
 let activeAdminToken = null;
 const apiKeyPager = {
@@ -63,6 +66,8 @@ function init(token) {
       setupBackupControls(token);
       setupApiKeys(token);
       setupBrandingForm(token);
+      throttleSelect?.addEventListener('change', () => handleThrottleChange(token));
+      purgeInactiveButton?.addEventListener('click', () => handlePurgeInactive(token));
     })
     .catch(() => {
       clearStoredToken();
@@ -89,6 +94,12 @@ function populateForm(config) {
   if (brandNameInputField) brandNameInputField.value = config.brandName || DEFAULT_BRAND_NAME;
   if (homeTitleInputField) {
     homeTitleInputField.value = config.homeTitle || DEFAULT_HOME_TITLE;
+  }
+  if (throttleSelect) {
+    const value = Number(config.unlimitedThrottleSeconds);
+    const safe = Number.isFinite(value) ? String(value) : '0';
+    const validValues = Array.from(throttleSelect.options).map((opt) => opt.value);
+    throttleSelect.value = validValues.includes(safe) ? safe : '0';
   }
 }
 
@@ -344,6 +355,72 @@ async function handleBackupRestore(token, event) {
 function setBackupStatus(message) {
   if (backupStatusLabel) {
     backupStatusLabel.textContent = message || '';
+  }
+}
+
+async function handleThrottleChange(token) {
+  if (!token || !throttleSelect) return;
+  const value = Math.max(0, Number(throttleSelect.value) || DEFAULT_THROTTLE_SECONDS);
+  try {
+    setStatus('Saving throttle…');
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-voux-admin': token
+      },
+      body: JSON.stringify({ unlimitedThrottleSeconds: value })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update throttle');
+    }
+    await res.json().catch(() => ({}));
+    setStatus('');
+    showToast(
+      value
+        ? `Every-visit hits now throttle to ${value}s per IP`
+        : 'Throttle disabled'
+    );
+  } catch (error) {
+    setStatus('');
+    await showAlert(error.message || 'Failed to update throttle');
+  }
+}
+
+async function handlePurgeInactive(token) {
+  if (!token || !purgeInactiveButton) {
+    await showAlert('Log in again to manage counters.');
+    return;
+  }
+  const confirmed = await modalConfirm({
+    title: 'Delete inactive counters?',
+    message: 'Counters without hits for 14 days will be permanently removed. This cannot be undone.',
+    confirmLabel: 'Delete inactive',
+    variant: 'danger'
+  });
+  if (!confirmed) return;
+  purgeInactiveButton.disabled = true;
+  try {
+    const res = await fetch('/api/counters/purge-inactive', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-voux-admin': token
+      },
+      body: JSON.stringify({ days: 14 })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete inactive counters');
+    }
+    const payload = await res.json().catch(() => ({}));
+    const removed = payload.removed || 0;
+    showToast(`Deleted ${removed} inactive ${removed === 1 ? 'counter' : 'counters'}`);
+  } catch (error) {
+    await showAlert(error.message || 'Failed to delete inactive counters');
+  } finally {
+    purgeInactiveButton.disabled = false;
   }
 }
 

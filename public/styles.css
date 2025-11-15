@@ -1176,6 +1176,14 @@ body.modal-open {
       transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
     }
 
+    .inactive-counters {
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      white-space: nowrap;
+    }
+
+
     button.danger.ghost:hover {
       border-color: rgba(248, 113, 113, 0.9);
       color: #fee2e2;
