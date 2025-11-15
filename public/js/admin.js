@@ -23,6 +23,7 @@ const createCard = document.querySelector('#createCard');
 const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
 const modeFilterSelect = document.querySelector('#modeFilter');
 const activityRangeControls = document.querySelector('#activityRangeControls');
+const adminThrottleHint = document.querySelector('#adminThrottleHint');
 let toastContainer = document.querySelector('.toast-stack');
 if (!toastContainer) {
   toastContainer = document.createElement('div');
@@ -250,7 +251,11 @@ function handleAuthFailure(error) {
   clearStoredToken();
   state.token = '';
   hideDashboard();
-  showLoginError(error?.message || 'Invalid admin token.');
+  const message = error?.message && error.message.toLowerCase().includes('token')
+    ? 'Incorrect password. Try again.'
+    : error?.message || 'Unable to authenticate.';
+  showLoginError(message);
+  adminTokenInput?.focus();
 }
 
 async function refreshCounters(page = 1, options = {}) {
@@ -295,8 +300,17 @@ async function fetchCounters(page) {
   const res = await fetch(url, {
     headers: authHeaders()
   });
-  if (res.status === 401) {
-    throw new Error('Invalid admin token.');
+  if (res.status === 401 || res.status === 403) {
+    const err = await res.json().catch(() => ({}));
+    const message = err?.message || 'Invalid admin token.';
+    throw new Error(message);
+  }
+  if (res.status === 429) {
+    const err = await res.json().catch(() => ({}));
+    const message = err?.message || 'Too many attempts. Try again soon.';
+    const rateError = new Error(message);
+    rateError.retryAfterSeconds = err?.retryAfterSeconds;
+    throw rateError;
   }
   if (!res.ok) {
     throw new Error('Failed to load counters');
@@ -646,7 +660,7 @@ function showDashboard() {
 }
 
 function hideDashboard() {
-  stopAutoRefresh();
+  cancelAutoRefresh();
   loginCard?.classList.remove('hidden');
   dashboardCard?.classList.add('hidden');
   adminControls?.classList.add('hidden');
@@ -660,10 +674,18 @@ function showLoginError(message) {
     loginError.textContent = message;
     loginError.classList.remove('hidden');
   }
+  if (adminTokenInput) {
+    adminTokenInput.classList.add('input-error');
+    adminTokenInput.setAttribute('aria-invalid', 'true');
+  }
 }
 
 function hideLoginError() {
   loginError?.classList.add('hidden');
+  if (adminTokenInput) {
+    adminTokenInput.classList.remove('input-error');
+    adminTokenInput.removeAttribute('aria-invalid');
+  }
 }
 
 function setLoginLoading(loading) {

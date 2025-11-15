@@ -35,6 +35,7 @@ const {
   requireAdminOrKey,
   hasCounterAccess
 } = require('./middleware/requireAdmin');
+const getClientIp = require('./utils/ip');
 
 const PORT = process.env.PORT || 8787;
 const DEFAULT_PAGE_SIZE = Number(process.env.ADMIN_PAGE_SIZE) || 5;
@@ -314,6 +315,9 @@ app.post('/api/counters', (req, res) => {
       return res.status(403).json({ error: 'admin_token_not_configured' });
     }
     if (!verifyAdmin(req)) {
+      if (req.adminLoginBlocked && req.adminLoginBlocked.blocked) {
+        return sendLoginRateLimit(res, req.adminLoginBlocked.retryAfterSeconds);
+      }
       return res.status(401).json({ error: 'unauthorized' });
     }
   }
@@ -445,6 +449,17 @@ app.listen(PORT, () => {
   console.log(`Counter service listening on http://localhost:${PORT}`);
 });
 
+function sendLoginRateLimit(res, seconds) {
+  const retrySeconds = Math.max(1, Number(seconds) || 0);
+  const pretty = retrySeconds === 1 ? '1 second' : `${retrySeconds} seconds`;
+  res.set('Retry-After', String(retrySeconds));
+  return res.status(429).json({
+    error: 'login_rate_limited',
+    message: `Too many incorrect passwords. Try again in about ${pretty}.`,
+    retryAfterSeconds: retrySeconds
+  });
+}
+
 function getBaseUrl(req) {
   if (process.env.PUBLIC_BASE_URL) {
     return process.env.PUBLIC_BASE_URL.replace(/\/+$/, '');
@@ -452,21 +467,6 @@ function getBaseUrl(req) {
   const host = req.get('host');
   const protocol = req.protocol || 'http';
   return `${protocol}://${host}`;
-}
-
-function getClientIp(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  const forwardedIp = Array.isArray(forwarded)
-    ? forwarded[0]
-    : typeof forwarded === 'string'
-    ? forwarded.split(',')[0]
-    : null;
-  return (
-    req.headers['cf-connecting-ip'] ||
-    (forwardedIp ? forwardedIp.trim() : null) ||
-    req.socket?.remoteAddress ||
-    null
-  );
 }
 
 function checkCreationRate(ip, now = Date.now()) {

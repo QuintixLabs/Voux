@@ -184,6 +184,13 @@ input[type=number] {
       color: var(--text-tertiary);
     }
 
+    .form-error {
+      margin-top: 0.35rem;
+      font-size: 0.8125rem;
+      color: #f87171;
+      line-height: 1.4;
+    }
+
     .settings-version {
       margin-top: 0.75rem;
     }
@@ -207,6 +214,11 @@ input[type=number] {
     textarea:focus {
       border-color: var(--accent);
       background: var(--bg-secondary);
+    }
+
+    .input-error {
+      border-color: rgba(248, 113, 113, 0.9) !important;
+      background: rgba(248, 113, 113, 0.08);
     }
 
     input::placeholder {
