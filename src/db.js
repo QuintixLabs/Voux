@@ -67,6 +67,12 @@ const upsertDailyStmt = db.prepare(`
   VALUES (?, ?, 1)
   ON CONFLICT(counter_id, day) DO UPDATE SET hits = counter_daily.hits + 1
 `);
+const upsertDailyImportStmt = db.prepare(`
+  INSERT INTO counter_daily (counter_id, day, hits)
+  VALUES (@counter_id, @day, @hits)
+  ON CONFLICT(counter_id, day) DO UPDATE SET hits = excluded.hits
+`);
+const listDailyStmt = db.prepare('SELECT counter_id, day, hits FROM counter_daily ORDER BY counter_id, day');
 const getDailyTrendStmt = db.prepare(`
   SELECT day, hits
   FROM counter_daily
@@ -76,6 +82,7 @@ const getDailyTrendStmt = db.prepare(`
 `);
 const pruneHitsStmt = db.prepare('DELETE FROM hits WHERE last_hit < ?');
 const clearHitsStmt = db.prepare('DELETE FROM hits');
+const clearDailyStmt = db.prepare('DELETE FROM counter_daily');
 const deleteCounterStmt = db.prepare('DELETE FROM counters WHERE id = ?');
 const updateCounterValueStmt = db.prepare('UPDATE counters SET value = ? WHERE id = ?');
 const updateCounterMetaStmt = db.prepare('UPDATE counters SET label = @label, value = @value, note = @note WHERE id = @id');
@@ -283,6 +290,7 @@ const importCountersTx = db.transaction((items, replaceExisting) => {
   if (replaceExisting) {
     deleteAllCountersStmt.run();
     clearHitsStmt.run();
+    clearDailyStmt.run();
   }
   items.forEach((item) => {
     upsertCounterStmt.run(item);
@@ -318,6 +326,44 @@ function normalizeImportedCounter(raw) {
   };
 }
 
+function exportDailyActivity() {
+  return listDailyStmt.all();
+}
+
+function importDailyActivity(data) {
+  if (!Array.isArray(data) || !data.length) {
+    return 0;
+  }
+  const rows = data.map(normalizeDailyEntry).filter(Boolean);
+  if (!rows.length) {
+    return 0;
+  }
+  importDailyActivityTx(rows);
+  return rows.length;
+}
+
+const importDailyActivityTx = db.transaction((rows) => {
+  rows.forEach((row) => {
+    upsertDailyImportStmt.run(row);
+  });
+});
+
+function normalizeDailyEntry(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const counterId = typeof raw.counter_id === 'string' ? raw.counter_id.trim() : '';
+  if (!counterId) return null;
+  const day = Number(raw.day);
+  const hits = Number(raw.hits);
+  if (!Number.isFinite(day) || !Number.isFinite(hits) || hits < 0) {
+    return null;
+  }
+  return {
+    counter_id: counterId.slice(0, 64),
+    day: Math.floor(day),
+    hits: Math.floor(hits)
+  };
+}
+
 module.exports = {
   createCounter,
   listCounters,
@@ -331,6 +377,8 @@ module.exports = {
   getLastHitTimestamp,
   countHitsSince,
   getCounterDailyTrend,
+  exportDailyActivity,
+  importDailyActivity,
   exportCounters,
   importCounters,
   updateCounterValue,

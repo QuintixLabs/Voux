@@ -109,7 +109,7 @@ Environment variables. You can tweak some of these options later from `/settings
 | `COUNTER_CREATE_WINDOW_MS` | `60000` | Window length (in ms) for the above limit. Leave it alone unless you need a different window. |
 | `INACTIVE_DAYS_THRESHOLD` | `14` | Days with no hits before a counter shows an “Inactive” badge in the dashboard. |
 
-SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings.html`). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
+SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings.html`, which now includes the 30-day activity summaries). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
 
 ## 🧩 API quick reference
 
@@ -124,8 +124,8 @@ SQLite lives in `data/counters.db`. Back it up occasionally if you care about th
 - `POST /api/counters/:id/value` – set a counter's value directly (admin only).
 - `GET /api/settings` – fetch the current runtime config (admin only).
 - `POST /api/settings` – update runtime flags (private mode, guide cards, allowed modes, etc.).
-- `GET /api/counters/export` – download every counter as JSON (admin only).
-- `POST /api/counters/import` – restore counters from a JSON backup (admin only).
+- `GET /api/counters/export` – download every counter plus its 30-day activity summary as JSON (admin only).
+- `POST /api/counters/import` – restore counters (and optional activity data) from a JSON backup (admin only).
 
 Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/admin.html`, sign in once, and use the dashboard (it already calls these endpoints under the hood).
 

@@ -16,6 +16,8 @@ const {
   getLastHitTimestamp,
   countHitsSince,
   getCounterDailyTrend,
+  exportDailyActivity,
+  importDailyActivity,
   exportCounters,
   importCounters,
   updateCounterValue,
@@ -112,22 +114,32 @@ app.get('/api/counters', requireAdmin, (req, res) => {
 
 app.get('/api/counters/export', requireAdmin, (req, res) => {
   const counters = exportCounters();
-  res.json({ counters, exportedAt: Date.now() });
+  const daily = exportDailyActivity();
+  res.json({ counters, daily, exportedAt: Date.now() });
 });
 
 app.post('/api/counters/import', requireAdmin, (req, res) => {
-  const { replace = false, counters } = req.body || {};
-  const payload = Array.isArray(counters)
-    ? counters
-    : Array.isArray(req.body)
-    ? req.body
-    : null;
+  const { replace = false } = req.body || {};
+  let payload = null;
+  let dailyPayload = [];
+  if (Array.isArray(req.body)) {
+    payload = req.body;
+  } else if (req.body && Array.isArray(req.body.counters)) {
+    payload = req.body.counters;
+    if (Array.isArray(req.body.daily)) {
+      dailyPayload = req.body.daily;
+    }
+  }
   if (!payload) {
     return res.status(400).json({ error: 'invalid_backup_format' });
   }
   try {
     const imported = importCounters(payload, { replace: Boolean(replace) });
-    res.json({ ok: true, imported });
+    let dailyImported = 0;
+    if (dailyPayload.length) {
+      dailyImported = importDailyActivity(dailyPayload);
+    }
+    res.json({ ok: true, imported, dailyImported });
   } catch (error) {
     res.status(400).json({ error: error.message || 'import_failed' });
   }

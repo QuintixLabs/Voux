@@ -234,11 +234,16 @@ async function handleBackupRestore(token, event) {
     setBackupStatus('Reading backup…');
     const text = await file.text();
     const parsed = JSON.parse(text);
-    const payload = Array.isArray(parsed?.counters)
-      ? parsed.counters
-      : Array.isArray(parsed)
-      ? parsed
-      : null;
+    let payload = null;
+    let dailyPayload = [];
+    if (Array.isArray(parsed)) {
+      payload = parsed;
+    } else if (parsed && Array.isArray(parsed.counters)) {
+      payload = parsed.counters;
+      if (Array.isArray(parsed.daily)) {
+        dailyPayload = parsed.daily;
+      }
+    }
     if (!payload) throw new Error('Invalid backup file.');
     const confirmed = await modalConfirm({
       title: 'Replace counters?',
@@ -256,13 +261,17 @@ async function handleBackupRestore(token, event) {
     backupBusy = true;
     if (downloadBackupBtn) downloadBackupBtn.disabled = true;
     if (restoreFileInput) restoreFileInput.disabled = true;
+    const body = { counters: payload, replace: true };
+    if (dailyPayload.length) {
+      body.daily = dailyPayload;
+    }
     const res = await fetch('/api/counters/import', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-voux-admin': token
       },
-      body: JSON.stringify({ counters: payload, replace: true })
+      body: JSON.stringify(body)
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -270,8 +279,10 @@ async function handleBackupRestore(token, event) {
     }
     const result = await res.json();
     const count = result.imported || payload.length;
+    const dailyCount = result.dailyImported || dailyPayload.length || 0;
     setBackupStatus('');
-    showToast(`Restored ${count} counters`);
+    const message = dailyCount ? `Restored ${count} counters and ${dailyCount} activity rows` : `Restored ${count} counters`;
+    showToast(message);
   } catch (error) {
     setBackupStatus('');
     showToast('Restore failed', 'danger');
