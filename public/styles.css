@@ -1352,6 +1352,10 @@ body.modal-open {
   padding: 0.75rem 0rem;
 }
 
+.settings-card.hidden {
+  display: none !important;
+}
+
 .mode-selector {
   border: 1px solid var(--border-primary);
   border-radius: 12px;

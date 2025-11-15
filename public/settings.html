@@ -52,7 +52,7 @@
           <p>Manage your instance options and behavior. Only logged-in admins can make changes.</p>
     </header>
 
-    <section class="card hidden" id="settingsPanel">
+    <section class="card settings-card hidden" id="settingsPanel">
       <h2>Runtime Settings</h2>
       <div class="settings-grid">
         <label class="toggle">
@@ -113,7 +113,7 @@
       <p class="hint" id="settingsStatus">Loading…</p>
     </section>
 
-    <section class="card" id="brandingCard">
+    <section class="card settings-card hidden" id="brandingCard">
       <h2>Branding</h2>
       <form id="brandingForm" class="api-key-form" action="javascript:void(0);">
         <div class="field">
@@ -131,7 +131,7 @@
       <p class="hint" id="brandingStatus"></p>
     </section>
 
-    <section class="card" id="backupCard">
+    <section class="card settings-card hidden" id="backupCard">
       <h2>Backup &amp; Restore</h2>
       <p>Download all counters as JSON or restore from a previous backup when moving servers.</p>
       <div class="backup-actions">
@@ -144,7 +144,7 @@
       <p class="hint" id="backupStatus" aria-live="polite"></p>
     </section>
 
-    <section class="card" id="apiKeysCard">
+    <section class="card settings-card hidden" id="apiKeysCard">
       <h2>Owner API keys</h2>
       <p>Create scoped keys so collaborators can reset or delete their own counters without the main admin password.</p>
       <div id="apiKeysList" class="api-keys-list" aria-live="polite"></div>

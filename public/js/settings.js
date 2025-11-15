@@ -53,7 +53,7 @@ function init(token) {
   fetchSettings(token)
     .then(({ config }) => {
       populateForm(config);
-      settingsPanel?.classList.remove('hidden');
+      showSettingsCards();
       setStatus('');
       togglePrivate?.addEventListener('change', () =>
         handleToggleChange(token, { privateMode: togglePrivate.checked }, togglePrivate.checked ? 'Private instance enabled' : 'Private instance disabled', togglePrivate)
@@ -646,4 +646,9 @@ function setBrandingStatus(message) {
   if (brandingStatusLabel) {
     brandingStatusLabel.textContent = message || '';
   }
+}
+function showSettingsCards() {
+  document.querySelectorAll('.settings-card').forEach((card) => {
+    card.classList.remove('hidden');
+  });
 }
