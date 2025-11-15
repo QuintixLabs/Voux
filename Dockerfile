@@ -1,13 +1,25 @@
-FROM node:22 AS build
+FROM node:22-bookworm AS builder
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --production
-COPY . .
+RUN npm ci --omit=dev && npm cache clean --force
 
-FROM node:22
+COPY src ./src
+COPY public ./public
+COPY scripts ./scripts
+COPY README.md LICENSE ./
+
+FROM node:22-bookworm-slim AS runner
+
 WORKDIR /app
-COPY --from=build /app /app
-EXPOSE 8787
 ENV NODE_ENV=production
+
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/README.md /app/LICENSE ./
+
+EXPOSE 8787
 CMD ["npm", "start"]
