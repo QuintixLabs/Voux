@@ -155,7 +155,10 @@ function init() {
   document.addEventListener('keydown', handleGlobalKeydown);
   tagFilterButton?.addEventListener('click', handleTagFilterToggle);
   clearTagFilterBtn?.addEventListener('click', clearTagFilterSelection);
-  tagFilterCreateBtn?.addEventListener('click', () => handleTagCreate('filter'));
+  tagFilterCreateBtn?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    handleTagCreate('filter');
+  });
   createTagManageBtn?.addEventListener('click', () => handleTagCreate('create'));
   if (createTagPicker) {
     registerTagSelector(createTagPicker, {
@@ -1380,6 +1383,9 @@ function closeTagFilterMenu() {
 function handleDocumentClick(event) {
   if (!tagFilterMenuOpen) return;
   if (!tagFilterControls) return;
+  if (event.target.closest('.modal') || event.target.closest('.modal-overlay')) {
+    return;
+  }
   if (!tagFilterControls.contains(event.target)) {
     closeTagFilterMenu();
   }
@@ -1404,7 +1410,7 @@ function updateTagCounterHints() {
     createTagCounterHint.textContent = `${count.toLocaleString()} / ${TAG_LIMIT}`;
   }
   if (tagFilterCountHint) {
-    const text = `${count.toLocaleString()} tag${count === 1 ? '' : 's'} total`;
+    const text = `${count.toLocaleString()} / ${TAG_LIMIT.toLocaleString()}`;
     tagFilterCountHint.textContent = text;
   }
 }
@@ -1438,7 +1444,9 @@ async function handleTagCreate(context) {
     });
     return;
   }
-  closeTagFilterMenu();
+  if (context !== 'filter') {
+    closeTagFilterMenu();
+  }
   const result = await openTagDialog(state.tags.length, state.totalOverall || state.total || 0);
   if (!result || !result.name) return;
   let createdTagId = null;
