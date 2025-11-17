@@ -120,7 +120,7 @@
     return openModal({
       title: options.title || 'Confirm',
       message,
-      allowClose: options.dismissible ?? false,
+      allowClose: options.dismissible !== false,
       buttons: [
         {
           label: options.confirmLabel || 'Continue',

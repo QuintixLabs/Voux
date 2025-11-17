@@ -16,8 +16,10 @@
 ## ✨ Features
 
 - Generate counters easily and embed them with one `<script>`.
-- Data lives in `data/counters.db` or a JSON backup.
+- You can download a backup of your `data/counters.db` (your database) as **JSON** in Settings.
+- Multi-select toolbar lets you download per-counter **JSON** or delete groups of counters in one go.
 - Admin UI handles search, pagination, inline edits, notes, mode filters, and auto-refreshing stats.
+- Organize counters with colored tags, filter the dashboard by tag, and add tags while creating or editing counters.
 - Toggle the instance between `public/private` however you like.
 - 7-day activity charts plus inactive badges so you can spot stale counters at a glance.
 - Owner API keys so collaborators can manage their counters without the master admin token.
@@ -115,27 +117,31 @@ Environment variables. You can tweak some of these options later from `/settings
 | `HOME_TITLE` | `Voux · Simple Free & Open Source Hit Counter...` | The homepage `<title>` tag value. Editable in settings. |
 | `UNLIMITED_THROTTLE_SECONDS` | `0` | Seconds to wait before counting the same IP again in "Every visit" mode. `0` disables throttling. Applies only on first boot, once `data/config.json` exists, update the throttle from `/settings` or edit that file (`config.json`) (deleting it will regenerate from `.env`). |
 
-SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings`, which now includes the 30-day activity summaries). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
+SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings`, which now includes the 30-day activity summaries and your tag catalog). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
 
 ## 🧩 API quick reference
 
 - `GET /api/config` – tells the UI what's enabled: `{ privateMode, showGuides, allowedModes, defaultMode, adminPageSize }`.
-- `POST /api/counters` – create a counter (admin token required when private mode is on). Body at minimum: `{ "label": "Blog Views", "startValue": 0, "mode": "unique" }`.
-- `GET /api/counters?page=1&pageSize=20&mode=unique` – paginated list of counters (admin only). Pass `mode=unique` or `mode=unlimited` to filter by counting mode.
+- `POST /api/counters` – create a counter (admin token required when private mode is on). Body at minimum: `{ "label": "Blog Views", "startValue": 0, "mode": "unique" }`. Add `"tags": ["tag_id_here"]` to auto-assign colored tags.
+- `GET /api/counters?page=1&pageSize=20&mode=unique&tags=tagA&tags=tagB` – paginated list of counters (admin only). Filter by counting mode and/or by one or more tag IDs.
 - `GET /api/counters/:id` – fetch a single counter plus its embed snippet (public; notes are omitted).
 - `GET /embed/:id.js` – the script you drop into your site.
 - `DELETE /api/counters/:id` – delete a single counter (admin only).
 - `DELETE /api/counters?mode=unique` – delete every counter that uses the given mode (admin only). Omit `mode` to delete everything.
-- `PATCH /api/counters/:id` – edit a counter's label, value, or note (admin only).
+- `PATCH /api/counters/:id` – edit a counter's label, value, note, or tags (admin only).
 - `POST /api/counters/:id/value` – set a counter's value directly (admin only).
 - `GET /api/settings` – fetch the current runtime config (admin only).
 - `POST /api/settings` – update runtime flags (private mode, guide cards, allowed modes, etc.).
-- `GET /api/counters/export` – download every counter plus its 30-day activity summary as JSON (admin only).
-- `POST /api/counters/import` – restore counters (and optional activity data) from a JSON backup (admin only).
+- `GET /api/counters/export` – download every counter plus its 30-day activity summary and the tag catalog as JSON (admin only).
+- `POST /api/counters/import` – restore counters (and optional activity data/tag catalog) from a JSON backup (admin only).
+- `POST /api/counters/export-selected` – body `{ "ids": ["abc123", "def456"] }` returns just those counters plus their daily stats (admin only). Includes the current tag catalog so you can restore the colors elsewhere.
+- `POST /api/counters/bulk-delete` – body `{ "ids": [...] }` removes the specified counters (admin only).
 - `GET /api/api-keys` – list owner API keys (admin only).
 - `POST /api/api-keys` – create a new key (admin only).
 - `DELETE /api/api-keys/:id` – revoke a key (admin only).
 - `POST /api/counters/purge-inactive` – delete counters that haven’t seen hits in X days (admin only).
+- `GET /api/tags` – list tag definitions (admin only). Used by the dashboard to render the tag pickers.
+- `POST /api/tags` – create a new tag with `{ "name": "Articles", "color": "#ff8800" }` (admin only).
 
 Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/dashboard`, sign in once, and use the dashboard (it already calls these endpoints under the hood). Owner API keys use the `X-Voux-Key: <token>` header and can only touch the counters you assign to them.
 

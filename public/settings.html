@@ -58,7 +58,7 @@
         <label class="toggle">
           <input type="checkbox" id="togglePrivateMode" />
           <span>
-            <strong><i class="ri-lock-line"></i> · Private instance</strong>
+            <strong class="mode-chip__title"><i class="ri-lock-line"></i> · Private instance</strong>
             <small>Only logged-in admins can create counters.</small>
           </span>
         </label>
@@ -66,7 +66,7 @@
         <label class="toggle">
           <input type="checkbox" id="toggleShowGuides" />
           <span>
-            <strong><i class="ri-guide-line"></i> · Show guide cards</strong>
+            <strong class="mode-chip__title"><i class="ri-guide-line"></i> · Show guide cards</strong>
             <small>Display the styling/self-hosting tips on the public page.</small>
           </span>
         </label>
@@ -77,14 +77,14 @@
             <small>Pick the modes your instance should offer. Counters in disallowed modes keep working but new ones cannot be created.</small>
         </div>
         <div class="mode-selector__options">
-          <label class="mode-chip" for="allowModeUnique">
+          <label class="mode-chip toggle" for="allowModeUnique">
             <input type="checkbox" id="allowModeUnique" />
             <span>
               <span class="mode-chip__title">Unique visitors</span>
               <small>Counts one hit per IP.</small>
             </span>
           </label>
-          <label class="mode-chip" for="allowModeUnlimited">
+          <label class="mode-chip toggle" for="allowModeUnlimited">
             <input type="checkbox" id="allowModeUnlimited" />
             <span>
               <span class="mode-chip__title">Every visit</span>

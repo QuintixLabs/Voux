@@ -5,6 +5,12 @@ const adminTokenInput = document.querySelector('#adminToken');
 const loginError = document.querySelector('#loginError');
 const loginStatus = document.querySelector('#loginStatus');
 const dashboardSubtitle = document.querySelector('#dashboardSubtitle');
+const selectionToolbar = document.querySelector('#selectionToolbar');
+const selectionCountEl = document.querySelector('#selectionCount');
+const selectAllBtn = document.querySelector('#selectAll');
+const downloadSelectedBtn = document.querySelector('#downloadSelected');
+const deleteSelectedBtn = document.querySelector('#deleteSelected');
+const clearSelectionBtn = document.querySelector('#clearSelection');
 const adminControls = document.querySelector('#adminControls');
 const counterListEl = document.querySelector('#counterList');
 const deleteAllBtn = document.querySelector('#deleteAll');
@@ -18,6 +24,7 @@ const counterSearchInput = document.querySelector('#counterSearchInput');
 const counterSearchClear = document.querySelector('#counterSearchClear');
 const createForm = document.querySelector('#create-admin-form');
 const createLabelInput = document.querySelector('#adminLabel');
+const createNoteInput = document.querySelector('#adminNote');
 const createStartInput = document.querySelector('#adminStartValue');
 const adminEmbedSnippet = document.querySelector('#adminEmbedSnippet');
 const createCard = document.querySelector('#createCard');
@@ -25,12 +32,24 @@ const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
 const modeFilterSelect = document.querySelector('#modeFilter');
 const activityRangeControls = document.querySelector('#activityRangeControls');
 const adminThrottleHint = document.querySelector('#adminThrottleHint');
+const tagFilterControls = document.querySelector('#tagFilterControls');
+const tagFilterButton = document.querySelector('#tagFilterButton');
+const tagFilterMenu = document.querySelector('#tagFilterMenu');
+const tagFilterList = document.querySelector('#tagFilterList');
+const clearTagFilterBtn = document.querySelector('#clearTagFilter');
+const tagFilterCreateBtn = document.querySelector('#tagFilterCreate');
+const createTagPicker = document.querySelector('#createTagPicker');
+const createTagManageBtn = document.querySelector('#createTagManage');
+const createTagCounterHint = document.querySelector('#createTagCounterHint');
+const tagFilterCountHint = document.querySelector('.tag-count-hint');
 let toastContainer = document.querySelector('.toast-stack');
 if (!toastContainer) {
   toastContainer = document.createElement('div');
   toastContainer.className = 'toast-stack';
   document.body.appendChild(toastContainer);
 }
+let tagFilterMenuOpen = false;
+const tagSelectorRegistry = new Set();
 
 const STORAGE_KEY = 'vouxAdminAuth';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000; // 12h
@@ -39,6 +58,8 @@ const RANGE_LABELS = {
   '7d': '7 days',
   '30d': '30 days'
 };
+
+const TAG_LIMIT = 20;
 
 const state = {
   token: '',
@@ -56,6 +77,10 @@ const state = {
   editPanelsOpen: 0,
   activityRange: '7d',
   latestCounters: [],
+  selectedIds: new Set(),
+  tags: [],
+  tagFilter: [],
+  createTags: [],
   debugInactive: new URLSearchParams(window.location.search).has('debugInactive') // use ?debugInactive in the browser to preview the inactive badge
 };
 
@@ -120,7 +145,29 @@ function init() {
   counterSearchInput?.addEventListener('input', handleSearchInput);
   counterSearchInput?.addEventListener('search', handleSearchInput);
   counterSearchClear?.addEventListener('click', handleSearchClear);
-  activityRangeControls?.addEventListener('click', handleActivityRangeClick);
+ activityRangeControls?.addEventListener('click', handleActivityRangeClick);
+  window.addEventListener('keydown', handlePaginationHotkeys);
+  selectAllBtn?.addEventListener('click', handleSelectAll);
+  downloadSelectedBtn?.addEventListener('click', handleDownloadSelected);
+  deleteSelectedBtn?.addEventListener('click', handleDeleteSelected);
+  clearSelectionBtn?.addEventListener('click', () => clearSelection());
+  document.addEventListener('click', handleDocumentClick);
+  document.addEventListener('keydown', handleGlobalKeydown);
+  tagFilterButton?.addEventListener('click', handleTagFilterToggle);
+  clearTagFilterBtn?.addEventListener('click', clearTagFilterSelection);
+  tagFilterCreateBtn?.addEventListener('click', () => handleTagCreate('filter'));
+  createTagManageBtn?.addEventListener('click', () => handleTagCreate('create'));
+  if (createTagPicker) {
+    registerTagSelector(createTagPicker, {
+      getSelected: () => state.createTags.slice(),
+      setSelected: (next) => {
+        state.createTags = next;
+      },
+      emptyMessage: 'No tags yet. Use "New tag" to create one.'
+    });
+  }
+  renderTagFilterList();
+  updateTagFilterButton();
   toggleSearchClear();
   // no extra change handler needed for simple dropdown
   fetchConfig()
@@ -141,6 +188,7 @@ function init() {
     });
   updateDeleteFilteredState();
   updateActivityRangeButtons();
+  updateTagCounterHints();
 }
 
 async function fetchConfig() {
@@ -241,6 +289,7 @@ async function attemptLogin(fromStored) {
   setLoginLoading(true);
   try {
     await refreshCounters(1);
+    await fetchTags();
     if (!fromStored) {
       storeToken(state.token);
       setTokenStoredState(true);
@@ -297,6 +346,7 @@ async function refreshCounters(page = 1, options = {}) {
     state.totalOverall = data.totals?.overall ?? state.totalOverall ?? state.total;
     updatePagination();
     updateCounterTotal();
+    updateTagCounterHints();
     deleteAllBtn.disabled = false;
     adminControls?.classList.remove('hidden');
     if (!silent) {
@@ -321,6 +371,11 @@ async function fetchCounters(page) {
   }
   if (state.modeFilter && state.modeFilter !== 'all') {
     params.append('mode', state.modeFilter);
+  }
+  if (state.tagFilter && state.tagFilter.length) {
+    state.tagFilter.forEach((tagId) => {
+      params.append('tags', tagId);
+    });
   }
   const url = `/api/counters?${params.toString()}`;
   const res = await fetch(url, {
@@ -370,6 +425,7 @@ async function handleDeleteAll() {
     if (!res.ok) throw new Error('Failed to delete counters');
     const payload = await res.json().catch(() => ({}));
     await refreshCounters(1);
+    clearSelection();
     showToast(`Deleted ${payload.deleted ?? 'all'} counters`);
   } catch (error) {
     await showAlert(error.message || 'Failed to delete counters');
@@ -384,10 +440,14 @@ async function handleCreateCounter(event) {
     await showAlert('Log in first.');
     return;
   }
+  const noteValue = createNoteInput?.value?.trim() || '';
   const payload = {
     label: createLabelInput?.value?.trim() || '',
     startValue: Number(createStartInput?.value || 0)
   };
+  if (state.createTags.length) {
+    payload.tags = state.createTags.slice(0, 20);
+  }
   try {
     payload.mode = getCooldownPayload(adminCooldownSelect);
   } catch (error) {
@@ -413,8 +473,20 @@ async function handleCreateCounter(event) {
       adminEmbedSnippet.value = data.embedCode;
       adminEmbedSnippet.classList.remove('hidden');
     }
+    if (noteValue) {
+      try {
+        await updateCounterMetadataRequest(data.counter.id, { note: noteValue });
+      } catch (err) {
+        console.warn('Failed to set note on create', err);
+      }
+    }
     if (createLabelInput) createLabelInput.value = '';
+    if (createNoteInput) createNoteInput.value = '';
     if (createStartInput) createStartInput.value = '0';
+    if (state.createTags.length) {
+      state.createTags = [];
+      refreshTagSelectors();
+    }
     await refreshCounters(state.page);
   } catch (error) {
     await showAlert(error.message || 'Failed to create counter');
@@ -423,6 +495,7 @@ async function handleCreateCounter(event) {
 
 function renderCounterList(counters = state.latestCounters) {
   if (!counterListEl) return;
+  cleanupTagSelectors();
   const list = Array.isArray(counters) ? counters : [];
   state.editPanelsOpen = 0;
   counterListEl.innerHTML = '';
@@ -439,6 +512,19 @@ function renderCounterList(counters = state.latestCounters) {
   list.forEach((counter) => {
     const row = document.createElement('div');
     row.className = 'counter-row';
+    row.dataset.counterId = counter.id;
+    const isSelected = state.selectedIds.has(counter.id);
+    if (isSelected) {
+      row.classList.add('counter-row--selected');
+    }
+
+    const selectWrapper = document.createElement('label');
+    selectWrapper.className = 'counter-select';
+    const selectInput = document.createElement('input');
+    selectInput.type = 'checkbox';
+    selectInput.checked = isSelected;
+    selectInput.addEventListener('change', (event) => toggleSelection(counter.id, event.target.checked, row));
+    selectWrapper.appendChild(selectInput);
 
     const meta = document.createElement('div');
     meta.className = 'counter-meta';
@@ -521,6 +607,30 @@ function renderCounterList(counters = state.latestCounters) {
       buildEditField('Value', valueInput),
       buildEditField('Note (optional)', noteInput)
     );
+    let editTags = extractTagIds(counter.tags);
+    const tagField = document.createElement('div');
+    tagField.className = 'counter-edit__field counter-edit__field--tags';
+    const tagHead = document.createElement('div');
+    tagHead.className = 'counter-edit__field-label counter-edit__field-label--actions';
+    const tagLabelText = document.createElement('span');
+    tagLabelText.textContent = 'Tags (optional)';
+    const tagInlineBtn = document.createElement('button');
+    tagInlineBtn.type = 'button';
+    tagInlineBtn.className = 'ghost tag-inline-button';
+    tagInlineBtn.innerHTML = '<i class="ri-price-tag-3-line" aria-hidden="true"></i><span>New tag</span>';
+    tagInlineBtn.addEventListener('click', () => handleTagCreate('edit'));
+    tagHead.append(tagLabelText, tagInlineBtn);
+    const tagSelector = document.createElement('div');
+    tagSelector.className = 'tag-picker';
+    const editTagSelectorEntry = registerTagSelector(tagSelector, {
+      getSelected: () => editTags.slice(),
+      setSelected: (next) => {
+        editTags = next;
+      },
+      emptyMessage: 'No tags yet. Use "New tag" to create one.'
+    });
+    tagField.append(tagHead, tagSelector);
+    fieldsWrapper.appendChild(tagField);
 
     const editActions = document.createElement('div');
     editActions.className = 'counter-edit__actions';
@@ -565,7 +675,8 @@ function renderCounterList(counters = state.latestCounters) {
         await updateCounterMetadataRequest(counter.id, {
           label: nextLabel,
           value: Math.floor(nextValue),
-          note: nextNote
+          note: nextNote,
+          tags: editTags
         });
         toggleEdit(false);
         await refreshCounters(state.page);
@@ -586,6 +697,8 @@ function renderCounterList(counters = state.latestCounters) {
       labelInput.value = counter.label || '';
       valueInput.value = counter.value;
       noteInput.value = counter.note || '';
+      editTags = extractTagIds(counter.tags);
+      refreshTagSelectorEntry(editTagSelectorEntry);
       toggleEdit(true);
     });
 
@@ -609,7 +722,25 @@ function renderCounterList(counters = state.latestCounters) {
 
     actions.append(editBtn);
 
+    const downloadBtn = document.createElement('button');
+    downloadBtn.type = 'button';
+    downloadBtn.className = 'ghost counter-download-btn';
+    downloadBtn.innerHTML = '<i class="ri-download-2-line"></i><span> Download</span>';
+    downloadBtn.addEventListener('click', () => handleDownloadSingle(counter.id, counter.label || counter.id, downloadBtn));
+    actions.append(downloadBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'danger ghost counter-delete-btn';
+    deleteBtn.innerHTML = '<i class="ri-delete-bin-line" aria-hidden="true"></i><span> Delete</span>';
+    deleteBtn.addEventListener('click', () => removeCounter(counter.id));
+    actions.append(deleteBtn);
+
     meta.append(label, id);
+    const tagsLine = buildTagBadges(counter.tags);
+    if (tagsLine) {
+      meta.append(tagsLine);
+    }
     const statusLine = buildStatusBadges(counter, { forceInactive: state.debugInactive });
     if (statusLine) {
       meta.append(statusLine);
@@ -628,17 +759,11 @@ function renderCounterList(counters = state.latestCounters) {
     }
 
     meta.append(actions, editPanel);
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className = 'danger ghost';
-    deleteBtn.innerHTML = '<i class="ri-delete-bin-line" aria-hidden="true"></i><span> Delete</span>';
-    deleteBtn.addEventListener('click', () => removeCounter(counter.id));
-
-    row.append(meta, deleteBtn);
+    row.append(meta, selectWrapper);
     fragment.appendChild(row);
   });
   counterListEl.appendChild(fragment);
+  updateSelectionToolbar();
 }
 
 async function removeCounter(id) {
@@ -656,8 +781,10 @@ async function removeCounter(id) {
     });
     if (res.status === 401) throw new Error('Invalid admin token.');
     if (!res.ok) throw new Error('Failed to delete counter');
+    state.selectedIds.delete(id);
     const nextPage = state.page > 1 && counterListEl.children.length === 1 ? state.page - 1 : state.page;
     await refreshCounters(nextPage);
+    updateSelectionToolbar();
     showToast(`Deleted ${id}`);
   } catch (error) {
     await showAlert(error.message || 'Failed to delete counter');
@@ -698,6 +825,13 @@ function hideDashboard() {
   adminEmbedSnippet?.classList.add('hidden');
   paginationEl?.classList.add('hidden');
   deleteAllBtn.disabled = true;
+  state.tags = [];
+  state.tagFilter = [];
+  state.createTags = [];
+  renderTagFilterList();
+  updateTagFilterButton();
+  refreshTagSelectors();
+  closeTagFilterMenu();
 }
 
 function showLoginError(message) {
@@ -822,11 +956,197 @@ async function handleDeleteFiltered() {
     if (res.status === 401) throw new Error('Invalid admin token.');
     if (!res.ok) throw new Error('Failed to delete counters');
     await refreshCounters(1);
+    clearSelection();
     showToast(`Deleted ${label}`);
   } catch (error) {
     await showAlert(error.message || 'Failed to delete counters');
   } finally {
+    deleteFilteredBtn.disabled = false;
     updateDeleteFilteredState();
+  }
+}
+
+function toggleSelection(counterId, selected, row) {
+  if (!counterId) return;
+  if (selected) {
+    state.selectedIds.add(counterId);
+  } else {
+    state.selectedIds.delete(counterId);
+  }
+  if (row) {
+    row.classList.toggle('counter-row--selected', selected);
+  }
+  updateSelectionToolbar();
+}
+
+function clearSelection() {
+  if (!state.selectedIds.size) {
+    refreshSelectionState();
+    return;
+  }
+  state.selectedIds.clear();
+  refreshSelectionState();
+}
+
+function refreshSelectionState() {
+  if (counterListEl) {
+    counterListEl.querySelectorAll('.counter-row').forEach((row) => {
+      const counterId = row.dataset?.counterId;
+      const selected = counterId && state.selectedIds.has(counterId);
+      row.classList.toggle('counter-row--selected', selected);
+      const checkbox = row.querySelector('.counter-select input');
+      if (checkbox) {
+        // eslint-disable-next-line no-param-reassign
+        checkbox.checked = Boolean(selected);
+      }
+    });
+  }
+  updateSelectionToolbar();
+}
+
+function updateSelectionToolbar() {
+  const count = state.selectedIds.size;
+  if (selectionCountEl) {
+    selectionCountEl.textContent = `${count} selected`;
+  }
+  const active = count > 0;
+  selectionToolbar?.classList.toggle('hidden', !active);
+  document.body.classList.toggle('selection-active', active);
+}
+
+async function handleDownloadSelected() {
+  const ids = Array.from(state.selectedIds);
+  if (!ids.length) {
+    await showAlert('Select at least one counter.');
+    return;
+  }
+  if (downloadSelectedBtn) downloadSelectedBtn.disabled = true;
+  try {
+    await downloadCountersByIds(ids, 'selected-counters');
+  } finally {
+    if (downloadSelectedBtn) downloadSelectedBtn.disabled = false;
+  }
+}
+
+async function handleDownloadSingle(id, label, button) {
+  if (!id) return;
+  if (button) button.disabled = true;
+  try {
+    await downloadCountersByIds([id], `counter-${slugifyFilename(label || id)}`);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function downloadCountersByIds(ids, filenamePrefix) {
+  if (!ids.length) return;
+  try {
+    const res = await fetch('/api/counters/export-selected', {
+      method: 'POST',
+      headers: {
+        ...authHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ ids })
+    });
+    if (res.status === 401) {
+      throw new Error('Invalid admin token.');
+    }
+    if (res.status === 404) {
+      throw new Error('Counters not found.');
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to download counters');
+    }
+    const payload = await res.json();
+    triggerJsonDownload(payload, filenamePrefix || 'counters');
+    showToast(ids.length === 1 ? `Exported ${ids[0]}` : `Exported ${ids.length} counters`);
+  } catch (error) {
+    await showAlert(error.message || 'Failed to download counters');
+  }
+}
+
+function triggerJsonDownload(payload, filenamePrefix) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const safePrefix = slugifyFilename(filenamePrefix || 'counters');
+  const link = document.createElement('a');
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = `${safePrefix}-${timestamp}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function slugifyFilename(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'counter';
+}
+
+async function handleDeleteSelected() {
+  const ids = Array.from(state.selectedIds);
+  if (!ids.length) {
+    await showAlert('Select at least one counter.');
+    return;
+  }
+  const confirmed = await showConfirm({
+    title: 'Delete selected counters?',
+    message: `This removes ${ids.length} counter(s) permanently.`,
+    confirmLabel: 'Delete',
+    variant: 'danger'
+  });
+  if (!confirmed) return;
+  if (deleteSelectedBtn) deleteSelectedBtn.disabled = true;
+  try {
+    const res = await fetch('/api/counters/bulk-delete', {
+      method: 'POST',
+      headers: {
+        ...authHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ ids })
+    });
+    if (res.status === 401) throw new Error('Invalid admin token.');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete counters');
+    }
+    const data = await res.json();
+    ids.forEach((id) => state.selectedIds.delete(id));
+    await refreshCounters(state.page);
+    updateSelectionToolbar();
+    showToast(`Deleted ${data.deleted ?? ids.length} counters`);
+  } catch (error) {
+    await showAlert(error.message || 'Failed to delete counters');
+  } finally {
+    if (deleteSelectedBtn) deleteSelectedBtn.disabled = false;
+  }
+}
+
+function handleSelectAll() {
+  const ids = state.latestCounters.map((counter) => counter.id);
+  ids.forEach((id) => state.selectedIds.add(id));
+  refreshSelectionState();
+}
+
+function handlePaginationHotkeys(event) {
+  const { activeElement } = document;
+  if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+    return;
+  }
+  if (event.key === 'ArrowLeft' && !prevPageBtn?.disabled) {
+    event.preventDefault();
+    prevPageBtn?.click();
+  }
+  if (event.key === 'ArrowRight' && !nextPageBtn?.disabled) {
+    event.preventDefault();
+    nextPageBtn?.click();
   }
 }
 
@@ -867,6 +1187,18 @@ function formatLastHit(timestamp) {
 function truncateQuery(query) {
   if (!query) return '';
   return query.length > 32 ? `${query.slice(0, 32)}…` : query;
+}
+
+function extractTagIds(tags) {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .map((tag) => {
+      if (!tag) return '';
+      if (typeof tag === 'string') return tag;
+      if (typeof tag.id === 'string') return tag.id;
+      return '';
+    })
+    .filter(Boolean);
 }
 
 async function updateCounterMetadataRequest(id, payload) {
@@ -946,6 +1278,509 @@ function updateActivityRangeButtons() {
   });
 }
 
+async function fetchTags() {
+  if (!state.token) return;
+  try {
+    const res = await fetch('/api/tags', {
+      headers: authHeaders()
+    });
+    if (res.status === 401) {
+      throw new Error('Invalid admin token.');
+    }
+    if (!res.ok) {
+      throw new Error('Failed to load tags');
+    }
+    const payload = await res.json().catch(() => ({}));
+    const tags = Array.isArray(payload.tags) ? payload.tags : [];
+    state.tags = tags;
+    state.tagFilter = state.tagFilter.filter((id) => tags.some((tag) => tag.id === id));
+    state.createTags = state.createTags.filter((id) => tags.some((tag) => tag.id === id));
+    refreshTagSelectors();
+    renderTagFilterList();
+    updateTagCounterHints();
+    updateTagFilterButton();
+  } catch (error) {
+    console.warn('Failed to fetch tags', error);
+  }
+}
+
+function renderTagFilterList() {
+  if (!tagFilterList) return;
+  tagFilterList.innerHTML = '';
+  if (!state.tags.length) {
+    const empty = document.createElement('p');
+    empty.className = 'hint';
+    empty.textContent = 'No tags yet. Create one to filter counters.';
+    tagFilterList.appendChild(empty);
+    return;
+  }
+  state.tags.forEach((tag) => {
+    const item = document.createElement('label');
+    item.className = 'tag-filter__item';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = state.tagFilter.includes(tag.id);
+    input.addEventListener('change', () => {
+      const next = input.checked
+        ? [...state.tagFilter, tag.id]
+        : state.tagFilter.filter((value) => value !== tag.id);
+      setTagFilter(next);
+    });
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    applyTagStyles(chip, tag.color, { textContrast: false });
+    const chipLabel = document.createElement('span');
+    chipLabel.className = 'tag-chip__label';
+    chipLabel.textContent = tag.name || tag.id;
+    chip.appendChild(chipLabel);
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'tag-chip__remove';
+    removeBtn.setAttribute('aria-label', `Delete ${tag.name || tag.id}`);
+    removeBtn.innerHTML = '<i class="ri-close-line"></i>';
+    removeBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      confirmTagDeletion(tag);
+    });
+    chip.appendChild(removeBtn);
+    chip.addEventListener('contextmenu', (event) => handleTagContextMenu(event, tag));
+    item.append(input, chip);
+    tagFilterList.appendChild(item);
+  });
+}
+
+function updateTagFilterButton() {
+  if (tagFilterButton) {
+    const count = state.tagFilter.length;
+    tagFilterButton.innerHTML = `<i class="ri-price-tag-3-line"></i> ${count ? `Filter (${count})` : 'Filter'}`;
+  }
+  if (clearTagFilterBtn) {
+    clearTagFilterBtn.disabled = state.tagFilter.length === 0;
+  }
+}
+
+function handleTagFilterToggle(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+  toggleTagFilterMenu(!tagFilterMenuOpen);
+}
+
+function toggleTagFilterMenu(force) {
+  if (!tagFilterMenu) return;
+  const next = typeof force === 'boolean' ? force : !tagFilterMenuOpen;
+  tagFilterMenuOpen = next;
+  tagFilterMenu.classList.toggle('hidden', !next);
+}
+
+function closeTagFilterMenu() {
+  toggleTagFilterMenu(false);
+}
+
+function handleDocumentClick(event) {
+  if (!tagFilterMenuOpen) return;
+  if (!tagFilterControls) return;
+  if (!tagFilterControls.contains(event.target)) {
+    closeTagFilterMenu();
+  }
+}
+
+function handleGlobalKeydown(event) {
+  if (event.key === 'Escape' && tagFilterMenuOpen) {
+    closeTagFilterMenu();
+  }
+}
+
+function clearTagFilterSelection(event) {
+  event?.preventDefault();
+  if (!state.tagFilter.length) return;
+  setTagFilter([]);
+  closeTagFilterMenu();
+}
+
+function updateTagCounterHints() {
+  const count = Math.max(0, Array.isArray(state.tags) ? state.tags.length : 0);
+  if (createTagCounterHint) {
+    createTagCounterHint.textContent = `${count.toLocaleString()} / ${TAG_LIMIT}`;
+  }
+  if (tagFilterCountHint) {
+    const text = `${count.toLocaleString()} tag${count === 1 ? '' : 's'} total`;
+    tagFilterCountHint.textContent = text;
+  }
+}
+
+function setTagFilter(ids) {
+  const normalized = Array.isArray(ids)
+    ? ids
+        .map((id) => String(id || '').trim())
+        .filter((id, index, arr) => id && arr.indexOf(id) === index && state.tags.some((tag) => tag.id === id))
+    : [];
+  const changed =
+    normalized.length !== state.tagFilter.length ||
+    normalized.some((id, idx) => id !== state.tagFilter[idx]);
+  state.tagFilter = normalized;
+  updateTagFilterButton();
+  renderTagFilterList();
+  updateTagCounterHints();
+  if (changed) {
+    refreshCounters(1).catch((err) => console.warn('Failed to refresh counters', err));
+  }
+}
+
+async function handleTagCreate(context) {
+  if (!state.token) {
+    await showAlert('Log in first.');
+    return;
+  }
+  if (state.tags.length >= TAG_LIMIT) {
+    await showAlert(`You can only create up to ${TAG_LIMIT} tags. Delete an existing tag first.`, {
+      title: 'Tag limit reached'
+    });
+    return;
+  }
+  closeTagFilterMenu();
+  const result = await openTagDialog(state.tags.length, state.totalOverall || state.total || 0);
+  if (!result || !result.name) return;
+  let createdTagId = null;
+  let createdTagName = result.name;
+  try {
+    const res = await fetch('/api/tags', {
+      method: 'POST',
+      headers: {
+        ...authHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(result)
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      throw new Error('Invalid admin token.');
+    }
+    if (!res.ok) {
+      throw new Error(payload.error || 'Failed to create tag');
+    }
+    createdTagId = payload?.tag?.id || null;
+    createdTagName = payload?.tag?.name || createdTagName;
+    await fetchTags();
+    if (context === 'create' && createdTagId && !state.createTags.includes(createdTagId)) {
+      state.createTags = [...state.createTags, createdTagId];
+      refreshTagSelectors();
+    }
+    showToast(`Created tag "${createdTagName}"`);
+  } catch (error) {
+    await showAlert(error.message || 'Failed to create tag');
+  }
+}
+
+function handleTagContextMenu(event, tag) {
+  if (!tag || !tag.id) return;
+  event.preventDefault();
+  event.stopPropagation();
+  confirmTagDeletion(tag);
+}
+
+async function confirmTagDeletion(tag) {
+  if (!state.token) {
+    await showAlert('Log in first.');
+    return;
+  }
+  const name = tag.name || tag.id;
+  const confirmed = await showConfirm({
+    title: 'Delete tag?',
+    message: `"${name}" will be removed from all filters and counters.`,
+    confirmLabel: 'Delete tag',
+    variant: 'danger'
+  });
+  if (!confirmed) return;
+  await deleteTagRequest(tag.id, name);
+  updateTagCounterHints();
+}
+
+async function deleteTagRequest(tagId, name) {
+  try {
+    const res = await fetch(`/api/tags/${encodeURIComponent(tagId)}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    });
+    if (res.status === 401) throw new Error('Invalid admin token.');
+    if (res.status === 404) throw new Error('Tag not found.');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete tag');
+    }
+    await fetchTags();
+    let changed = false;
+    state.latestCounters = state.latestCounters.map((counter) => {
+      if (!Array.isArray(counter.tags)) return counter;
+      const filtered = counter.tags.filter((entry) => {
+        if (!entry) return false;
+        if (typeof entry === 'string') return entry !== tagId;
+        return entry.id !== tagId;
+      });
+      if (filtered.length !== counter.tags.length) {
+        changed = true;
+        return { ...counter, tags: filtered };
+      }
+      return counter;
+    });
+    if (changed) {
+      removeRenderedTagChips(tagId);
+    }
+    updateTagCounterHints();
+    showToast(`Deleted tag "${name || tagId}"`);
+  } catch (error) {
+    await showAlert(error.message || 'Failed to delete tag');
+  }
+}
+
+function removeRenderedTagChips(tagId) {
+  if (!tagId) return;
+  const safeId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(tagId) : tagId.replace(/"/g, '\\"');
+  document.querySelectorAll(`.counter-tags [data-tag-id="${safeId}"]`).forEach((chip) => {
+    const parent = chip.parentElement;
+    chip.remove();
+    if (parent && !parent.querySelector('.tag-chip')) {
+      parent.remove();
+    }
+  });
+}
+
+function registerTagSelector(container, config = {}) {
+  if (!container) return null;
+  const entry = {
+    container,
+    getSelected: config.getSelected || (() => []),
+    setSelected: config.setSelected || (() => {}),
+    emptyMessage: config.emptyMessage || 'No tags yet.'
+  };
+  tagSelectorRegistry.add(entry);
+  renderTagSelectorEntry(entry);
+  return entry;
+}
+
+function renderTagSelectorEntry(entry) {
+  if (!entry || !entry.container) return;
+  const container = entry.container;
+  container.innerHTML = '';
+  if (!state.tags.length) {
+    const empty = document.createElement('p');
+    empty.className = 'hint';
+    empty.textContent = entry.emptyMessage || 'No tags yet.';
+    container.appendChild(empty);
+    return;
+  }
+  const list = document.createElement('div');
+  list.className = 'tag-picker__list';
+  const selected = entry.getSelected ? entry.getSelected() : [];
+  state.tags.forEach((tag) => {
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    const isSelected = Array.isArray(selected) && selected.includes(tag.id);
+    pill.className = `tag-pill${isSelected ? ' tag-pill--selected' : ''}`;
+    applyTagStyles(pill, tag.color);
+    const pillLabel = document.createElement('span');
+    pillLabel.className = 'tag-chip__label';
+    pillLabel.textContent = tag.name || tag.id;
+    pill.appendChild(pillLabel);
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'tag-chip__remove';
+    removeBtn.setAttribute('aria-label', `Delete ${tag.name || tag.id}`);
+    removeBtn.innerHTML = '<i class="ri-close-line"></i>';
+    removeBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      confirmTagDeletion(tag);
+    });
+    pill.appendChild(removeBtn);
+    pill.addEventListener('contextmenu', (event) => handleTagContextMenu(event, tag));
+    pill.addEventListener('click', () => {
+      const next = toggleTagSelection(selected, tag.id);
+      entry.setSelected?.(next);
+      renderTagSelectorEntry(entry);
+    });
+    list.appendChild(pill);
+  });
+  container.appendChild(list);
+}
+
+function refreshTagSelectorEntry(entry) {
+  if (!entry || !entry.container) return;
+  if (!entry.container.isConnected) {
+    tagSelectorRegistry.delete(entry);
+    return;
+  }
+  renderTagSelectorEntry(entry);
+}
+
+function refreshTagSelectors() {
+  cleanupTagSelectors();
+  tagSelectorRegistry.forEach((entry) => {
+    renderTagSelectorEntry(entry);
+  });
+}
+
+function cleanupTagSelectors() {
+  tagSelectorRegistry.forEach((entry) => {
+    if (!entry.container || !entry.container.isConnected) {
+      tagSelectorRegistry.delete(entry);
+    }
+  });
+}
+
+function toggleTagSelection(selected, tagId) {
+  const current = Array.isArray(selected) ? [...selected] : [];
+  if (!tagId) return current;
+  if (current.includes(tagId)) {
+    return current.filter((id) => id !== tagId);
+  }
+  return [...current, tagId];
+}
+
+function openTagDialog(existingCount = 0, counterTotal = 0) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.classList.add('modal-overlay', 'tag-dialog-overlay');
+    const dialog = document.createElement('div');
+    dialog.className = 'modal tag-dialog';
+
+    const title = document.createElement('h3');
+    title.className = 'tag-dialog__title';
+    title.textContent = 'New tag';
+    const limitHint = document.createElement('p');
+    limitHint.className = 'tag-dialog__hint';
+    const remaining = Math.max(0, TAG_LIMIT - existingCount);
+    const totalText = Math.max(0, counterTotal || 0).toLocaleString();
+    limitHint.textContent = `You can create up to ${TAG_LIMIT} tags. ${remaining} left.`;
+  
+
+    const nameField = document.createElement('div');
+    nameField.className = 'tag-dialog__field';
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = 'Name';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.maxLength = 40;
+    nameInput.placeholder = 'Blog posts';
+    nameField.append(nameLabel, nameInput);
+
+    const colorField = document.createElement('div');
+    colorField.className = 'tag-dialog__field';
+    const colorLabel = document.createElement('label');
+    colorLabel.textContent = 'Color';
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = '#4c6ef5';
+    colorField.append(colorLabel, colorInput);
+
+    const actions = document.createElement('div');
+    actions.className = 'tag-dialog__actions';
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'savebtn';
+    saveBtn.textContent = 'Save';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'ghost';
+    cancelBtn.textContent = 'Close';
+    actions.append(saveBtn, cancelBtn);
+
+    dialog.append(title);
+    dialog.append(limitHint);
+    dialog.append(nameField);
+    dialog.append(colorField);
+    dialog.append(actions);
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => {
+      overlay.classList.add('modal-overlay--open');
+    });
+    document.body.classList.add('modal-open');
+    nameInput.focus();
+
+    function cleanup(result) {
+      document.body.classList.remove('modal-open');
+      overlay.classList.remove('modal-overlay--open');
+      const removeOverlay = () => {
+        overlay.removeEventListener('transitionend', removeOverlay);
+        overlay.remove();
+      };
+      overlay.addEventListener('transitionend', removeOverlay);
+      setTimeout(removeOverlay, 250);
+      document.removeEventListener('keydown', onKeyDown);
+      resolve(result);
+    }
+
+    function onKeyDown(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cleanup(null);
+      }
+      if (event.key === 'Enter' && event.target === nameInput) {
+        event.preventDefault();
+        submit();
+      }
+    }
+
+    function submit() {
+      const name = nameInput.value.trim();
+      if (!name) {
+        nameInput.classList.add('input-error');
+        nameInput.focus();
+        return;
+      }
+      const color = colorInput.value || '#4c6ef5';
+      cleanup({ name, color });
+    }
+
+    nameInput.addEventListener('input', () => {
+      nameInput.classList.remove('input-error');
+    });
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) {
+        cleanup(null);
+      }
+    });
+    cancelBtn.addEventListener('click', () => cleanup(null));
+    saveBtn.addEventListener('click', submit);
+    document.addEventListener('keydown', onKeyDown);
+  });
+}
+
+function applyTagStyles(element, color, options = {}) {
+  if (!element) return;
+  const normalized = normalizeHexColor(color) || '#4c6ef5';
+  element.style.setProperty('--tag-color', normalized);
+  const shouldApplyText = options.textContrast !== false;
+  if (shouldApplyText) {
+    element.style.setProperty('--tag-text-color', getTagContrastColor(normalized));
+  } else {
+    element.style.removeProperty('--tag-text-color');
+  }
+}
+
+function normalizeHexColor(color) {
+  if (typeof color !== 'string') return null;
+  const value = color.trim().toLowerCase();
+  if (/^#[0-9a-f]{6}$/.test(value)) return value;
+  if (/^[0-9a-f]{6}$/.test(value)) return `#${value}`;
+  return null;
+}
+
+function getTagContrastColor(hex) {
+  if (!hex) return '#ffffff';
+  const value = hex.replace('#', '');
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  if ([r, g, b].some((channel) => Number.isNaN(channel))) {
+    return '#ffffff';
+  }
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.65 ? '#0b0f19' : '#ffffff';
+}
+
 function refreshAdminModeControls() {
   if (!adminCooldownSelect) return;
   applyAllowedModesToSelect(adminCooldownSelect, state.allowedModes);
@@ -988,6 +1823,28 @@ function buildStatusBadges(counter, options = {}) {
   const wrapper = document.createElement('div');
   wrapper.className = 'counter-status';
   badges.forEach((badge) => wrapper.appendChild(badge));
+  return wrapper;
+}
+
+function buildTagBadges(tags) {
+  if (!Array.isArray(tags) || !tags.length) return null;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'counter-tags';
+  tags.forEach((tag) => {
+    if (!tag) return;
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    const tagId = typeof tag === 'string' ? tag : tag.id;
+    if (tagId) {
+      chip.dataset.tagId = tagId;
+    }
+    applyTagStyles(chip, tag.color, { textContrast: false });
+    const chipLabel = document.createElement('span');
+    chipLabel.className = 'tag-chip__label';
+    chipLabel.textContent = tag.name || tag.id;
+    chip.appendChild(chipLabel);
+    wrapper.appendChild(chip);
+  });
   return wrapper;
 }
 

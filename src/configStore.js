@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const DATA_DIR = path.resolve(__dirname, '..', 'data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
@@ -17,7 +18,8 @@ const defaultConfig = {
     'Voux · Simple Free & Open Source Hit Counter for Blogs and Websites',
     120
   ),
-  unlimitedThrottleSeconds: sanitizeThrottle(process.env.UNLIMITED_THROTTLE_SECONDS)
+  unlimitedThrottleSeconds: sanitizeThrottle(process.env.UNLIMITED_THROTTLE_SECONDS),
+  tagCatalog: []
 };
 
 let config = loadConfig();
@@ -61,6 +63,7 @@ function sanitizeConfig(raw) {
   if (Number.isFinite(Number(raw.unlimitedThrottleSeconds))) {
     safe.unlimitedThrottleSeconds = sanitizeThrottle(raw.unlimitedThrottleSeconds);
   }
+  safe.tagCatalog = Array.isArray(raw.tagCatalog) ? sanitizeTagCatalog(raw.tagCatalog) : [];
   return safe;
 }
 
@@ -87,7 +90,13 @@ function updateConfig(patch = {}) {
 
 module.exports = {
   getConfig,
-  updateConfig
+  updateConfig,
+  listTagCatalog,
+  addTagToCatalog,
+  ensureTagExists,
+  mergeTagCatalog,
+  filterTagIds,
+  removeTagFromCatalog
 };
 
 function normalizeAllowedModes(envValue) {
@@ -117,4 +126,96 @@ function sanitizeThrottle(value) {
     return 0;
   }
   return Math.min(60, Math.max(1, Math.round(num)));
+}
+
+function sanitizeTagCatalog(list) {
+  const seen = new Set();
+  const sanitized = [];
+  list.forEach((entry) => {
+    const id = typeof entry.id === 'string' ? entry.id.trim() : '';
+    const name = typeof entry.name === 'string' ? entry.name.trim() : '';
+    if (!id || !name || seen.has(id)) return;
+    sanitized.push({
+      id,
+      name: name.slice(0, 40),
+      color: sanitizeColor(entry.color)
+    });
+    seen.add(id);
+  });
+  return sanitized;
+}
+
+function sanitizeColor(value) {
+  if (typeof value !== 'string') return '#4c6ef5';
+  const normalized = value.trim().startsWith('#') ? value.trim() : `#${value.trim()}`;
+  if (/^#[0-9a-fA-F]{6}$/.test(normalized)) {
+    return normalized.toLowerCase();
+  }
+  return '#4c6ef5';
+}
+
+function listTagCatalog() {
+  return Array.isArray(config.tagCatalog) ? config.tagCatalog.map((tag) => ({ ...tag })) : [];
+}
+
+function addTagToCatalog({ name, color }) {
+  const normalizedName = typeof name === 'string' ? name.trim() : '';
+  if (!normalizedName) {
+    throw new Error('name_required');
+  }
+  if (listTagCatalog().some((tag) => tag.name.toLowerCase() === normalizedName.toLowerCase())) {
+    throw new Error('tag_exists');
+  }
+  const newTag = {
+    id: crypto.randomBytes(6).toString('hex'),
+    name: normalizedName.slice(0, 40),
+    color: sanitizeColor(color)
+  };
+  config.tagCatalog = [...listTagCatalog(), newTag];
+  persistConfig();
+  return newTag;
+}
+
+function ensureTagExists(tagId) {
+  const catalog = listTagCatalog();
+  return catalog.some((tag) => tag.id === tagId);
+}
+
+function mergeTagCatalog(entries = []) {
+  const incoming = sanitizeTagCatalog(entries);
+  if (!incoming.length) return;
+  const current = new Map(listTagCatalog().map((tag) => [tag.id, tag]));
+  incoming.forEach((tag) => {
+    if (!current.has(tag.id)) {
+      current.set(tag.id, tag);
+    }
+  });
+  config.tagCatalog = Array.from(current.values());
+  persistConfig();
+}
+
+function removeTagFromCatalog(tagId) {
+  const normalized = typeof tagId === 'string' ? tagId.trim() : '';
+  if (!normalized) return null;
+  const catalog = listTagCatalog();
+  const index = catalog.findIndex((tag) => tag.id === normalized);
+  if (index === -1) return null;
+  const [removed] = catalog.splice(index, 1);
+  config.tagCatalog = catalog;
+  persistConfig();
+  return removed;
+}
+
+function filterTagIds(ids = [], limit = 20) {
+  if (!Array.isArray(ids)) return [];
+  const catalog = listTagCatalog();
+  const valid = new Set(catalog.map((tag) => tag.id));
+  const normalized = [];
+  ids.forEach((value) => {
+    const id = typeof value === 'string' ? value.trim() : '';
+    if (id && valid.has(id) && !normalized.includes(id)) {
+      normalized.push(id);
+    }
+  });
+  return normalized.slice(0, limit);
 }

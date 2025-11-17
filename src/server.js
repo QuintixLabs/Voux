@@ -18,17 +18,20 @@ const {
   countHitsSince,
   getCounterDailyTrend,
   exportDailyActivity,
+  exportDailyActivityFor,
   importDailyActivity,
   createApiKey,
   listApiKeys,
   deleteApiKey,
   setUnlimitedThrottle,
   exportCounters,
+  exportCountersByIds,
   importCounters,
   updateCounterValue,
-  updateCounterMetadata
+  updateCounterMetadata,
+  removeTagAssignments
 } = require('./db');
-const { getConfig, updateConfig } = require('./configStore');
+const { getConfig, updateConfig, listTagCatalog, addTagToCatalog, filterTagIds, mergeTagCatalog, removeTagFromCatalog } = require('./configStore');
 const requireAdmin = require('./middleware/requireAdmin');
 const {
   verifyAdmin,
@@ -98,14 +101,16 @@ app.get('/api/counters', requireAdmin, (req, res) => {
   const pageSizeRaw = parseInt(req.query.pageSize, 10);
   const pageSize = Math.max(1, Math.min(pageSizeRaw || DEFAULT_PAGE_SIZE, 100));
   const searchQuery = extractSearchQuery(req.query.q ?? req.query.search);
+  const tagFilter = normalizeTagFilter(req.query.tags);
   const totalOverall = countCounters();
-  const totalMatching = searchQuery || modeFilter ? countCounters(searchQuery, modeFilter) : totalOverall;
+  const totalMatching =
+    searchQuery || modeFilter || tagFilter.length ? countCounters(searchQuery, modeFilter, tagFilter) : totalOverall;
   const totalPages = Math.max(1, Math.ceil(Math.max(totalMatching, 1) / pageSize));
   const safePage = Math.min(page, totalPages);
   const offset = (safePage - 1) * pageSize;
   const dayStart = getDayStart();
-  const counters = listCountersPage(pageSize, offset, searchQuery, modeFilter).map((counter) =>
-    serializeCounterWithStats(counter, dayStart, { includeNote: true })
+  const counters = listCountersPage(pageSize, offset, searchQuery, modeFilter, tagFilter).map((counter) =>
+    serializeCounterWithStats(counter, dayStart, { includeNote: true, includeTags: true })
   );
 
   res.json({
@@ -119,6 +124,9 @@ app.get('/api/counters', requireAdmin, (req, res) => {
     query: searchQuery || '',
     totals: {
       overall: totalOverall
+    },
+    filters: {
+      tags: tagFilter
     }
   });
 });
@@ -126,7 +134,21 @@ app.get('/api/counters', requireAdmin, (req, res) => {
 app.get('/api/counters/export', requireAdmin, (req, res) => {
   const counters = exportCounters();
   const daily = exportDailyActivity();
-  res.json({ counters, daily, exportedAt: Date.now() });
+  res.json({ counters, daily, tagCatalog: listTagCatalog(), exportedAt: Date.now() });
+});
+
+app.post('/api/counters/export-selected', requireAdmin, (req, res) => {
+  const ids = normalizeIdsInput(req.body?.ids);
+  if (!ids.length) {
+    return res.status(400).json({ error: 'ids_required' });
+  }
+  const counters = exportCountersByIds(ids);
+  if (!counters.length) {
+    return res.status(404).json({ error: 'counters_not_found' });
+  }
+  const counterIds = counters.map((counter) => counter.id);
+  const daily = exportDailyActivityFor(counterIds);
+  res.json({ counters, daily, tagCatalog: listTagCatalog(), exportedAt: Date.now() });
 });
 
 app.post('/api/counters/import', requireAdmin, (req, res) => {
@@ -140,6 +162,8 @@ app.post('/api/counters/import', requireAdmin, (req, res) => {
     if (Array.isArray(req.body.daily)) {
       dailyPayload = req.body.daily;
     }
+  } else if (req.body && Array.isArray(req.body.tagCatalog)) {
+    mergeTagCatalog(req.body.tagCatalog);
   }
   if (!payload) {
     return res.status(400).json({ error: 'invalid_backup_format' });
@@ -154,6 +178,20 @@ app.post('/api/counters/import', requireAdmin, (req, res) => {
   } catch (error) {
     res.status(400).json({ error: error.message || 'import_failed' });
   }
+});
+
+app.post('/api/counters/bulk-delete', requireAdmin, (req, res) => {
+  const ids = normalizeIdsInput(req.body?.ids);
+  if (!ids.length) {
+    return res.status(400).json({ error: 'ids_required' });
+  }
+  let deleted = 0;
+  ids.forEach((id) => {
+    if (deleteCounter(id)) {
+      deleted += 1;
+    }
+  });
+  res.json({ ok: true, deleted });
 });
 
 app.delete('/api/counters/:id', requireAdminOrKey, (req, res) => {
@@ -191,7 +229,7 @@ app.patch('/api/counters/:id', requireAdminOrKey, (req, res) => {
   if (!hasCounterAccess(req.auth, counter.id)) {
     return res.status(403).json({ error: 'forbidden' });
   }
-  const { label, value, note } = req.body || {};
+  const { label, value, note, tags } = req.body || {};
   const nextLabel =
     typeof label === 'string'
       ? label.trim().slice(0, LABEL_LIMIT)
@@ -211,16 +249,21 @@ app.patch('/api/counters/:id', requireAdminOrKey, (req, res) => {
   } else {
     nextNote = '';
   }
+  let nextTagIds = Array.isArray(counter.tags) ? [...counter.tags] : [];
+  if (tags !== undefined) {
+    nextTagIds = filterTagIds(Array.isArray(tags) ? tags : []);
+  }
   const stored = updateCounterMetadata(req.params.id, {
     label: nextLabel,
     value: nextValue,
-    note: nextNote || null
+    note: nextNote || null,
+    tags: nextTagIds
   });
   if (!stored) {
     return res.status(500).json({ error: 'update_failed' });
   }
   const updated = getCounter(req.params.id);
-  res.json({ counter: serializeCounterWithStats(updated, getDayStart(), { includeNote: true }) });
+  res.json({ counter: serializeCounterWithStats(updated, getDayStart(), { includeNote: true, includeTags: true }) });
 });
 
 app.get('/api/settings', requireAdmin, (req, res) => {
@@ -251,6 +294,39 @@ app.post('/api/settings', requireAdmin, (req, res) => {
   const updated = updateConfig(patch);
   setUnlimitedThrottle((updated.unlimitedThrottleSeconds || 0) * 1000);
   res.json({ config: updated, version: getVersion() });
+});
+
+app.get('/api/tags', requireAdmin, (_req, res) => {
+  res.json({ tags: listTagCatalog() });
+});
+
+app.post('/api/tags', requireAdmin, (req, res) => {
+  const { name, color } = req.body || {};
+  try {
+    const tag = addTagToCatalog({ name, color });
+    res.status(201).json({ tag });
+  } catch (error) {
+    if (error.message === 'tag_exists') {
+      return res.status(409).json({ error: 'Tag already exists.' });
+    }
+    if (error.message === 'name_required') {
+      return res.status(400).json({ error: 'Tag name required.' });
+    }
+    res.status(400).json({ error: error.message || 'Failed to create tag.' });
+  }
+});
+
+app.delete('/api/tags/:id', requireAdmin, (req, res) => {
+  const tagId = String(req.params.id || '').trim();
+  if (!tagId) {
+    return res.status(400).json({ error: 'tag_id_required' });
+  }
+  const removed = removeTagFromCatalog(tagId);
+  if (!removed) {
+    return res.status(404).json({ error: 'tag_not_found' });
+  }
+  const cleared = removeTagAssignments(tagId);
+  res.json({ ok: true, removed, cleared });
 });
 
 app.get('/api/api-keys', requireAdmin, (req, res) => {
@@ -344,11 +420,13 @@ app.post('/api/counters', (req, res) => {
   const {
     label = '',
     startValue = 0,
+    tags = [],
     mode
   } = req.body || {};
   const requestedModeInput = typeof mode === 'string' ? mode : defaultMode;
   const normalizedLabel = typeof label === 'string' ? label.trim().slice(0, 80) : '';
   const parsedStart = Number(startValue);
+  const tagIds = filterTagIds(Array.isArray(tags) ? tags : []);
   const modeResult = parseRequestedMode(requestedModeInput);
   if (modeResult.error) {
     return res.status(400).json({ error: modeResult.error });
@@ -365,7 +443,8 @@ app.post('/api/counters', (req, res) => {
   const counter = createCounter({
     label: normalizedLabel,
     startValue: Math.floor(parsedStart),
-    mode: requestedMode
+    mode: requestedMode,
+    tags: tagIds
   });
   if (!isPrivateMode()) {
     recordCreationAttempt(clientIp);
@@ -375,7 +454,7 @@ app.post('/api/counters', (req, res) => {
   const embedUrl = `${baseUrl}/embed/${counter.id}.js`;
   const embedCode = `<script async src="${embedUrl}"></script>`;
   res.status(201).json({
-    counter: serializeCounter(counter, { includeNote: true }),
+    counter: serializeCounter(counter, { includeNote: true, includeTags: true }),
     embedCode,
     embedUrl
   });
@@ -390,7 +469,7 @@ app.get('/api/counters/:id', (req, res) => {
   const embedUrl = `${baseUrl}/embed/${counter.id}.js`;
   const embedCode = `<script async src="${embedUrl}"></script>`;
   res.json({
-    counter: serializeCounterWithStats(counter, getDayStart()),
+    counter: serializeCounterWithStats(counter, getDayStart(), { includeTags: true }),
     embedCode,
     embedUrl
   });
@@ -527,7 +606,7 @@ function getVersion() {
 
 function serializeCounter(counter, options = {}) {
   if (!counter) return null;
-  const { includeNote = false } = options;
+  const { includeNote = false, includeTags = false } = options;
   const mode = counter.count_mode === 'unlimited' ? 'unlimited' : 'unique';
   const payload = {
     id: counter.id,
@@ -540,6 +619,9 @@ function serializeCounter(counter, options = {}) {
   };
   if (includeNote) {
     payload.note = counter.note || '';
+  }
+  if (includeTags) {
+    payload.tags = mapTagIdsToObjects(counter.tags);
   }
   return payload;
 }
@@ -604,6 +686,41 @@ function normalizeAllowedModesPatch(input) {
     return null;
   }
   return normalized;
+}
+
+function normalizeIdsInput(value, limit = 200) {
+  if (!Array.isArray(value)) return [];
+  const normalized = [];
+  const seen = new Set();
+  value.forEach((entry) => {
+    const id = typeof entry === 'string' ? entry.trim() : '';
+    if (id && !seen.has(id)) {
+      normalized.push(id.slice(0, 64));
+      seen.add(id);
+    }
+  });
+  return normalized.slice(0, limit);
+}
+
+function mapTagIdsToObjects(ids) {
+  if (!Array.isArray(ids) || !ids.length) return [];
+  const catalog = listTagCatalog();
+  const map = new Map(catalog.map((tag) => [tag.id, tag]));
+  return ids
+    .map((id) => map.get(id))
+    .filter(Boolean)
+    .map((tag) => ({ ...tag }));
+}
+
+function normalizeTagFilter(value) {
+  if (value === undefined || value === null) return [];
+  const entries = Array.isArray(value) ? value : [value];
+  const flattened = entries
+    .flatMap((entry) => String(entry || '').split(','))
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!flattened.length) return [];
+  return filterTagIds(flattened);
 }
 
 function formatActivityTrend(trend = []) {

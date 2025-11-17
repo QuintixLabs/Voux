@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
+const { filterTagIds } = require('./configStore');
 
 const DATA_DIR = path.resolve(__dirname, '..', 'data');
 if (!fs.existsSync(DATA_DIR)) {
@@ -11,6 +12,7 @@ if (!fs.existsSync(DATA_DIR)) {
 const dbPath = path.join(DATA_DIR, 'counters.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 let unlimitedThrottleMs = 0;
 
 db.exec(`
@@ -52,6 +54,15 @@ db.exec(`
     last_used_at INTEGER,
     disabled INTEGER NOT NULL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS counter_tags (
+    counter_id TEXT NOT NULL,
+    tag_id TEXT NOT NULL,
+    PRIMARY KEY (counter_id, tag_id),
+    FOREIGN KEY (counter_id) REFERENCES counters(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_counter_tags_tag ON counter_tags(tag_id);
 `);
 
 const baseSelectFields = 'id, label, theme, note, value, created_at, count_mode';
@@ -112,8 +123,11 @@ const listApiKeysStmt = db.prepare('SELECT id, name, scope, allowed_counters, cr
 const deleteApiKeyStmt = db.prepare('DELETE FROM api_keys WHERE id = ?');
 const selectApiKeyByHashStmt = db.prepare('SELECT id, name, scope, allowed_counters, created_at, last_used_at, disabled FROM api_keys WHERE token_hash = ? AND disabled = 0');
 const updateApiKeyUsageStmt = db.prepare('UPDATE api_keys SET last_used_at = ? WHERE id = ?');
+const insertCounterTagStmt = db.prepare('INSERT OR IGNORE INTO counter_tags (counter_id, tag_id) VALUES (?, ?)');
+const deleteCounterTagsStmt = db.prepare('DELETE FROM counter_tags WHERE counter_id = ?');
+const deleteTagsByTagStmt = db.prepare('DELETE FROM counter_tags WHERE tag_id = ?');
 
-function buildCounterQuery({ search, mode, limit, offset, count = false }) {
+function buildCounterQuery({ search, mode, tags, limit, offset, count = false }) {
   let sql = count ? 'SELECT COUNT(*) as total FROM counters' : `SELECT ${baseSelectFields} FROM counters`;
   const conditions = [];
   const params = {};
@@ -126,6 +140,22 @@ function buildCounterQuery({ search, mode, limit, offset, count = false }) {
     conditions.push("count_mode <> 'unlimited'");
   } else if (mode === 'unlimited') {
     conditions.push("count_mode = 'unlimited'");
+  }
+  const tagFilters = Array.isArray(tags) ? tags.filter(Boolean) : [];
+  if (tagFilters.length) {
+    const placeholders = tagFilters.map((_, idx) => `@tag${idx}`);
+    conditions.push(
+      `id IN (
+        SELECT counter_id
+        FROM counter_tags
+        WHERE tag_id IN (${placeholders.join(',')})
+        GROUP BY counter_id
+        HAVING COUNT(DISTINCT tag_id) = ${tagFilters.length}
+      )`
+    );
+    tagFilters.forEach((tag, idx) => {
+      params[`tag${idx}`] = tag;
+    });
   }
   if (conditions.length) {
     sql += ` WHERE ${conditions.join(' AND ')}`;
@@ -173,7 +203,7 @@ const recordHitTx = db.transaction((counterId, ip, now) => {
   return { counter: updated, incremented: shouldIncrement };
 });
 
-function createCounter({ label, theme = 'plain', startValue, mode }) {
+function createCounter({ label, theme = 'plain', startValue, mode, tags = [] }) {
   const initialValue =
     typeof startValue === 'number' && Number.isFinite(startValue) && startValue >= 0
       ? Math.floor(startValue)
@@ -192,20 +222,23 @@ function createCounter({ label, theme = 'plain', startValue, mode }) {
     count_mode: modeResult.mode
   };
   insertCounterStmt.run(counter);
+  const appliedTags = replaceCounterTags(counter.id, tags);
+  counter.tags = appliedTags;
   return counter;
 }
 
 function listCounters() {
-  return listCountersStmt.all();
+  return attachTagsToCounters(listCountersStmt.all());
 }
 
-function listCountersPage(limit, offset, search, mode) {
-  const { sql, params } = buildCounterQuery({ search, mode, limit, offset });
-  return db.prepare(sql).all(params);
+function listCountersPage(limit, offset, search, mode, tags) {
+  const { sql, params } = buildCounterQuery({ search, mode, tags, limit, offset });
+  const rows = db.prepare(sql).all(params);
+  return attachTagsToCounters(rows);
 }
 
-function countCounters(search, mode) {
-  const { sql, params } = buildCounterQuery({ search, mode, count: true });
+function countCounters(search, mode, tags) {
+  const { sql, params } = buildCounterQuery({ search, mode, tags, count: true });
   const { total } = db.prepare(sql).get(params);
   return total;
 }
@@ -218,7 +251,10 @@ function normalizeSearch(search) {
 }
 
 function getCounter(id) {
-  return getCounterStmt.get(id);
+  const counter = getCounterStmt.get(id);
+  if (!counter) return null;
+  const [withTags] = attachTagsToCounters([counter]);
+  return withTags;
 }
 
 function recordHit(counterId, ip) {
@@ -230,7 +266,7 @@ function updateCounterValue(id, value) {
   return result.changes > 0;
 }
 
-function updateCounterMetadata(id, { label, value, note }) {
+function updateCounterMetadata(id, { label, value, note, tags }) {
   const payload = {
     id,
     label,
@@ -238,6 +274,9 @@ function updateCounterMetadata(id, { label, value, note }) {
     note: note || null
   };
   const result = updateCounterMetaStmt.run(payload);
+  if (Array.isArray(tags)) {
+    replaceCounterTags(id, tags);
+  }
   return result.changes > 0;
 }
 
@@ -305,7 +344,16 @@ function getCounterDailyTrend(counterId, days = 7) {
 }
 
 function exportCounters() {
-  return listCountersStmt.all();
+  return listCounters();
+}
+
+function exportCountersByIds(ids = []) {
+  const normalized = normalizeIdList(ids);
+  if (!normalized.length) return [];
+  const placeholders = normalized.map(() => '?').join(',');
+  const stmt = db.prepare(`SELECT ${baseSelectFields} FROM counters WHERE id IN (${placeholders}) ORDER BY created_at DESC`);
+  const rows = stmt.all(normalized);
+  return attachTagsToCounters(rows);
 }
 
 function importCounters(data, options = {}) {
@@ -330,6 +378,7 @@ const importCountersTx = db.transaction((items, replaceExisting) => {
   }
   items.forEach((item) => {
     upsertCounterStmt.run(item);
+    replaceCounterTags(item.id, item.tags);
   });
 });
 
@@ -358,12 +407,23 @@ function normalizeImportedCounter(raw) {
     note: note || null,
     value: Math.floor(value),
     created_at,
-    count_mode: modeResult.mode
+    count_mode: modeResult.mode,
+    tags: filterTagIds(Array.isArray(raw.tags) ? raw.tags : [])
   };
 }
 
 function exportDailyActivity() {
   return listDailyStmt.all();
+}
+
+function exportDailyActivityFor(ids = []) {
+  const normalized = normalizeIdList(ids);
+  if (!normalized.length) return [];
+  const placeholders = normalized.map(() => '?').join(',');
+  const stmt = db.prepare(
+    `SELECT counter_id, day, hits FROM counter_daily WHERE counter_id IN (${placeholders}) ORDER BY counter_id, day`
+  );
+  return stmt.all(normalized);
 }
 
 function importDailyActivity(data) {
@@ -458,6 +518,49 @@ function recordApiKeyUsage(id) {
   }
 }
 
+function replaceCounterTags(counterId, tags = []) {
+  if (!counterId) return [];
+  const filtered = filterTagIds(Array.isArray(tags) ? tags : []);
+  replaceCounterTagsTx(counterId, filtered);
+  return filtered;
+}
+
+const replaceCounterTagsTx = db.transaction((counterId, tags) => {
+  deleteCounterTagsStmt.run(counterId);
+  tags.forEach((tagId) => {
+    insertCounterTagStmt.run(counterId, tagId);
+  });
+});
+
+function attachTagsToCounters(rows = []) {
+  if (!Array.isArray(rows) || !rows.length) {
+    return rows.map((row) => ({
+      ...row,
+      tags: []
+    }));
+  }
+  const ids = rows.map((row) => row.id);
+  const tagRows = fetchTagsForCounters(ids);
+  const map = new Map();
+  tagRows.forEach((entry) => {
+    if (!map.has(entry.counter_id)) {
+      map.set(entry.counter_id, []);
+    }
+    map.get(entry.counter_id).push(entry.tag_id);
+  });
+  return rows.map((row) => ({
+    ...row,
+    tags: map.get(row.id) || []
+  }));
+}
+
+function fetchTagsForCounters(ids = []) {
+  if (!ids.length) return [];
+  const placeholders = ids.map(() => '?').join(',');
+  const stmt = db.prepare(`SELECT counter_id, tag_id FROM counter_tags WHERE counter_id IN (${placeholders}) ORDER BY rowid`);
+  return stmt.all(ids);
+}
+
 module.exports = {
   createCounter,
   listCounters,
@@ -473,8 +576,10 @@ module.exports = {
   countHitsSince,
   getCounterDailyTrend,
   exportDailyActivity,
+  exportDailyActivityFor,
   importDailyActivity,
   exportCounters,
+  exportCountersByIds,
   importCounters,
   updateCounterValue,
   updateCounterMetadata,
@@ -485,8 +590,23 @@ module.exports = {
   findApiKeyByToken,
   recordApiKeyUsage,
   describeModeLabel,
-  parseRequestedMode
+  parseRequestedMode,
+  removeTagAssignments
 };
+
+function normalizeIdList(ids, limit = 200) {
+  if (!Array.isArray(ids)) return [];
+  const normalized = [];
+  const seen = new Set();
+  ids.forEach((value) => {
+    const id = typeof value === 'string' ? value.trim() : '';
+    if (id && !seen.has(id)) {
+      normalized.push(id.slice(0, 64));
+      seen.add(id);
+    }
+  });
+  return normalized.slice(0, limit);
+}
 
 function generateId(length = 8) {
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -572,4 +692,9 @@ function normalizeApiKeyRow(row) {
     lastUsedAt: row.last_used_at || null,
     disabled: Boolean(row.disabled)
   };
+}
+function removeTagAssignments(tagId) {
+  if (!tagId) return 0;
+  const result = deleteTagsByTagStmt.run(tagId);
+  return result.changes || 0;
 }

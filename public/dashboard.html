@@ -85,6 +85,25 @@
               <input type="number" id="adminStartValue" min="0" step="1" value="0" />
             </div>
             <div class="field">
+              <label for="adminNote">Note (optional)</label>
+              <textarea id="adminNote" maxlength="200" rows="2" placeholder="Add a private note about this counter"></textarea>
+            </div>
+            <div class="field">
+              <div class="field__head">
+                <label for="createTagPicker">Tags (optional)</label>
+                <div class="tag-inline-actions">
+                  <span class="tag-inline-hint" id="createTagCounterHint">0 counters</span>
+                  <button type="button" class="ghost tag-inline-button" id="createTagManage">
+                    <i class="ri-price-tag-3-line" aria-hidden="true"></i>
+                    <span>New tag</span>
+                  </button>
+                </div>
+              </div>
+              <div id="createTagPicker" class="tag-picker">
+                <p class="hint">No tags yet. Create one.</p>
+              </div>
+            </div>
+            <div class="field">
               <label for="adminCooldownSelect">Counting mode</label>
               <select id="adminCooldownSelect">
                 <option value="unique">Unique visitors</option>
@@ -117,7 +136,7 @@
             <label class="sr-only" for="counterSearchInput">Search counters</label>
             <div class="admin-search__field">
               <i class="ri-search-line" aria-hidden="true"></i>
-              <input type="text" id="counterSearchInput" placeholder="Search by label or ID" autocomplete="off" spellcheck="false" />
+              <input type="text" id="counterSearchInput" placeholder="Search by label, ID or Note" autocomplete="off" spellcheck="false" />
               <button type="button" class="ghost admin-search__clear hidden" id="counterSearchClear">Clear</button>
             </div>
           </div>
@@ -130,6 +149,18 @@
                 <option value="unlimited">Every visit</option>
               </select>
             </label>
+            <div class="admin-filter tag-filter" id="tagFilterControls">
+              <span>Tags</span>
+              <button type="button" class="ghost filter-button" id="tagFilterButton"><i class="ri-price-tag-3-line"></i> Filter</button>
+              <div class="tag-filter__menu hidden" id="tagFilterMenu">
+                <div class="tag-filter__list toggle-filter" id="tagFilterList"></div>
+                <div class="tag-filter__footer">
+                  <button type="button" class="ghost filter-button2" id="clearTagFilter"><i class="ri-restart-line"></i> Clear</button>
+                  <button type="button" class="ghost filter-button2" id="tagFilterCreate"><i class="ri-add-circle-line"></i> New tag</button>
+                </div>
+                <p class="tag-count-hint">0 tags</p>
+              </div>
+            </div>
           </div>
           <div class="activity-range" id="activityRangeControls">
             <span class="activity-range__label">Stats range</span>
@@ -137,6 +168,15 @@
             <button type="button" data-range="today" class="activity-range__button">Today</button>
             <button type="button" data-range="7d" class="activity-range__button activity-range__button--active">7 days</button>
             <button type="button" data-range="30d" class="activity-range__button">30 days</button>
+            </div>
+          </div>
+          <div class="selection-toolbar hidden" id="selectionToolbar">
+            <span class="selection-toolbar__count" id="selectionCount">0 selected</span>
+            <div class="selection-toolbar__actions">
+              <button type="button" class="ghost buttons-toolbar__actions" id="downloadSelected"><i class="ri-download-2-line"></i> Download JSON</button>
+              <button type="button" class="danger ghost buttons-toolbar__actions" id="deleteSelected"><i class="ri-delete-bin-line"></i> Delete</button>
+              <button type="button" class="ghost buttons-toolbar__actions" id="selectAll"><i class="ri-checkbox-multiple-line"></i> Select all</button>
+              <button type="button" class="ghost selection-toolbar__clear buttons-toolbar__actions" id="clearSelection"><i class="ri-close-circle-line"></i> Clear</button>
             </div>
           </div>
           <div id="adminControls" class="hidden admin-controls">
