@@ -37,8 +37,7 @@ const TOKEN_TTL_MS = 12 * 60 * 60 * 1000; // 12h
 const RANGE_LABELS = {
   today: 'Today',
   '7d': '7 days',
-  '30d': '30 days',
-  all: 'All time'
+  '30d': '30 days'
 };
 
 const state = {
@@ -1113,8 +1112,6 @@ function getRangeStatValue(counter) {
       return counter.hitsToday ?? 0;
     case '30d':
       return counter.activity?.total30d ?? counter.activity?.total7d ?? counter.hitsToday ?? 0;
-    case 'all':
-      return counter.value ?? 0;
     case '7d':
     default:
       return counter.activity?.total7d ?? counter.hitsToday ?? 0;
