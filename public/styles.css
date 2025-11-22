@@ -435,7 +435,8 @@ body.modal-open {
       margin-bottom: 1rem;
     }
 
-    #previewTarget {
+    #previewTarget,
+    #adminPreviewTarget {
       min-height: 80px;
       display: flex;
       align-items: center;
@@ -446,7 +447,8 @@ body.modal-open {
       padding: 1.5rem;
     }
 
-    #previewTarget em {
+    #previewTarget em,
+    #adminPreviewTarget em {
       color: var(--text-tertiary);
       font-style: normal;
       font-size: 0.875rem;
@@ -2020,10 +2022,11 @@ body.modal-open {
 }
     .counter-widget {
       display: inline-flex;
-      flex-direction: column;
-      align-items: center;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: baseline;
       justify-content: center;
-      gap: 0.45rem;
+      gap: 0.35rem;
       font-family: 'Space Grotesk', 'Inter', sans-serif;
       font-size: 1rem;
       letter-spacing: 0.12em;
@@ -2031,6 +2034,8 @@ body.modal-open {
       font-variant-numeric: tabular-nums;
       text-align: center;
       max-width: 100%;
+      word-break: break-word;
+      overflow-wrap: anywhere;
       color: inherit;
 }
 
@@ -2042,17 +2047,20 @@ body.modal-open {
     .counter-widget__label,
     .counter-widget__value {
       font-size: inherit;
-      width: 100%;
       word-break: break-word;
     }
 
     .counter-widget__label {
       opacity: 0.65;
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
 
     .counter-widget__value {
       font-weight: 700;
       color: var(--text-primary);
+      flex: 0 0 auto;
     }
 
     .counter-widget--preview {
@@ -2261,6 +2269,17 @@ body.modal-open {
   font-family: 'SF Mono', 'Cascadia Code', monospace;
   font-size: 0.85rem;
 }
+
+#embedSnippet{
+  width: 100%;
+  min-height: 70px;
+  background: #0b0b0b;
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
+  padding: 0.75rem;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+
 
 .error {
   color: #f87171;

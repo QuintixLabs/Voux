@@ -67,6 +67,7 @@ const INACTIVE_THRESHOLD_DAYS = Math.max(
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const LABEL_LIMIT = 80;
 const NOTE_LIMIT = 200;
+const START_VALUE_DIGIT_LIMIT = 18;
 setUnlimitedThrottle((getConfig().unlimitedThrottleSeconds || 0) * 1000);
 
 const app = express();
@@ -132,7 +133,7 @@ app.get('/api/counters', requireAdmin, (req, res) => {
 });
 
 app.get('/api/counters/export', requireAdmin, (req, res) => {
-  const counters = exportCounters();
+  const counters = exportCounters().map(normalizeCounterForExport).filter(Boolean);
   const daily = exportDailyActivity();
   res.json({ counters, daily, tagCatalog: listTagCatalog(), exportedAt: Date.now() });
 });
@@ -142,7 +143,7 @@ app.post('/api/counters/export-selected', requireAdmin, (req, res) => {
   if (!ids.length) {
     return res.status(400).json({ error: 'ids_required' });
   }
-  const counters = exportCountersByIds(ids);
+  const counters = exportCountersByIds(ids).map(normalizeCounterForExport).filter(Boolean);
   if (!counters.length) {
     return res.status(404).json({ error: 'counters_not_found' });
   }
@@ -207,14 +208,14 @@ app.delete('/api/counters/:id', requireAdminOrKey, (req, res) => {
 
 app.post('/api/counters/:id/value', requireAdminOrKey, (req, res) => {
   const { value } = req.body || {};
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return res.status(400).json({ error: 'invalid_value' });
+  const validation = validateCounterValue(value);
+  if (validation.error) {
+    return res.status(400).json({ error: validation.error, message: validation.message });
   }
   if (!hasCounterAccess(req.auth, req.params.id)) {
     return res.status(403).json({ error: 'forbidden' });
   }
-  const updated = updateCounterValue(req.params.id, Math.floor(parsed));
+  const updated = updateCounterValue(req.params.id, validation.value);
   if (!updated) {
     return res.status(404).json({ error: 'counter_not_found' });
   }
@@ -236,11 +237,14 @@ app.patch('/api/counters/:id', requireAdminOrKey, (req, res) => {
       : typeof counter.label === 'string'
       ? counter.label.trim().slice(0, LABEL_LIMIT)
       : '';
-  let nextValue = value !== undefined ? Number(value) : counter.value;
-  if (!Number.isFinite(nextValue) || nextValue < 0) {
-    return res.status(400).json({ error: 'invalid_value' });
+  let nextValue = counter.value;
+  if (value !== undefined) {
+    const validation = validateCounterValue(value);
+    if (validation.error) {
+      return res.status(400).json({ error: validation.error, message: validation.message });
+    }
+    nextValue = validation.value;
   }
-  nextValue = Math.floor(nextValue);
   let nextNote = note;
   if (typeof nextNote === 'string') {
     nextNote = nextNote.trim().slice(0, NOTE_LIMIT);
@@ -425,7 +429,7 @@ app.post('/api/counters', (req, res) => {
   } = req.body || {};
   const requestedModeInput = typeof mode === 'string' ? mode : defaultMode;
   const normalizedLabel = typeof label === 'string' ? label.trim().slice(0, 80) : '';
-  const parsedStart = Number(startValue);
+  const startValidation = validateCounterValue(startValue);
   const tagIds = filterTagIds(Array.isArray(tags) ? tags : []);
   const modeResult = parseRequestedMode(requestedModeInput);
   if (modeResult.error) {
@@ -436,13 +440,17 @@ app.post('/api/counters', (req, res) => {
     return res.status(400).json({ error: 'mode_not_allowed' });
   }
 
-  if (!Number.isFinite(parsedStart) || parsedStart < 0) {
-    return res.status(400).json({ error: 'startValue must be a positive number' });
+  if (startValidation.error) {
+    const errorPayload = { error: startValidation.error };
+    if (startValidation.message) {
+      errorPayload.message = startValidation.message;
+    }
+    return res.status(400).json(errorPayload);
   }
 
   const counter = createCounter({
     label: normalizedLabel,
-    startValue: Math.floor(parsedStart),
+    startValue: startValidation.value,
     mode: requestedMode,
     tags: tagIds
   });
@@ -497,12 +505,21 @@ app.get('/embed/:id.js', (req, res) => {
   const { counter } = result;
   const data = {
     id: counter.id,
-    value: counter.value,
+    value: normalizeCounterValue(counter.value),
     label: counter.label
   };
 
   const payload = JSON.stringify(data);
-  const script = `(function(){try{var data=${payload};var doc=document;var scriptEl=doc.currentScript;if(!scriptEl){return;}var host=scriptEl.parentElement;var wrapper; if(host&&host.classList&&host.classList.contains('counter-widget')){wrapper=host;host.innerHTML='';scriptEl.remove();}else{wrapper=doc.createElement('span');wrapper.className='counter-widget';scriptEl.replaceWith(wrapper);}wrapper.setAttribute('role','status');wrapper.setAttribute('aria-live','polite');if(data.label){var labelEl=doc.createElement('span');labelEl.className='counter-widget__label';labelEl.textContent=data.label;labelEl.setAttribute('aria-hidden','true');wrapper.appendChild(labelEl);wrapper.appendChild(doc.createTextNode(' '));}var valueEl=doc.createElement('span');valueEl.className='counter-widget__value';valueEl.textContent=String(data.value);wrapper.appendChild(valueEl);}catch(err){if(console&&console.warn){console.warn('counter embed failed',err);}}})();`;
+  // Embed script
+  //
+  // If you want to pretty-print (deminify) this code:
+  // 1. Copy everything inside the template string (remove the starting const script = ` and the ending `;).
+  // 2. Paste the code into a JS formatter such as:
+  //    https://beautifier.io/
+  //    https://prettier.io/playground
+  // 3. After formatting, you can wrap it back in const script = ` ... `;
+  // -------------------------------------------------------------------------------------------------------
+  const script = `(function(){try{var data=${payload};var doc=document;var formatValue=function(v){var str=String(v==null?'0':v);return str.replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');};var scriptEl=doc.currentScript;if(!scriptEl){return;}var host=scriptEl.parentElement;var wrapper; if(host&&host.classList&&host.classList.contains('counter-widget')){wrapper=host;host.innerHTML='';scriptEl.remove();}else{wrapper=doc.createElement('span');wrapper.className='counter-widget';scriptEl.replaceWith(wrapper);}wrapper.setAttribute('role','status');wrapper.setAttribute('aria-live','polite');if(data.label){var labelEl=doc.createElement('span');labelEl.className='counter-widget__label';labelEl.textContent=data.label;labelEl.setAttribute('aria-hidden','true');wrapper.appendChild(labelEl);wrapper.appendChild(doc.createTextNode(' '));}var valueEl=doc.createElement('span');valueEl.className='counter-widget__value';valueEl.textContent=formatValue(data.value);wrapper.appendChild(valueEl);}catch(err){if(console&&console.warn){console.warn('counter embed failed',err);}}})();`;
   res.send(script);
 });
 
@@ -525,7 +542,7 @@ app.use((err, req, res, _next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Counter service listening on http://localhost:${PORT}`);
+  console.log(`Voux running at http://localhost:${PORT}`);
 });
 
 function sendLoginRateLimit(res, seconds) {
@@ -574,6 +591,27 @@ function recordCreationAttempt(ip, now = Date.now()) {
   creationTracker.set(ip, recent);
 }
 
+function validateCounterValue(rawValue) {
+  const normalizedRaw = rawValue === undefined || rawValue === null ? '0' : String(rawValue).trim();
+  if (!normalizedRaw) {
+    return { value: 0n };
+  }
+  if (!/^\d+$/.test(normalizedRaw)) {
+    return { error: 'startValue must be a positive number', message: 'Starting value must be a positive number.' };
+  }
+  if (normalizedRaw.length > START_VALUE_DIGIT_LIMIT) {
+    return {
+      error: 'startValue_too_large',
+      message: `Starting value cannot exceed ${START_VALUE_DIGIT_LIMIT} digits.`
+    };
+  }
+  try {
+    return { value: BigInt(normalizedRaw) };
+  } catch (_) {
+    return { error: 'startValue must be a positive number', message: 'Starting value must be a positive number.' };
+  }
+}
+
 function extractSearchQuery(value) {
   if (value === undefined || value === null) {
     return null;
@@ -608,12 +646,14 @@ function serializeCounter(counter, options = {}) {
   if (!counter) return null;
   const { includeNote = false, includeTags = false } = options;
   const mode = counter.count_mode === 'unlimited' ? 'unlimited' : 'unique';
+  const value = normalizeCounterValue(counter.value);
+  const createdAt = toSafeNumber(counter.created_at);
   const payload = {
     id: counter.id,
     label: counter.label,
     theme: counter.theme,
-    value: counter.value,
-    createdAt: counter.created_at,
+    value,
+    createdAt,
     cooldownMode: mode,
     cooldownLabel: describeModeLabel(mode)
   };
@@ -629,8 +669,8 @@ function serializeCounter(counter, options = {}) {
 function serializeCounterWithStats(counter, dayStart, options = {}) {
   const base = serializeCounter(counter, options);
   if (!base) return base;
-  const lastHit = getLastHitTimestamp(counter.id);
-  const hitsToday = dayStart ? countHitsSince(counter.id, dayStart) : 0;
+  const lastHit = toSafeNumber(getLastHitTimestamp(counter.id));
+  const hitsToday = dayStart ? toSafeNumber(countHitsSince(counter.id, dayStart)) : 0;
   const activityTrend = formatActivityTrend(getCounterDailyTrend(counter.id, ACTIVITY_WINDOW_DAYS));
   const inactivity = buildInactiveStatus(counter, lastHit);
   return {
@@ -650,6 +690,38 @@ function getDayStart() {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   return now.getTime();
+}
+
+function toSafeNumber(value) {
+  if (typeof value === 'bigint') {
+    return Number(value);
+  }
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function normalizeCounterValue(value) {
+  if (value === undefined || value === null) {
+    return '0';
+  }
+  if (typeof value === 'bigint') {
+    return value < 0n ? '0' : value.toString();
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || value < 0) return '0';
+    return Math.floor(value).toString();
+  }
+  const digits = String(value).replace(/[^\d]/g, '');
+  return digits || '0';
+}
+
+function normalizeCounterForExport(counter) {
+  if (!counter) return null;
+  return {
+    ...counter,
+    value: normalizeCounterValue(counter.value),
+    created_at: toSafeNumber(counter.created_at)
+  };
 }
 
 function normalizeModeFilter(value) {
@@ -766,7 +838,7 @@ function getWeekdayIndex(timestamp) {
 }
 
 function buildInactiveStatus(counter, lastHit) {
-  const reference = lastHit || counter.created_at || 0;
+  const reference = toSafeNumber(lastHit || counter.created_at || 0);
   if (!reference) {
     return {
       isInactive: true,

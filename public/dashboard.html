@@ -82,7 +82,14 @@
             <input type="text" id="adminLabel" maxlength="80" placeholder="Blog Views" />
             <div class="field">
               <label for="adminStartValue">Starting value</label>
-              <input type="number" id="adminStartValue" min="0" step="1" value="0" />
+              <input
+                type="text"
+                id="adminStartValue"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="18"
+                value="0"
+              />
             </div>
             <div class="field">
               <label for="adminNote">Note (optional)</label>
@@ -113,6 +120,12 @@
             <button type="submit">Generate</button>
           </form>
           <textarea id="adminEmbedSnippet" class="hidden" readonly></textarea>
+          <div id="adminPreview" class="preview hidden">
+            <p>Live preview</p>
+            <div id="adminPreviewTarget">
+              <em>Paste the snippet on any page.</em>
+            </div>
+          </div>
         </section>
 
         <section class="dashboard-card admin-panel">

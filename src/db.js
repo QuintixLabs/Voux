@@ -11,6 +11,7 @@ if (!fs.existsSync(DATA_DIR)) {
 
 const dbPath = path.join(DATA_DIR, 'counters.db');
 const db = new Database(dbPath);
+db.defaultSafeIntegers(true);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 let unlimitedThrottleMs = 0;
@@ -180,12 +181,13 @@ const recordHitTx = db.transaction((counterId, ip, now) => {
   if (ip) {
     existingHit = getHitStmt.get(counterId, ip);
     if (existingHit) {
+      const lastHitTs = typeof existingHit.last_hit === 'bigint' ? Number(existingHit.last_hit) : existingHit.last_hit;
       if (effectiveCooldownMs === null) {
         shouldIncrement = false;
       } else if (effectiveCooldownMs === 0) {
         shouldIncrement = true;
       } else {
-        const elapsed = now - existingHit.last_hit;
+        const elapsed = now - lastHitTs;
         shouldIncrement = elapsed >= effectiveCooldownMs;
       }
     }
@@ -204,10 +206,12 @@ const recordHitTx = db.transaction((counterId, ip, now) => {
 });
 
 function createCounter({ label, theme = 'plain', startValue, mode, tags = [] }) {
-  const initialValue =
-    typeof startValue === 'number' && Number.isFinite(startValue) && startValue >= 0
-      ? Math.floor(startValue)
-      : 0;
+  let initialValue = 0n;
+  if (typeof startValue === 'bigint') {
+    initialValue = startValue >= 0n ? startValue : 0n;
+  } else if (typeof startValue === 'number' && Number.isFinite(startValue) && startValue >= 0) {
+    initialValue = BigInt(Math.floor(startValue));
+  }
   const modeResult = parseRequestedMode(mode);
   if (modeResult.error) {
     throw new Error(modeResult.error);
@@ -240,7 +244,8 @@ function listCountersPage(limit, offset, search, mode, tags) {
 function countCounters(search, mode, tags) {
   const { sql, params } = buildCounterQuery({ search, mode, tags, count: true });
   const { total } = db.prepare(sql).get(params);
-  return total;
+  const normalized = typeof total === 'bigint' ? Number(total) : total;
+  return Number.isFinite(normalized) ? normalized : 0;
 }
 
 function normalizeSearch(search) {
@@ -304,7 +309,8 @@ function deleteInactiveCountersOlderThan(days) {
 const deleteAllCounters = db.transaction(() => {
   const { total } = countCountersStmt.get();
   deleteAllCountersStmt.run();
-  return total;
+  const normalized = typeof total === 'bigint' ? Number(total) : total;
+  return Number.isFinite(normalized) ? normalized : 0;
 });
 
 function deleteCountersByMode(mode) {
@@ -316,7 +322,9 @@ function deleteCountersByMode(mode) {
 
 function getLastHitTimestamp(counterId) {
   const row = getLastHitStmt.get(counterId);
-  return row ? row.last_hit : null;
+  if (!row) return null;
+  const ts = row.last_hit;
+  return typeof ts === 'bigint' ? Number(ts) : ts;
 }
 
 function countHitsSince(counterId, sinceTimestamp) {
@@ -324,13 +332,21 @@ function countHitsSince(counterId, sinceTimestamp) {
     return 0;
   }
   const row = countHitsSinceStmt.get(counterId, sinceTimestamp);
-  return row && typeof row.total === 'number' ? row.total : 0;
+  if (!row) return 0;
+  const total = typeof row.total === 'bigint' ? Number(row.total) : row.total;
+  return Number.isFinite(total) ? total : 0;
 }
 
 function getCounterDailyTrend(counterId, days = 7) {
   const limit = Math.max(1, Math.min(30, Number(days) || 7));
   const rows = getDailyTrendStmt.all(counterId, limit);
-  const map = new Map(rows.map((row) => [row.day, row.hits]));
+  const map = new Map(
+    rows.map((row) => {
+      const day = typeof row.day === 'bigint' ? Number(row.day) : row.day;
+      const hits = typeof row.hits === 'bigint' ? Number(row.hits) : row.hits;
+      return [day, hits];
+    })
+  );
   const trend = [];
   const todayStart = getDayStartTimestamp(Date.now());
   for (let i = limit - 1; i >= 0; i -= 1) {
@@ -389,10 +405,8 @@ function normalizeImportedCounter(raw) {
   const label = typeof raw.label === 'string' ? raw.label.trim().slice(0, 80) : '';
   const note = typeof raw.note === 'string' ? raw.note.trim().slice(0, 200) : '';
   const theme = typeof raw.theme === 'string' && raw.theme.trim() ? raw.theme.trim().slice(0, 40) : 'plain';
-  const value = Number(raw.value);
-  if (!Number.isFinite(value) || value < 0) {
-    return null;
-  }
+  const normalizedValue = extractIntegerDigits(raw.value);
+  if (normalizedValue === null) return null;
   const createdAtRaw = Number(raw.created_at);
   const created_at = Number.isFinite(createdAtRaw) && createdAtRaw > 0 ? createdAtRaw : Date.now();
   const modeInput = raw.count_mode ?? raw.mode ?? raw.ip_cooldown_hours;
@@ -405,15 +419,34 @@ function normalizeImportedCounter(raw) {
     label,
     theme,
     note: note || null,
-    value: Math.floor(value),
+    value: normalizedValue,
     created_at,
     count_mode: modeResult.mode,
     tags: filterTagIds(Array.isArray(raw.tags) ? raw.tags : [])
   };
 }
 
+function extractIntegerDigits(value) {
+  if (value === undefined || value === null) return 0n;
+  const raw = typeof value === 'bigint' ? value.toString() : String(value || '');
+  const digits = raw.replace(/[^\d]/g, '');
+  if (!digits) return 0n;
+  if (digits.length > 18) {
+    return null;
+  }
+  try {
+    return BigInt(digits);
+  } catch (_) {
+    return null;
+  }
+}
+
 function exportDailyActivity() {
-  return listDailyStmt.all();
+  return listDailyStmt.all().map((row) => ({
+    counter_id: row.counter_id,
+    day: typeof row.day === 'bigint' ? Number(row.day) : row.day,
+    hits: typeof row.hits === 'bigint' ? Number(row.hits) : row.hits
+  }));
 }
 
 function exportDailyActivityFor(ids = []) {
@@ -423,7 +456,11 @@ function exportDailyActivityFor(ids = []) {
   const stmt = db.prepare(
     `SELECT counter_id, day, hits FROM counter_daily WHERE counter_id IN (${placeholders}) ORDER BY counter_id, day`
   );
-  return stmt.all(normalized);
+  return stmt.all(normalized).map((row) => ({
+    counter_id: row.counter_id,
+    day: typeof row.day === 'bigint' ? Number(row.day) : row.day,
+    hits: typeof row.hits === 'bigint' ? Number(row.hits) : row.hits
+  }));
 }
 
 function importDailyActivity(data) {

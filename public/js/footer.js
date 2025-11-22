@@ -30,7 +30,7 @@ function hydrateFooter(root, config) {
   const versionEl = root.querySelector('[data-footer-version]');
   if (versionEl) {
     const version = config?.version;
-    versionEl.textContent = version ? `Version: v${version}` : 'Version: v?.?.?';
+    versionEl.innerHTML = version ? `Powered by Voux • v${version}` : 'Powered by Voux • v?.?.?';
   }
   const brandName = (config?.brandName || 'Voux').trim() || 'Voux';
   const brandHeading = root.querySelector('[data-brand-name]');

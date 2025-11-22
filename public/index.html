@@ -80,7 +80,15 @@
 
         <div class="field">
           <label for="startValue">Starting value</label>
-          <input type="number" id="startValue" name="startValue" min="0" step="1" value="0" />
+          <input
+            type="text"
+            id="startValue"
+            name="startValue"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="18"
+            value="0"
+          />
         </div>
 
         <div class="field">
@@ -219,9 +227,9 @@ npm install --production   # for production installs</code></pre>
   ghcr.io/quintixlabs/voux/voux:latest</code></pre>
         </div>
         <ul class="self-host-list">
-          <li><span class="code-inline">ADMIN_TOKEN</span> to your own password (do not leave it as the example).</li>
+          <li>Change <span class="code-inline">ADMIN_TOKEN</span> to your own password (do not leave it as the example).</li>
           <li>Mount <span class="code-inline">./data</span> so counters survive restarts.</li>
-          <li>Add more <span class="code-inline">-e VAR=value</span> flags for more settings if you need them.</li>
+          <li>Add more <span class="code-inline">-e VAR=value</span> flags for <a href="https://github.com/QuintixLabs/Voux?tab=readme-ov-file#-configuration" target="_blank">more settings</a> if you need them.</li>
         </ul>
       </div>
     </details>

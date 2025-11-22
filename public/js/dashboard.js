@@ -29,6 +29,8 @@ const createStartInput = document.querySelector('#adminStartValue');
 const adminEmbedSnippet = document.querySelector('#adminEmbedSnippet');
 const createCard = document.querySelector('#createCard');
 const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
+const adminPreview = document.querySelector('#adminPreview');
+const adminPreviewTarget = document.querySelector('#adminPreviewTarget');
 const modeFilterSelect = document.querySelector('#modeFilter');
 const activityRangeControls = document.querySelector('#activityRangeControls');
 const adminThrottleHint = document.querySelector('#adminThrottleHint');
@@ -60,6 +62,7 @@ const RANGE_LABELS = {
 };
 
 const TAG_LIMIT = 20;
+const START_VALUE_DIGIT_LIMIT = 18;
 
 const state = {
   token: '',
@@ -122,6 +125,35 @@ function showToast(message, variant = 'success') {
 }
 window.showToast = showToast;
 
+function limitStartValueInput(input) {
+  if (!input) return;
+  const enforceDigits = () => {
+    const digitsOnly = (input.value || '').replace(/[^\d]/g, '');
+    const trimmed = digitsOnly.slice(0, START_VALUE_DIGIT_LIMIT);
+    if (trimmed !== input.value) {
+      input.value = trimmed;
+    }
+  };
+  enforceDigits();
+  input.addEventListener('input', enforceDigits);
+}
+
+function readStartValue(input) {
+  if (!input) return '0';
+  const digits = (input.value || '').replace(/[^\d]/g, '').slice(0, START_VALUE_DIGIT_LIMIT);
+  return digits || '0';
+}
+
+function appendPreviewParam(url) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    parsed.searchParams.set('preview', '1');
+    return parsed.toString();
+  } catch (_) {
+    return url.includes('?') ? `${url}&preview=1` : `${url}?preview=1`;
+  }
+}
+
 init();
 
 function init() {
@@ -172,6 +204,7 @@ function init() {
   renderTagFilterList();
   updateTagFilterButton();
   toggleSearchClear();
+  limitStartValueInput(createStartInput);
   // no extra change handler needed for simple dropdown
   fetchConfig()
     .then(() => {
@@ -341,8 +374,15 @@ async function refreshCounters(page = 1, options = {}) {
   if (!state.token) throw new Error('Admin token missing.');
   try {
     const data = await fetchCounters(page);
-    state.latestCounters = data.counters || [];
-    renderCounterList(state.latestCounters);
+    const counters = data.counters || [];
+    let patched = false;
+    if (silent && canPatchCounters(state.latestCounters, counters)) {
+      patched = patchCounterRows(counters);
+    }
+    if (!patched) {
+      renderCounterList(counters);
+    }
+    state.latestCounters = counters;
     state.page = data.pagination?.page || 1;
     state.totalPages = data.pagination?.totalPages || 1;
     state.total = data.pagination?.total || (data.counters?.length ?? 0);
@@ -446,7 +486,7 @@ async function handleCreateCounter(event) {
   const noteValue = createNoteInput?.value?.trim() || '';
   const payload = {
     label: createLabelInput?.value?.trim() || '',
-    startValue: Number(createStartInput?.value || 0)
+    startValue: readStartValue(createStartInput)
   };
   if (state.createTags.length) {
     payload.tags = state.createTags.slice(0, 20);
@@ -476,6 +516,9 @@ async function handleCreateCounter(event) {
       adminEmbedSnippet.value = data.embedCode;
       adminEmbedSnippet.classList.remove('hidden');
     }
+    if (data.embedUrl) {
+      renderAdminPreview(data.embedUrl);
+    }
     if (noteValue) {
       try {
         await updateCounterMetadataRequest(data.counter.id, { note: noteValue });
@@ -483,9 +526,8 @@ async function handleCreateCounter(event) {
         console.warn('Failed to set note on create', err);
       }
     }
-    if (createLabelInput) createLabelInput.value = '';
+    if (createLabelInput) createLabelInput.value = payload.label;
     if (createNoteInput) createNoteInput.value = '';
-    if (createStartInput) createStartInput.value = '0';
     if (state.createTags.length) {
       state.createTags = [];
       refreshTagSelectors();
@@ -494,6 +536,19 @@ async function handleCreateCounter(event) {
   } catch (error) {
     await showAlert(error.message || 'Failed to create counter');
   }
+}
+
+function renderAdminPreview(embedUrl) {
+  if (!adminPreview || !adminPreviewTarget) return;
+  adminPreviewTarget.innerHTML = '';
+  const wrapper = document.createElement('span');
+  wrapper.className = 'counter-widget counter-widget--preview';
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = appendPreviewParam(embedUrl);
+  wrapper.appendChild(script);
+  adminPreviewTarget.appendChild(wrapper);
+  adminPreview.classList.remove('hidden');
 }
 
 function renderCounterList(counters = state.latestCounters) {
@@ -588,14 +643,18 @@ function renderCounterList(counters = state.latestCounters) {
 
     const labelInput = document.createElement('input');
     labelInput.type = 'text';
+    labelInput.name = 'counterLabel';
     labelInput.maxLength = 80;
     labelInput.value = counter.label || '';
 
     const valueInput = document.createElement('input');
-    valueInput.type = 'number';
-    valueInput.min = '0';
-    valueInput.step = '1';
+    valueInput.type = 'text';
+    valueInput.name = 'counterValue';
+    valueInput.inputMode = 'numeric';
+    valueInput.pattern = '[0-9]*';
+    valueInput.maxLength = START_VALUE_DIGIT_LIMIT;
     valueInput.value = counter.value;
+    limitStartValueInput(valueInput);
 
     const noteInput = document.createElement('textarea');
     noteInput.rows = 2;
@@ -666,18 +725,18 @@ function renderCounterList(counters = state.latestCounters) {
 
     const submitEdit = async () => {
       const nextLabel = labelInput.value.trim();
-      const rawValue = valueInput.value.trim();
-      if (!/^\d+$/.test(rawValue)) {
+      const rawValue = (valueInput.value || '').replace(/[^\d]/g, '').slice(0, START_VALUE_DIGIT_LIMIT);
+      if (!/^\d+$/.test(rawValue || '0')) {
         await showAlert('Use digits only when setting a value.');
         return;
       }
-      const nextValue = Number(rawValue);
+      const nextValue = rawValue || '0';
       const nextNote = noteInput.value.trim();
       editSave.disabled = true;
       try {
         await updateCounterMetadataRequest(counter.id, {
           label: nextLabel,
-          value: Math.floor(nextValue),
+          value: nextValue,
           note: nextNote,
           tags: editTags
         });
@@ -1154,6 +1213,17 @@ function handlePaginationHotkeys(event) {
 }
 
 function formatNumber(value) {
+  if (value === null || value === undefined) return '0';
+  if (typeof value === 'bigint') {
+    return value.toLocaleString();
+  }
+  if (typeof value === 'string' && /^\d+$/.test(value)) {
+    try {
+      return BigInt(value).toLocaleString();
+    } catch (_) {
+      // fall through
+    }
+  }
   const num = Number(value);
   if (!Number.isFinite(num)) return '0';
   return num.toLocaleString();
@@ -1517,40 +1587,12 @@ async function deleteTagRequest(tagId, name) {
       throw new Error(err.error || 'Failed to delete tag');
     }
     await fetchTags();
-    let changed = false;
-    state.latestCounters = state.latestCounters.map((counter) => {
-      if (!Array.isArray(counter.tags)) return counter;
-      const filtered = counter.tags.filter((entry) => {
-        if (!entry) return false;
-        if (typeof entry === 'string') return entry !== tagId;
-        return entry.id !== tagId;
-      });
-      if (filtered.length !== counter.tags.length) {
-        changed = true;
-        return { ...counter, tags: filtered };
-      }
-      return counter;
-    });
-    if (changed) {
-      removeRenderedTagChips(tagId);
-    }
+    await refreshCounters(state.page, { silent: true });
     updateTagCounterHints();
     showToast(`Deleted tag "${name || tagId}"`);
   } catch (error) {
     await showAlert(error.message || 'Failed to delete tag');
   }
-}
-
-function removeRenderedTagChips(tagId) {
-  if (!tagId) return;
-  const safeId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(tagId) : tagId.replace(/"/g, '\\"');
-  document.querySelectorAll(`.counter-tags [data-tag-id="${safeId}"]`).forEach((chip) => {
-    const parent = chip.parentElement;
-    chip.remove();
-    if (parent && !parent.querySelector('.tag-chip')) {
-      parent.remove();
-    }
-  });
 }
 
 function registerTagSelector(container, config = {}) {
@@ -1862,6 +1904,12 @@ function buildActivityBlock(activity) {
   }
   const wrapper = document.createElement('div');
   wrapper.className = 'counter-activity';
+  const activityState = {
+    bars: [],
+    tooltip: null,
+    activeBar: null
+  };
+  wrapper._activityState = activityState;
   const label = document.createElement('p');
   label.className = 'counter-activity__label';
   label.textContent = 'Weekly activity';
@@ -1872,16 +1920,19 @@ function buildActivityBlock(activity) {
   tooltip.className = 'activity-tooltip';
   let tooltipAnchor = null;
   let hideTimeout = null;
+  activityState.tooltip = tooltip;
 
-  const showTooltip = (bar, day) => {
-    if (!day) return;
-    tooltip.textContent = `${day.label || 'Day'}: ${formatNumber(day.hits)} hits`;
+  const showTooltip = (bar) => {
+    if (!bar || !bar._tooltipData) return;
+    const info = bar._tooltipData;
+    tooltip.textContent = `${info.label || 'Day'}: ${formatNumber(info.hits)} hits`;
     const trackRect = bar.getBoundingClientRect();
     const parentRect = wrapper.getBoundingClientRect();
     const center = trackRect.left - parentRect.left + trackRect.width / 2;
     tooltip.style.left = `${center}px`;
     tooltip.classList.add('activity-tooltip--visible');
     tooltipAnchor = bar;
+    activityState.activeBar = bar;
     if (hideTimeout) {
       clearTimeout(hideTimeout);
       hideTimeout = null;
@@ -1893,6 +1944,7 @@ function buildActivityBlock(activity) {
     hideTimeout = setTimeout(() => {
       tooltip.classList.remove('activity-tooltip--visible');
       tooltipAnchor = null;
+      activityState.activeBar = null;
       hideTimeout = null;
     }, 250);
   };
@@ -1932,13 +1984,14 @@ function buildActivityBlock(activity) {
     bar.tabIndex = 0;
     bar.setAttribute('role', 'button');
     bar.setAttribute('aria-label', `${day.label || 'Day'} has ${formatNumber(day.hits)} hits`);
+    bar._tooltipData = { label: day.label, hits: day.hits };
     const handleEnter = () => {
       if (tooltipAnchor === bar) {
         cancelHide();
         return;
       }
       cancelHide();
-      showTooltip(bar, day);
+      showTooltip(bar);
     };
     const handleLeave = () => {
       if (tooltipAnchor === bar) {
@@ -1952,9 +2005,222 @@ function buildActivityBlock(activity) {
     bar.addEventListener('click', handleEnter);
     bar.append(track, dayLabel);
     bars.appendChild(bar);
+    activityState.bars.push(bar);
   });
   wrapper.append(label, bars, tooltip);
   return wrapper;
+}
+
+function updateActivityBlockData(activityEl, activity) {
+  if (!activityEl || !activity || !Array.isArray(activity.trend)) return;
+  const state = activityEl._activityState;
+  if (!state || !Array.isArray(state.bars)) return;
+  const bars = state.bars;
+  if (!bars.length) return;
+  const trend = activity.trend;
+  const maxHits = Math.max(1, Number(activity.maxHits) || 0);
+  for (let i = 0; i < bars.length; i += 1) {
+    const bar = bars[i];
+    const day = trend[i];
+    if (!bar || !day) continue;
+    bar._tooltipData = { label: day.label, hits: day.hits };
+    const track = bar.querySelector('.activity-bar__track');
+    const fill = track?.querySelector('.activity-bar__fill');
+    const ratio = maxHits > 0 ? day.hits / maxHits : 0;
+    if (fill) {
+      if (ratio > 0) {
+        fill.style.height = `${Math.max(12, ratio * 100)}%`;
+        fill.dataset.level = resolveActivityLevel(day.hits, ratio);
+        fill.classList.remove('activity-bar__fill--empty');
+      } else {
+        fill.style.height = '4px';
+        fill.classList.add('activity-bar__fill--empty');
+        fill.dataset.level = 'low';
+      }
+    }
+    const labelEl = bar.querySelector('.activity-bar__label');
+    if (labelEl) {
+      labelEl.textContent = day.label || '';
+    }
+    bar.setAttribute('aria-label', `${day.label || 'Day'} has ${formatNumber(day.hits)} hits`);
+  }
+  if (state.tooltip && state.activeBar && state.activeBar._tooltipData) {
+    if (state.tooltip.classList.contains('activity-tooltip--visible')) {
+      const info = state.activeBar._tooltipData;
+      state.tooltip.textContent = `${info.label || 'Day'}: ${formatNumber(info.hits)} hits`;
+    }
+  }
+}
+
+function canPatchCounters(previous = [], next = []) {
+  if (!counterListEl) return false;
+  if (!Array.isArray(previous) || !Array.isArray(next)) return false;
+  if (previous.length !== next.length) return false;
+  for (let i = 0; i < next.length; i += 1) {
+    if (!previous[i] || previous[i].id !== next[i].id) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function patchCounterRows(counters = []) {
+  if (!counterListEl) return false;
+  for (let i = 0; i < counters.length; i += 1) {
+    const counter = counters[i];
+    const row = counterListEl.querySelector(`.counter-row[data-counter-id="${counter.id}"]`);
+    if (!row) {
+      return false;
+    }
+    updateCounterRow(row, counter);
+  }
+  return true;
+}
+
+function updateCounterRow(row, counter) {
+  const meta = row.querySelector('.counter-meta');
+  if (!meta) return;
+  const labelEl = row.querySelector('.counter-meta__label');
+  if (labelEl) {
+    labelEl.textContent = counter.label || '';
+  }
+  const valueBadge = row.querySelector('.counter-meta__value .badge');
+  if (valueBadge) {
+    valueBadge.textContent = formatNumber(counter.value);
+  }
+  const modeEl = row.querySelector('.counter-meta__mode');
+  if (modeEl) {
+    const labelText = counter.cooldownLabel || 'Unique visitors';
+    modeEl.textContent = `Mode: ${labelText}`;
+  }
+  const statEls = row.querySelectorAll('.counter-meta__stat');
+  const lastHitStat = statEls[0];
+  if (lastHitStat) {
+    const valueEl = lastHitStat.querySelector('.counter-meta__stat-value');
+    if (valueEl) {
+      valueEl.textContent = formatLastHit(counter.lastHit);
+    }
+  }
+  const rangeStat = statEls[1];
+  if (rangeStat) {
+    const labelSpan = rangeStat.querySelector('.counter-meta__stat-label');
+    if (labelSpan) {
+      labelSpan.textContent = getRangeStatLabel();
+    }
+    const valueSpan = rangeStat.querySelector('.counter-meta__stat-value');
+    if (valueSpan) {
+      valueSpan.textContent = formatNumber(getRangeStatValue(counter));
+    }
+  }
+  updateTagsSection(row, counter);
+  updateStatusSection(row, counter);
+  updateNoteSection(row, counter);
+  updateActivitySection(row, counter);
+  updateEditDefaults(row, counter);
+}
+
+function updateTagsSection(row, counter) {
+  const meta = row.querySelector('.counter-meta');
+  if (!meta) return;
+  const existing = row.querySelector('.counter-tags');
+  const newTags = buildTagBadges(counter.tags);
+  if (existing && newTags) {
+    existing.replaceWith(newTags);
+  } else if (!existing && newTags) {
+    const idBlock = row.querySelector('.counter-meta__id');
+    if (idBlock && idBlock.parentElement) {
+      idBlock.parentElement.insertBefore(newTags, idBlock.nextSibling);
+    } else {
+      meta.insertBefore(newTags, meta.firstChild);
+    }
+  } else if (existing && !newTags) {
+    existing.remove();
+  }
+}
+
+function updateStatusSection(row, counter) {
+  const meta = row.querySelector('.counter-meta');
+  if (!meta) return;
+  const existing = row.querySelector('.counter-status');
+  const newStatus = buildStatusBadges(counter, { forceInactive: state.debugInactive });
+  if (existing && newStatus) {
+    existing.replaceWith(newStatus);
+  } else if (!existing && newStatus) {
+    const noteOrValue = row.querySelector('.counter-meta__note, .counter-meta__value');
+    if (noteOrValue && noteOrValue.parentElement) {
+      noteOrValue.parentElement.insertBefore(newStatus, noteOrValue);
+    } else {
+      meta.appendChild(newStatus);
+    }
+  } else if (existing && !newStatus) {
+    existing.remove();
+  }
+}
+
+function updateNoteSection(row, counter) {
+  const meta = row.querySelector('.counter-meta');
+  if (!meta) return;
+  let noteEl = row.querySelector('.counter-meta__note');
+  if (counter.note) {
+    if (noteEl) {
+      noteEl.textContent = counter.note;
+    } else {
+      noteEl = document.createElement('div');
+      noteEl.className = 'counter-meta__note';
+      noteEl.textContent = counter.note;
+      const valueEl = row.querySelector('.counter-meta__value');
+      if (valueEl && valueEl.parentElement) {
+        valueEl.parentElement.insertBefore(noteEl, valueEl);
+      } else {
+        meta.appendChild(noteEl);
+      }
+    }
+  } else if (noteEl) {
+    noteEl.remove();
+  }
+}
+
+function updateActivitySection(row, counter) {
+  const meta = row.querySelector('.counter-meta');
+  if (!meta) return;
+  const activityEl = row.querySelector('.counter-activity');
+  const isHovered = activityEl && (activityEl.matches(':hover') || activityEl.querySelector(':hover'));
+  const newActivity = buildActivityBlock(counter.activity);
+  if (activityEl && isHovered) {
+    updateActivityBlockData(activityEl, counter.activity);
+    return;
+  }
+  if (activityEl && newActivity) {
+    activityEl.replaceWith(newActivity);
+  } else if (!activityEl && newActivity) {
+    const actionsEl = row.querySelector('.counter-actions');
+    if (actionsEl && actionsEl.parentElement) {
+      actionsEl.parentElement.insertBefore(newActivity, actionsEl);
+    } else {
+      meta.appendChild(newActivity);
+    }
+  } else if (activityEl && !newActivity) {
+    activityEl.remove();
+  }
+}
+
+function updateEditDefaults(row, counter) {
+  const editPanel = row.querySelector('.counter-edit');
+  if (!editPanel || !editPanel.classList.contains('hidden')) {
+    return;
+  }
+  const labelInput = editPanel.querySelector('input[name="counterLabel"]');
+  const valueInput = editPanel.querySelector('input[name="counterValue"]');
+  const noteInput = editPanel.querySelector('textarea');
+  if (labelInput) {
+    labelInput.value = counter.label || '';
+  }
+  if (valueInput) {
+    valueInput.value = counter.value;
+  }
+  if (noteInput) {
+    noteInput.value = counter.note || '';
+  }
 }
 
 function resolveActivityLevel(hits, ratio) {

@@ -8,11 +8,13 @@ const stylingCard = document.querySelector('#stylingCard');
 const selfHostCard = document.querySelector('#selfHostCard');
 const noticeCard = document.querySelector('#noticeCard');
 const cooldownSelect = document.querySelector('#cooldownSelect');
+const startValueInput = document.querySelector('#startValue');
 let isPrivateMode = false;
 let showGuides = true;
 let defaultMode = 'unique';
 let allowedModes = { unique: true, unlimited: true };
 let currentThrottleSeconds = 0;
+const START_VALUE_DIGIT_LIMIT = 18;
 
 function modalApi() {
   return window.VouxModal;
@@ -26,6 +28,26 @@ async function showAlert(message, options) {
   }
 }
 
+function limitStartValueInput(input) {
+  if (!input) return;
+  const enforceDigits = () => {
+    const digitsOnly = (input.value || '').replace(/[^\d]/g, '');
+    const trimmed = digitsOnly.slice(0, START_VALUE_DIGIT_LIMIT);
+    if (trimmed !== input.value) {
+      input.value = trimmed;
+    }
+  };
+  enforceDigits();
+  input.addEventListener('input', enforceDigits);
+}
+
+function readStartValue(input) {
+  if (!input) return '0';
+  const digits = (input.value || '').replace(/[^\d]/g, '').slice(0, START_VALUE_DIGIT_LIMIT);
+  return digits || '0';
+}
+
+limitStartValueInput(startValueInput);
 
 if (form) {
   form.addEventListener('submit', async (event) => {
@@ -40,7 +62,7 @@ if (form) {
     const formData = new FormData(form);
     const payload = {
       label: (formData.get('label') || '').toString(),
-      startValue: Number(formData.get('startValue') || 0)
+      startValue: readStartValue(startValueInput)
     };
     try {
       payload.mode = getSelectedCooldown(cooldownSelect);
