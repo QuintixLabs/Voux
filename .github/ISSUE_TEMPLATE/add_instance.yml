@@ -4,10 +4,6 @@ title: "Add https://<instance URL>"
 labels: instance add, instance
 
 body:
-  - type: markdown
-    attributes:
-      value: |
-
   - type: checkboxes
     attributes:
       label: Requirements (make sure to read all of them)
