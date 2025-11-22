@@ -1,5 +1,6 @@
 name: Edit an instance
 description: Update details of an existing Voux instance on voux-instances.fr0st.xyz
+sort_order: 3
 title: "Edit https://<instance URL>"
 labels: instance edit, instance
 

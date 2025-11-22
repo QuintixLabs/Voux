@@ -1,5 +1,6 @@
 name: Bug report
 description: Something broke or behaves strangely
+sort_order: 4
 labels: [bug]
 body:
   - type: textarea

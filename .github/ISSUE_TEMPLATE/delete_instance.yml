@@ -1,5 +1,6 @@
 name: Delete an instance
 description: Delete an existing Voux instance from voux-instances.fr0st.xyz
+sort_order: 2
 title: "Delete https://<instance URL>"
 labels: instance delete, instance
 

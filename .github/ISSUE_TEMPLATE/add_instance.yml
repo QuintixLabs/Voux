@@ -1,5 +1,6 @@
 name: Add a new instance
 description: Add a new instance to voux-instances.fr0st.xyz
+sort_order: 1
 title: "Add https://<instance URL>"
 labels: instance add, instance
 

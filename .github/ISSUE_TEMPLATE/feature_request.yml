@@ -1,5 +1,6 @@
 name: Feature request
 description: Idea or improvement for Voux
+sort_order: 5
 labels: [feature]
 body:
   - type: textarea
