@@ -1,0 +1,49 @@
+name: Delete an instance
+description: Delete an existing Voux instance from [voux-instances.fr0st.xyz](https://github.com/QuintixLabs/voux-instances-uptime)
+title: "Delete https://<instance URL>"
+labels: instance delete, instance
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        <!--
+        Replace https://<instance URL> by the Voux instance URL.
+        Replace the ?? below.
+        -->
+
+  - type: input
+    id: instance-url
+    attributes:
+      label: Instance URL
+      description: "Replace https://<instance URL> by the Voux instance URL."
+      placeholder: "https://example.com"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: maintainer
+    attributes:
+      label: Are you the maintainer?
+      options:
+        - Yes
+        - No
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: Explain why you want this instance to be removed
+      placeholder: Short and clear reason
+    validations:
+      required: true
+
+  - type: input
+    id: added-by-issue
+    attributes:
+      label: Instance added by the issue ??
+      description: "Give the issue number or URL where this instance was added."
+      placeholder: "#123 or https://github.com/QuintixLabs/voux-instances-uptime/issues/123"
+    validations:
+      required: true

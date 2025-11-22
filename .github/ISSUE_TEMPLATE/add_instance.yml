@@ -1,0 +1,56 @@
+name: Add a new instance
+description: Add a new instance to [voux-instances.fr0st.xyz](https://github.com/QuintixLabs/voux-instances-uptime)
+title: "Add https://<instance URL>"
+labels: instance add, instance
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+
+  - type: checkboxes
+    attributes:
+      label: Requirements (make sure to read all of them)
+      description: |
+        If you do not follow all the requirements, your instance will not be added. 
+        If we later find that your instance does not follow the requirements, it will be removed. 
+        If the rules change in the future, you will be told if your instance no longer meets them.
+      options:
+      - label: "My instance is public. Private instances will not be accepted."
+        required: true
+      - label: "It is my instance. I bought the domain myself and I own this domain. Free domains (e.g. Freenom) and shared domains (e.g. noip.com) are not allowed."
+        required: true
+      - label: "I will keep my instance updated every week."
+        required: true
+      - label: "I understand that running a public instance takes time and work, and I need to keep it in good shape, like using a monitoring system."
+        required: true
+      - label: "I promise to keep **at least 90%** uptime each month. If I expect a long downtime, I will request a removal."
+        required: true
+      - label: "I do not track the users of my instance with any analytics or tracking software."
+        required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Recommendations for your instance
+
+        - Set up uptime monitoring and alerts so you know when it goes down.
+        - Add a simple status page or badge in the footer of ur instance so users can check uptime.
+        - Keep weekly backups of your database before upgrading.
+
+  - type: input
+    id: source-code-url
+    attributes:
+      label: Source code URL
+      description: |
+        If you have modified the source code, please publish it to an URL and make sure that the URL is publicly accessible in your instance's site
+        In case of issue, please specify the GIT URL here
+    validations:
+      required: false
+
+  - type: textarea
+    id: comments
+    attributes:
+      label: Comment
+      description: |
+        Optional comments about your instance.
