@@ -1,5 +1,5 @@
 name: Delete an instance
-description: Delete an existing Voux instance from [voux-instances.fr0st.xyz](https://github.com/QuintixLabs/voux-instances-uptime)
+description: Delete an existing Voux instance from voux-instances.fr0st.xyz
 title: "Delete https://<instance URL>"
 labels: instance delete, instance
 

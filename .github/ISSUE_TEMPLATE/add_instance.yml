@@ -1,5 +1,5 @@
 name: Add a new instance
-description: Add a new instance to [voux-instances.fr0st.xyz](https://github.com/QuintixLabs/voux-instances-uptime)
+description: Add a new instance to voux-instances.fr0st.xyz
 title: "Add https://<instance URL>"
 labels: instance add, instance
 
@@ -31,8 +31,8 @@ body:
         ### Recommendations for your instance
 
         - Set up uptime monitoring and alerts so you know when it goes down.
-        - Add a simple status page or badge in the footer of ur instance so users can check uptime.
-        - Keep weekly backups of your database before upgrading.
+        - Add a simple status page or badge in the footer of your instance so users can check the uptime.
+        - Keep weekly backups of your database, especially before updating to a new version.
 
   - type: input
     id: source-code-url
