@@ -1,0 +1,49 @@
+name: Edit an instance
+description: Update details of an existing Voux instance on voux-instances.fr0st.xyz
+title: "Edit https://<instance URL>"
+labels: instance edit, instance
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        <!--
+        Replace https://<instance URL> by the Voux instance URL.
+        -->
+
+  - type: input
+    id: instance-url
+    attributes:
+      label: Instance URL
+      description: "Replace https://<instance URL> by the Voux instance URL."
+      placeholder: "https://example.com"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: maintainer
+    attributes:
+      label: Are you the maintainer?
+      options:
+        - "Yes"
+        - "No"
+    validations:
+      required: true
+
+  - type: textarea
+    id: changes
+    attributes:
+      label: What needs to be updated?
+      description: "Only URL changes are allowed. Give the new URL."
+      placeholder: "New URL (only URL changes)"
+    validations:
+      required: true
+
+  - type: input
+    id: original-issue
+    attributes:
+      label: Instance added by the issue ??
+      description: "Issue number or URL where this instance was originally added."
+      placeholder: "#123 or https://github.com/QuintixLabs/voux-instances-uptime/issues/123"
+    validations:
+      required: true
