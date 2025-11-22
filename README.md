@@ -1,9 +1,9 @@
-<div id="start-of-content"></div>
-
 <h1 align="center">
   <a id="start-of-content" href="http://voux.fr0st.xyz" target="_blank"><img src="https://github.com/QuintixLabs/Voux/blob/master/public/assets/banner-2.png" alt="Voux" width="900"></a>
 </h1>
 <p align="center"><strong>Simple Free & Open Source Hit Counter for Blogs and Websites</strong></p>
+
+<div id="start-of-content"></div>
 
 
 <p align="center">
