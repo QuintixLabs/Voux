@@ -1,6 +1,6 @@
 {
   "name": "counter",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "A self hosted view counter for blogs and websites with a built in dashboard.",
   "main": "src/server.js",
   "scripts": {
