@@ -1,3 +1,9 @@
+/*
+  dashboard.js
+
+  Admin dashboard logic: login, list/manage counters, create counters, tags, and previews.
+*/
+
 const loginCard = document.querySelector('#loginCard');
 const dashboardCard = document.querySelector('#dashboardCard');
 const adminForm = document.querySelector('#admin-form');
@@ -161,12 +167,12 @@ function init() {
   adminForm?.addEventListener('submit', onLoginSubmit);
   prevPageBtn?.addEventListener('click', () => {
     if (state.page > 1) {
-      refreshCounters(state.page - 1);
+      handlePageNavigation(state.page - 1);
     }
   });
   nextPageBtn?.addEventListener('click', () => {
     if (state.page < state.totalPages) {
-      refreshCounters(state.page + 1);
+      handlePageNavigation(state.page + 1);
     }
   });
   deleteAllBtn?.addEventListener('click', handleDeleteAll);
@@ -1239,6 +1245,7 @@ function formatLastHit(timestamp) {
   const minute = 60;
   const hour = 60 * minute;
   const day = 24 * hour;
+  const monthWindow = 30 * day;
   if (seconds < minute) {
     return 'Just now';
   }
@@ -1250,11 +1257,29 @@ function formatLastHit(timestamp) {
     const hours = Math.floor(seconds / hour);
     return `${hours}h ago`;
   }
-  if (seconds < day * 7) {
+  if (seconds < day * 30) {
     const days = Math.floor(seconds / day);
     return `${days}d ago`;
   }
   return new Date(timestamp).toLocaleDateString();
+}
+
+async function handlePageNavigation(nextPage) {
+  try {
+    await refreshCounters(nextPage);
+    ensurePaginationInView();
+  } catch (error) {
+    console.warn('Page change failed', error);
+  }
+}
+
+function ensurePaginationInView() {
+  if (!paginationEl) return;
+  const rect = paginationEl.getBoundingClientRect();
+  const inView = rect.top >= 0 && rect.bottom <= window.innerHeight;
+  if (!inView) {
+    paginationEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
 }
 
 function truncateQuery(query) {

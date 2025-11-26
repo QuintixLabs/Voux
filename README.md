@@ -142,7 +142,7 @@ SQLite lives in `data/counters.db`. Back it up occasionally if you care about th
 - `GET /api/api-keys` – list owner API keys (admin only).
 - `POST /api/api-keys` – create a new key (admin only).
 - `DELETE /api/api-keys/:id` – revoke a key (admin only).
-- `POST /api/counters/purge-inactive` – delete counters that haven’t seen hits in X days (admin only).
+- `POST /api/counters/purge-inactive` – delete counters that haven't seen hits in X days (admin only).
 - `GET /api/tags` – list tag definitions (admin only). Used by the dashboard to render the tag pickers.
 - `POST /api/tags` – create a new tag with `{ "name": "Articles", "color": "#ff8800" }` (admin only).
 

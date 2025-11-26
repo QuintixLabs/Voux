@@ -1,3 +1,9 @@
+/*
+  main.js
+
+  Public builder page: creates counters, shows embed snippet, preview, and copy helpers.
+*/
+
 const form = document.querySelector('#create-form');
 const resultSection = document.querySelector('#result');
 const snippetArea = document.querySelector('#embedSnippet');

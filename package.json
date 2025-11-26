@@ -1,7 +1,7 @@
 {
   "name": "counter",
   "version": "1.1.1",
-  "description": "Self-hosted embeddable view counter service",
+  "description": "A self hosted view counter for blogs and websites with a built in dashboard.",
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
@@ -12,6 +12,7 @@
   "author": "",
   "license": "GPL-3.0",
   "dependencies": {
+    "body-parser": "^2.2.1",
     "better-sqlite3": "^12.4.1",
     "dotenv": "^17.2.3",
     "express": "^5.1.0"

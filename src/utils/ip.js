@@ -1,3 +1,9 @@
+/*
+  ip.js
+
+  Extracts client IP from proxy headers and socket info.
+*/
+
 function getClientIp(req) {
   if (!req) return null;
   const forwarded = req.headers?.['x-forwarded-for'];

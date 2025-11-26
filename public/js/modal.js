@@ -1,3 +1,9 @@
+/*
+  modal.js
+
+  Lightweight modal helpers for alert/confirm flows.
+*/
+
 (() => {
   const OVERLAY_CLASS = 'modal-overlay';
   const OPEN_CLASS = 'modal-overlay--open';

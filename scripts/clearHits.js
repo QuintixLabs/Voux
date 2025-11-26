@@ -1,4 +1,6 @@
 /*
+  clearHits.js
+
   Wipes the hits table so unique-visitor tracking starts fresh.
   Run `npm run clear-hits` to clear dedupe entries without touching counters.
 */

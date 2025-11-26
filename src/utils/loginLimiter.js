@@ -1,3 +1,9 @@
+/*
+  loginLimiter.js
+
+  Tracks admin login attempts and blocks after too many failures.
+*/
+
 const MAX_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MS = 60 * 1000; // 1 minute window
 const LOCK_DURATION_MS = 45 * 1000; // lock for 45 seconds

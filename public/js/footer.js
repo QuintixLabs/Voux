@@ -1,3 +1,9 @@
+/*
+  footer.js
+
+  Injects footer markup and sets year, version, branding text.
+*/
+
 async function injectFooter() {
   const roots = document.querySelectorAll('[data-footer-root]');
   if (!roots.length) return;

@@ -1,3 +1,9 @@
+/*
+  configStore.js
+
+  Loads, stores, and updates runtime config (private mode, branding, allowed modes, tags).
+*/
+
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');

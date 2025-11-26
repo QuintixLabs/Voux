@@ -1,3 +1,9 @@
+/*
+  settings.js
+
+  Admin settings page logic: toggles, backups, and API key management.
+*/
+
 const STORAGE_KEY = 'vouxAdminAuth';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 

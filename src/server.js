@@ -1,6 +1,16 @@
+/*
+  server.js
+
+  Express API + embed server for Voux. Serves API routes, embed script,
+  and static HTML with versioned assets.
+*/
+
+
+/* variables :) */
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const fs = require('fs'); /* loads files and templates */
 const {
   createCounter,
   listCounters,
@@ -40,8 +50,10 @@ const {
 } = require('./middleware/requireAdmin');
 const getClientIp = require('./utils/ip');
 
+/* basic settings and limits */
 const PORT = process.env.PORT || 8787;
 const DEFAULT_PAGE_SIZE = Number(process.env.ADMIN_PAGE_SIZE) || 5;
+// Creation limit defaults: 5 counters per 60 seconds unless overridden via env
 const CREATION_LIMIT_COUNT = Math.max(
   1,
   Number.isFinite(Number(process.env.COUNTER_CREATE_LIMIT))
@@ -55,6 +67,7 @@ const CREATION_LIMIT_WINDOW_MS = Math.max(
     : 60 * 1000 // 1 min
 );
 
+// Tracks creation timestamps per IP for rate limiting
 const creationTracker = new Map();
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ACTIVITY_WINDOW_DAYS = 30;
@@ -76,7 +89,9 @@ app.use(express.json());
 
 const staticDir = path.join(__dirname, '..', 'public');
 const notFoundPage = path.join(staticDir, '404.html');
+const htmlCache = new Map();
 
+/* simple health + config */
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, timestamp: Date.now() });
 });
@@ -86,13 +101,14 @@ app.get('/api/config', (req, res) => {
   const defaultMode = getDefaultMode(runtimeConfig);
   res.json({
     ...runtimeConfig,
-    version: getVersion(),
+    version: getAppVersion(),
     adminPageSize: DEFAULT_PAGE_SIZE,
     defaultMode,
     defaultCooldownLabel: describeModeLabel(defaultMode)
   });
 });
 
+/* admin counters list with paging/search/filter */
 app.get('/api/counters', requireAdmin, (req, res) => {
   const modeFilter = normalizeModeFilter(req.query.mode);
   if (req.query.mode !== undefined && !modeFilter) {
@@ -132,6 +148,7 @@ app.get('/api/counters', requireAdmin, (req, res) => {
   });
 });
 
+/* export/import for counters */
 app.get('/api/counters/export', requireAdmin, (req, res) => {
   const counters = exportCounters().map(normalizeCounterForExport).filter(Boolean);
   const daily = exportDailyActivity();
@@ -390,6 +407,7 @@ app.delete('/api/counters', requireAdmin, (req, res) => {
 });
 
 app.post('/api/counters', (req, res) => {
+  /* creation is limited per IP when not in private mode */
   if (isPrivateMode()) {
     if (!process.env.ADMIN_TOKEN) {
       return res.status(403).json({ error: 'admin_token_not_configured' });
@@ -483,6 +501,7 @@ app.get('/api/counters/:id', (req, res) => {
   });
 });
 
+/* embed script (no-store) */
 app.get('/embed/:id.js', (req, res) => {
   res.type('application/javascript');
   res.set('Cache-Control', 'no-store');
@@ -523,15 +542,43 @@ app.get('/embed/:id.js', (req, res) => {
   res.send(script);
 });
 
-app.use(express.static(staticDir, { extensions: ['html'] }));
+/*
+  CACHE BUSTING ;)
+*/
+
+app.get('/', serveHtml('index.html'));
+app.get('/index.html', serveHtml('index.html'));
+app.get('/dashboard', serveHtml('dashboard.html'));
+app.get('/about', serveHtml('about.html'));
+app.get('/settings', serveHtml('settings.html'));
+app.get('/privacy', serveHtml('privacy.html'));
+app.get('/terms', serveHtml('terms.html'));
+
+/* static assets (versioned via querystring) */
+app.use(
+  express.static(staticDir, {
+    extensions: ['html'],
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    }
+  })
+);
 
 app.use((req, res, next) => {
   if (req.accepts('html')) {
+    const html = loadHtmlTemplate('404.html');
+    if (html) {
+      res.set('Cache-Control', 'no-store');
+      return res.status(404).send(html);
+    }
     return res.status(404).sendFile(notFoundPage);
   }
   next();
 });
 
+/* JSON 404 fallback */
 app.use((req, res) => {
   res.status(404).json({ error: 'not_found' });
 });
@@ -545,6 +592,7 @@ app.listen(PORT, () => {
   console.log(`Voux running at http://localhost:${PORT}`);
 });
 
+/* helper functions */
 function sendLoginRateLimit(res, seconds) {
   const retrySeconds = Math.max(1, Number(seconds) || 0);
   const pretty = retrySeconds === 1 ? '1 second' : `${retrySeconds} seconds`;
@@ -565,6 +613,7 @@ function getBaseUrl(req) {
   return `${protocol}://${host}`;
 }
 
+/* sliding window check for creation limit */
 function checkCreationRate(ip, now = Date.now()) {
   if (!ip) {
     return { allowed: true, retryAfterSeconds: 0 };
@@ -633,13 +682,52 @@ function isPreviewRequest(req) {
   return normalized === '1' || normalized === 'true' || normalized === 'yes';
 }
 
+function injectVersion(html) {
+  if (!html) return html;
+  return html.replace(/%APP_VERSION%/g, getAppVersion());
+}
+
+// Reads and caches HTML templates with version tokens applied
+function loadHtmlTemplate(filename) {
+  if (htmlCache.has(filename)) {
+    return htmlCache.get(filename);
+  }
+  try {
+    const filePath = path.join(staticDir, filename);
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const compiled = injectVersion(raw);
+    htmlCache.set(filename, compiled);
+    return compiled;
+  } catch (error) {
+    console.error(`Failed to load HTML template ${filename}`, error);
+    return null;
+  }
+}
+
+function serveHtml(filename, status = 200) {
+  return (req, res) => {
+    const html = loadHtmlTemplate(filename);
+    if (!html) {
+      return res.status(404).sendFile(notFoundPage);
+    }
+    res.set('Cache-Control', 'no-store'); // always fetch fresh HTML so versioned assets update
+    res.status(status).send(html);
+  };
+}
+
 function getVersion() {
   try {
-    const pkg = require('../package.json');
+    const pkgPath = path.join(__dirname, '..', 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
     return pkg.version || '0.0.0';
   } catch (_) {
     return '0.0.0';
   }
+}
+
+// Public-facing version string for cache-busting in HTML
+function getAppVersion() {
+  return String(getVersion() || '0.0.0');
 }
 
 function serializeCounter(counter, options = {}) {

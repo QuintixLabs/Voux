@@ -1,3 +1,9 @@
+/*
+  db.js
+
+  Database access for counters, hits, daily activity, tags, and API keys.
+*/
+
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');

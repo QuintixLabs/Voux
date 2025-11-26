@@ -1,3 +1,9 @@
+/*
+  nav.js
+
+  Navigation/account menu behavior and redirect to dashboard when needed.
+*/
+
 (() => {
   const STORAGE_KEY = 'vouxAdminAuth';
   const menuButton = document.getElementById('navAccountButton');

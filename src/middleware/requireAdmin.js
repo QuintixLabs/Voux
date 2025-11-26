@@ -1,3 +1,9 @@
+/*
+  requireAdmin.js
+
+  Auth helpers for admin token and API keys. Applies login blocking for admin.
+*/
+
 const {
   findApiKeyByToken,
   recordApiKeyUsage

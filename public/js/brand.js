@@ -1,3 +1,9 @@
+/*
+  brand.js
+
+  Fetches config and applies brand name/title text to the page.
+*/
+
 (() => {
   if (!window.fetch) return;
   fetch('/api/config')
