@@ -88,8 +88,9 @@ app.set('trust proxy', true);
 app.use(express.json());
 
 const staticDir = path.join(__dirname, '..', 'public');
-const notFoundPage = path.join(staticDir, '404.html');
+  const notFoundPage = path.join(staticDir, '404.html');
 const htmlCache = new Map();
+const IS_DEV = String(process.env.DEV_MODE || process.env.NODE_ENV || '').toLowerCase() === 'development';
 
 /* simple health + config */
 app.get('/api/health', (req, res) => {
@@ -560,7 +561,11 @@ app.use(
     extensions: ['html'],
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        if (IS_DEV) {
+          res.setHeader('Cache-Control', 'no-store');
+        } else {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
       }
     }
   })
@@ -684,19 +689,25 @@ function isPreviewRequest(req) {
 
 function injectVersion(html) {
   if (!html) return html;
-  return html.replace(/%APP_VERSION%/g, getAppVersion());
+  if (IS_DEV) {
+    return html.replace(/\?v=%APP_VERSION%/g, '');
+  }
+  const versionToken = `?v=${getAppVersion()}`;
+  return html.replace(/\?v=%APP_VERSION%/g, versionToken);
 }
 
 // Reads and caches HTML templates with version tokens applied
 function loadHtmlTemplate(filename) {
-  if (htmlCache.has(filename)) {
+  if (!IS_DEV && htmlCache.has(filename)) {
     return htmlCache.get(filename);
   }
   try {
     const filePath = path.join(staticDir, filename);
     const raw = fs.readFileSync(filePath, 'utf8');
     const compiled = injectVersion(raw);
-    htmlCache.set(filename, compiled);
+    if (!IS_DEV) {
+      htmlCache.set(filename, compiled);
+    }
     return compiled;
   } catch (error) {
     console.error(`Failed to load HTML template ${filename}`, error);

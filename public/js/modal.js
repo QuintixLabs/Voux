@@ -59,11 +59,15 @@
     });
   }
 
-  function openModal({ title, message, buttons, allowClose = true }) {
+  function openModal({ title, message, buttons, allowClose = true, allowHtml = false }) {
     ensureElements();
     dismissible = allowClose;
     titleEl.textContent = title || '';
-    messageEl.textContent = message || '';
+    if (allowHtml) {
+      messageEl.innerHTML = message || '';
+    } else {
+      messageEl.textContent = message || '';
+    }
     actionsEl.innerHTML = '';
     buttons.forEach((btn) => {
       const buttonEl = document.createElement('button');
@@ -111,6 +115,7 @@
       title: options.title || 'Heads up',
       message,
       allowClose: options.dismissible !== false,
+      allowHtml: options.allowHtml === true,
       buttons: [
         {
           label: options.confirmLabel || 'OK',
@@ -127,6 +132,7 @@
       title: options.title || 'Confirm',
       message,
       allowClose: options.dismissible !== false,
+      allowHtml: options.allowHtml === true,
       buttons: [
         {
           label: options.confirmLabel || 'Continue',

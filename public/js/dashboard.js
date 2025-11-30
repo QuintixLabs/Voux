@@ -464,6 +464,16 @@ async function handleDeleteAll() {
     cancelLabel: 'Cancel'
   });
   if (!confirmed) return;
+  const siteUrl = window.location?.origin || window.location?.href || 'this site';
+  const confirmedFinal = await showConfirm({
+    title: 'Really delete everything?',
+    message: `This will permanently remove every counter and their data on: <strong style="color:#fff;">${siteUrl}</strong>. You cannot undo this.`,
+    allowHtml: true,
+    confirmLabel: 'Yes, delete all counters',
+    cancelLabel: 'Cancel',
+    variant: 'danger'
+  });
+  if (!confirmedFinal) return;
   try {
     deleteAllBtn.disabled = true;
     const res = await fetch('/api/counters', {

@@ -80,6 +80,8 @@ npm start
 
 By default, both commands run at: [http://localhost:8787](http://localhost:8787). You can change this by setting the **PORT** value in `.env`.
 
+During development, set `NODE_ENV=development` in your `.env` to serve HTML/JS/CSS with `no-store` caching.
+
 ### `🐋 Docker`
 
 Or run Voux via Docker:
@@ -119,6 +121,7 @@ Environment variables. You can tweak some of these options later from `/settings
 | `BRAND_NAME` | `Voux` | Default display name (used in titles, hero text). You can override it in `/settings`. |
 | `HOME_TITLE` | `Voux · Simple Free & Open Source Hit Counter...` | The homepage `<title>` tag value. Editable in settings. |
 | `UNLIMITED_THROTTLE_SECONDS` | `0` | Seconds to wait before counting the same IP again in "Every visit" mode. `0` disables throttling. Applies only on first boot, once `data/config.json` exists, update the throttle from `/settings` or edit that file (`config.json`) (deleting it will regenerate from `.env`). |
+| `DEV_MODE` | `development` | Use `development` in `.env` to serve HTML/JS/CSS with `no-store` caching. |
 
 SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings`, which now includes the 30-day activity summaries and your tag catalog). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
 
