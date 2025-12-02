@@ -39,6 +39,12 @@ Clone the repo:
 git clone https://github.com/QuintixLabs/Voux.git
 cd Voux
 ```
+Use **Node 22**:
+```bash
+fnm install 22
+fnm use 22
+node -v
+```
 
 Install dependencies:
 ```bash
@@ -51,13 +57,6 @@ cp .env.example .env
 ```
 > [!WARNING]  
 > Set `ADMIN_TOKEN` (don't leave the example value). If you are developing, set `DEV_MODE=development` in `.env` so **HTML/JS/CSS** are served with no cache and changes show on reload.
-
-Use **Node 22**:
-```bash
-fnm install 22
-fnm use 22
-node -v
-```
 
 Start dev server:
 ```bash
