@@ -293,7 +293,7 @@ app.get('/api/settings', requireAdmin, (req, res) => {
 });
 
 app.post('/api/settings', requireAdmin, (req, res) => {
-  const { privateMode, showGuides, homeTitle, brandName, allowedModes, unlimitedThrottleSeconds } = req.body || {};
+  const { privateMode, showGuides, homeTitle, brandName, allowedModes, unlimitedThrottleSeconds, theme } = req.body || {};
   const patch = {};
   if (typeof privateMode === 'boolean') patch.privateMode = privateMode;
   if (typeof showGuides === 'boolean') patch.showGuides = showGuides;
@@ -309,6 +309,9 @@ app.post('/api/settings', requireAdmin, (req, res) => {
       return res.status(400).json({ error: 'at_least_one_mode' });
     }
     patch.allowedModes = normalizedModes;
+  }
+  if (typeof theme === 'string') {
+    patch.theme = theme.trim().toLowerCase();
   }
   if (Object.keys(patch).length === 0) {
     return res.status(400).json({ error: 'no_valid_settings' });

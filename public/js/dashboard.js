@@ -50,6 +50,8 @@ const createTagPicker = document.querySelector('#createTagPicker');
 const createTagManageBtn = document.querySelector('#createTagManage');
 const createTagCounterHint = document.querySelector('#createTagCounterHint');
 const tagFilterCountHint = document.querySelector('.tag-count-hint');
+const topPaginationInfo = document.querySelector('#topPaginationInfo');
+const themeHelper = window.VouxTheme;
 let toastContainer = document.querySelector('.toast-stack');
 if (!toastContainer) {
   toastContainer = document.createElement('div');
@@ -245,6 +247,7 @@ async function fetchConfig() {
     state.privateMode = Boolean(data.privateMode);
     state.allowedModes = normalizeAllowedModes(data.allowedModes);
     state.throttleSeconds = Number(data.unlimitedThrottleSeconds) || 0;
+    themeHelper?.apply(data.theme);
     if (dashboardSubtitle) {
       dashboardSubtitle.textContent = state.privateMode
         ? 'Private instance'
@@ -873,10 +876,15 @@ function updatePagination() {
   if (!paginationEl || !paginationInfo || !prevPageBtn || !nextPageBtn) return;
   if (state.totalPages <= 1) {
     paginationEl.classList.add('hidden');
+    if (topPaginationInfo) topPaginationInfo.classList.add('hidden');
     return;
   }
   paginationEl.classList.remove('hidden');
   paginationInfo.textContent = `Page ${state.page} / ${state.totalPages}`;
+  if (topPaginationInfo) {
+    topPaginationInfo.textContent = `Page ${state.page} / ${state.totalPages}`;
+    topPaginationInfo.classList.remove('hidden');
+  }
   prevPageBtn.disabled = state.page <= 1;
   nextPageBtn.disabled = state.page >= state.totalPages;
 }
@@ -1209,22 +1217,37 @@ async function handleDeleteSelected() {
 
 function handleSelectAll() {
   const ids = state.latestCounters.map((counter) => counter.id);
-  ids.forEach((id) => state.selectedIds.add(id));
+  const allSelected = ids.every((id) => state.selectedIds.has(id));
+  if (allSelected) {
+    ids.forEach((id) => state.selectedIds.delete(id));
+  } else {
+    ids.forEach((id) => state.selectedIds.add(id));
+  }
   refreshSelectionState();
 }
 
 function handlePaginationHotkeys(event) {
   const { activeElement } = document;
-  if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-    return;
+  if (activeElement) {
+    const tag = activeElement.tagName;
+    const type = (activeElement.getAttribute('type') || '').toLowerCase();
+    const isTextInput =
+      tag === 'TEXTAREA' || (tag === 'INPUT' && ['text', 'search', 'password', 'email', 'url', 'number'].includes(type));
+    if (isTextInput) return;
   }
+  const keepScroll = () => {
+    const top = window.scrollY;
+    requestAnimationFrame(() => window.scrollTo({ top, left: 0, behavior: 'auto' }));
+  };
   if (event.key === 'ArrowLeft' && !prevPageBtn?.disabled) {
     event.preventDefault();
-    prevPageBtn?.click();
+    handlePageNavigation(Math.max(1, state.page - 1), { skipScroll: true });
+    keepScroll();
   }
   if (event.key === 'ArrowRight' && !nextPageBtn?.disabled) {
     event.preventDefault();
-    nextPageBtn?.click();
+    handlePageNavigation(Math.min(state.totalPages, state.page + 1), { skipScroll: true });
+    keepScroll();
   }
 }
 
@@ -1274,10 +1297,12 @@ function formatLastHit(timestamp) {
   return new Date(timestamp).toLocaleDateString();
 }
 
-async function handlePageNavigation(nextPage) {
+async function handlePageNavigation(nextPage, options = {}) {
   try {
     await refreshCounters(nextPage);
-    ensurePaginationInView();
+    if (!options.skipScroll) {
+      ensurePaginationInView();
+    }
   } catch (error) {
     console.warn('Page change failed', error);
   }

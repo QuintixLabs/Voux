@@ -25,6 +25,7 @@ const defaultConfig = {
     120
   ),
   unlimitedThrottleSeconds: sanitizeThrottle(process.env.UNLIMITED_THROTTLE_SECONDS),
+  theme: sanitizeTheme(process.env.THEME || 'default'),
   tagCatalog: []
 };
 
@@ -68,6 +69,9 @@ function sanitizeConfig(raw) {
   }
   if (Number.isFinite(Number(raw.unlimitedThrottleSeconds))) {
     safe.unlimitedThrottleSeconds = sanitizeThrottle(raw.unlimitedThrottleSeconds);
+  }
+  if (typeof raw.theme === 'string') {
+    safe.theme = sanitizeTheme(raw.theme);
   }
   safe.tagCatalog = Array.isArray(raw.tagCatalog) ? sanitizeTagCatalog(raw.tagCatalog) : [];
   return safe;
@@ -132,6 +136,11 @@ function sanitizeThrottle(value) {
     return 0;
   }
   return Math.min(60, Math.max(1, Math.round(num)));
+}
+
+function sanitizeTheme(value) {
+  const key = String(value || '').trim().toLowerCase();
+  return key || 'default'; // allow any key; client will apply if defined
 }
 
 function sanitizeTagCatalog(list) {

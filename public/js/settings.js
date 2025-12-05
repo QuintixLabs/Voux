@@ -27,6 +27,7 @@ const apiKeyStatusLabel = document.getElementById('apiKeyStatus');
 const brandingForm = document.getElementById('brandingForm');
 const brandNameInputField = document.getElementById('brandNameInput');
 const homeTitleInputField = document.getElementById('homeTitleInput');
+const themeSelect = document.getElementById('themeSelect');
 const brandingStatusLabel = document.getElementById('brandingStatus');
 const throttleSelect = document.getElementById('throttleSelect');
 const purgeInactiveButton = document.getElementById('purgeInactiveButton');
@@ -44,9 +45,17 @@ const apiKeyPager = {
   page: 1,
   pageSize: 3
 };
+const themeHelper = window.VouxTheme;
+const ALLOWED_THEMES = (themeHelper?.THEMES && themeHelper.THEMES.length ? themeHelper.THEMES : ['default']);
 
 let tokenData = loadStoredToken();
 let statusTimeout = null;
+
+function applyThemeClass(theme) {
+  if (themeHelper?.apply) {
+    themeHelper.apply(theme);
+  }
+}
 
 if (!tokenData) {
   window.location.href = '/dashboard';
@@ -97,9 +106,17 @@ function populateForm(config) {
   if (toggleGuides) toggleGuides.checked = Boolean(config.showGuides);
   if (allowModeUniqueInput) allowModeUniqueInput.checked = config.allowedModes ? config.allowedModes.unique !== false : true;
   if (allowModeUnlimitedInput) allowModeUnlimitedInput.checked = config.allowedModes ? config.allowedModes.unlimited !== false : true;
+  populateThemeOptions();
   if (brandNameInputField) brandNameInputField.value = config.brandName || DEFAULT_BRAND_NAME;
   if (homeTitleInputField) {
     homeTitleInputField.value = config.homeTitle || DEFAULT_HOME_TITLE;
+  }
+  if (themeSelect) {
+    const theme = config.theme || 'default';
+    if (themeSelect.querySelector(`option[value="${theme}"]`)) {
+      themeSelect.value = theme;
+    }
+    applyThemeClass(theme);
   }
   if (throttleSelect) {
     const value = Number(config.unlimitedThrottleSeconds);
@@ -137,6 +154,7 @@ function setupApiKeys(token) {
 function setupBrandingForm(token) {
   if (!brandingForm) return;
   brandingForm.addEventListener('submit', (event) => handleBrandingSubmit(token, event));
+  themeSelect?.addEventListener('change', handleThemePreview);
 }
 async function handleToggleChange(token, patch, successMessage = 'Updated', control) {
   try {
@@ -631,7 +649,8 @@ async function handleBrandingSubmit(token, event) {
     brandName:
       (brandNameInputField?.value?.trim() || DEFAULT_BRAND_NAME).slice(0, 80),
     homeTitle:
-      (homeTitleInputField?.value?.trim() || DEFAULT_HOME_TITLE).slice(0, 120)
+      (homeTitleInputField?.value?.trim() || DEFAULT_HOME_TITLE).slice(0, 120),
+    theme: (themeSelect?.value || 'default').trim()
   };
   if (brandNameInputField) brandNameInputField.value = payload.brandName;
   if (homeTitleInputField) homeTitleInputField.value = payload.homeTitle;
@@ -651,10 +670,33 @@ async function handleBrandingSubmit(token, event) {
     }
     await res.json().catch(() => ({}));
     setBrandingStatus('');
+    applyThemeClass(payload.theme);
     showToast('Branding updated');
   } catch (error) {
     setBrandingStatus('');
     await showAlert(error.message || 'Failed to update branding');
+  }
+}
+
+function handleThemePreview() {
+  if (!themeSelect) return;
+  const theme = (themeSelect.value || 'default').trim();
+  applyThemeClass(theme);
+  setBrandingStatus('Unsaved changes');
+}
+
+function populateThemeOptions() {
+  if (!themeSelect) return;
+  const current = themeSelect.value;
+  themeSelect.innerHTML = '';
+  ALLOWED_THEMES.forEach((key) => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+    themeSelect.appendChild(opt);
+  });
+  if (ALLOWED_THEMES.includes(current)) {
+    themeSelect.value = current;
   }
 }
 

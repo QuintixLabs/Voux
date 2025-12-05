@@ -11,10 +11,28 @@
     rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet" />
   <link rel="icon" type="image/png" href="/assets/logo.png" />
+  <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
   <link rel="stylesheet" href="/styles.css?v=%APP_VERSION%" />
 </head>
 
 <body data-page="privacy">
+
+  <!-- JS DISABLED DETECTION -->
+  <noscript>
+    <style>
+      body { opacity: 1 !important; }
+      html, body { overflow: hidden; height: 100%; }
+    </style>
+    <div class="noscript-overlay">
+      <div class="noscript-overlay__card">
+        <h2>JavaScript required</h2>
+        <p>
+          Voux only runs its own scripts to fetch data from the API and render the UI. No third-party ads, trackers, analytics, miners, or fingerprinting are loaded.
+        </p>
+      </div>
+    </div>
+  </noscript>
+  
   <header class="site-nav">
     <a class="brand" href="/">
       <img src="/assets/logo-text.png" alt="Voux" />
@@ -79,6 +97,7 @@
 
   <div data-footer-root></div>
 
+  <script src="/js/theme.js?v=%APP_VERSION%" defer></script>
   <script src="/js/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/footer.js?v=%APP_VERSION%" defer></script>
   <script src="/js/brand.js?v=%APP_VERSION%" defer></script>

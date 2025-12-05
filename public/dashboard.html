@@ -11,10 +11,28 @@
     rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet" />
   <link rel="icon" type="image/png" href="/assets/logo.png" />
+  <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
   <link rel="stylesheet" href="/styles.css?v=%APP_VERSION%" />
 </head>
 
-<body data-page="admin">
+<body data-page="dashboard">
+
+  <!-- JS DISABLED DETECTION -->
+  <noscript>
+    <style>
+      body { opacity: 1 !important; }
+      html, body { overflow: hidden; height: 100%; }
+    </style>
+    <div class="noscript-overlay">
+      <div class="noscript-overlay__card">
+        <h2>JavaScript required</h2>
+        <p>
+          Voux only runs its own scripts to fetch data from the API and render the UI. No third-party ads, trackers, analytics, miners, or fingerprinting are loaded.
+        </p>
+      </div>
+    </div>
+  </noscript>
+
   <header class="site-nav">
     <a class="brand" href="/">
       <img src="/assets/logo-text.png" alt="Voux" />
@@ -57,7 +75,12 @@
       <p>Enter your password to continue. You'll stay signed in for 12 hours.</p>
       <p id="loginStatus" class="hint hidden">Checking your session...</p>
       <form id="admin-form" class="admin-form" action="javascript:void(0);" novalidate>
-        <input type="password" id="adminToken" placeholder="Password" autocomplete="current-password" required />
+        <div class="password-field">
+          <input type="password" id="adminToken" placeholder="Password" autocomplete="current-password" required />
+          <button type="button" class="password-toggle" aria-label="Show password">
+            <i class="ri-eye-off-line" aria-hidden="true"></i>
+          </button>
+        </div>
         <button type="submit">Log in</button>
       </form>
       <p id="loginError" class="form-error hidden" role="alert" aria-live="polite">Incorrect password. Try again.</p>
@@ -177,10 +200,13 @@
           </div>
           <div class="activity-range" id="activityRangeControls">
             <span class="activity-range__label">Stats range</span>
-          <div class="activity-range__options">
-            <button type="button" data-range="today" class="activity-range__button">Today</button>
-            <button type="button" data-range="7d" class="activity-range__button activity-range__button--active">7 days</button>
-            <button type="button" data-range="30d" class="activity-range__button">30 days</button>
+            <div class="activity-range__row">
+              <div class="activity-range__options">
+                <button type="button" data-range="today" class="activity-range__button">Today</button>
+                <button type="button" data-range="7d" class="activity-range__button activity-range__button--active">7 days</button>
+                <button type="button" data-range="30d" class="activity-range__button">30 days</button>
+              </div>
+              <span class="activity-range__pageinfo" id="topPaginationInfo">Page 1 / 1</span>
             </div>
           </div>
           <div class="selection-toolbar hidden" id="selectionToolbar">
@@ -210,6 +236,7 @@
   <div data-footer-root></div>
 
   <script src="/js/modal.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/theme.js?v=%APP_VERSION%" defer></script>
   <script src="/js/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/footer.js?v=%APP_VERSION%" defer></script>
   <script src="/js/dashboard.js?v=%APP_VERSION%" type="module"></script>

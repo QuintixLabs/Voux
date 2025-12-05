@@ -11,6 +11,7 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
   <link rel="icon" type="image/png" href="/assets/logo.png" />
+  <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
   <link rel="stylesheet" href="/styles.css?v=%APP_VERSION%" />
 
   <meta name="theme-color" content="#0F1115">
@@ -31,6 +32,23 @@
 </head>
 
 <body class="config-pending" data-page="home">
+
+  <!-- JS DISABLED DETECTION -->
+  <noscript>
+    <style>
+      body { opacity: 1 !important; }
+      html, body { overflow: hidden; height: 100%; }
+    </style>
+    <div class="noscript-overlay">
+      <div class="noscript-overlay__card">
+        <h2>JavaScript required</h2>
+        <p>
+          Voux only runs its own scripts to fetch data from the API and render the UI. No third-party ads, trackers, analytics, miners, or fingerprinting are loaded.
+        </p>
+      </div>
+    </div>
+  </noscript>
+  
   <header class="site-nav">
     <a class="brand" href="/">
       <img src="/assets/logo-text.png" alt="Voux" />
@@ -243,6 +261,7 @@ npm install --production   # for production installs</code></pre>
   <script src="/js/modal.js?v=%APP_VERSION%" defer></script>
   <script src="/js/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/footer.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/theme.js?v=%APP_VERSION%" defer></script>
   <script src="/js/main.js?v=%APP_VERSION%" type="module"></script>
   <script src="/js/brand.js?v=%APP_VERSION%" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>

@@ -11,10 +11,28 @@
     rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet" />
   <link rel="icon" type="image/png" href="/assets/logo.png" />
+  <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
   <link rel="stylesheet" href="/styles.css?v=%APP_VERSION%" />
 </head>
 
 <body data-page="settings">
+
+  <!-- JS DISABLED DETECTION -->
+  <noscript>
+    <style>
+      body { opacity: 1 !important; }
+      html, body { overflow: hidden; height: 100%; }
+    </style>
+    <div class="noscript-overlay">
+      <div class="noscript-overlay__card">
+        <h2>JavaScript required</h2>
+        <p>
+          Voux only runs its own scripts to fetch data from the API and render the UI. No third-party ads, trackers, analytics, miners, or fingerprinting are loaded.
+        </p>
+      </div>
+    </div>
+  </noscript>
+  
   <header class="site-nav">
     <a class="brand" href="/">
       <img src="/assets/logo-text.png" alt="Voux" />
@@ -122,13 +140,23 @@
           <small class="hint">Used anywhere you see "Brand · Page".</small>
         </div>
         <div class="field">
+          <label for="themeSelect">Theme</label>
+          <select id="themeSelect">
+            <!--
+            it will detect them automatically 
+            configure themes in theme.js and styles.css
+            -->
+          </select>
+          <small class="hint">Pick a preset color palette for your instance.</small>
+        </div>
+        <div class="field">
           <label for="homeTitleInput">Homepage title</label>
           <input type="text" id="homeTitleInput" maxlength="120" placeholder="Voux · Simple Free & Open Source Hit Counter" />
           <small class="hint">Used on the homepage only.</small>
         </div>
         <button type="submit"><i class="ri-save-line"></i> Save branding</button>
       </form>
-      <p class="hint" id="brandingStatus"></p>
+      <p class="hint branding-status" id="brandingStatus"></p>
     </section>
 
     <section class="card settings-card hidden" id="backupCard">
@@ -182,6 +210,7 @@
   <script src="/js/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/brand.js?v=%APP_VERSION%" defer></script>
   <script src="/js/footer.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/theme.js?v=%APP_VERSION%" defer></script>
   <script src="/js/settings.js?v=%APP_VERSION%" type="module"></script>
 </body>
 

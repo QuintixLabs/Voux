@@ -5,6 +5,32 @@
 */
 
 (() => {
+  const markContentReady = () => {
+    requestAnimationFrame(() => document.body.classList.add('content-mounted'));
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', markContentReady, { once: true });
+  } else {
+    markContentReady();
+  }
+})();
+
+(() => {
+  const passwordToggle = document.querySelector('.password-toggle');
+  const adminTokenInput = document.querySelector('#adminToken');
+  if (passwordToggle && adminTokenInput) {
+    passwordToggle.addEventListener('click', () => {
+      const showing = adminTokenInput.type === 'text';
+      adminTokenInput.type = showing ? 'password' : 'text';
+      const icon = passwordToggle.querySelector('i');
+      if (icon) icon.className = showing ? 'ri-eye-off-line' : 'ri-eye-line';
+      passwordToggle.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    });
+  }
+})();
+
+(() => {
   const STORAGE_KEY = 'vouxAdminAuth';
   const menuButton = document.getElementById('navAccountButton');
   const menu = document.getElementById('navAccountMenu');

@@ -5,6 +5,7 @@
 */
 
 (() => {
+  const themeHelper = window.VouxTheme;
   if (!window.fetch) return;
   fetch('/api/config')
     .then((res) => (res.ok ? res.json() : null))
@@ -12,6 +13,7 @@
       if (!data) return;
       window.__VOUX_CONFIG = data;
       applyBranding(data);
+      themeHelper?.apply(data.theme);
     })
     .catch(() => {
       /* ignore */
@@ -50,4 +52,5 @@
       document.title = fallbackBrand;
     }
   }
+
 })();

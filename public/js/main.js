@@ -20,6 +20,7 @@ let showGuides = true;
 let defaultMode = 'unique';
 let allowedModes = { unique: true, unlimited: true };
 let currentThrottleSeconds = 0;
+const themeHelper = window.VouxTheme;
 const START_VALUE_DIGIT_LIMIT = 18;
 
 function modalApi() {
@@ -179,6 +180,7 @@ async function initConfig() {
     }
 
     toggleGuideCards();
+    themeHelper?.apply(data.theme);
   } catch (error) {
     console.warn('Failed to load config', error);
   } finally {

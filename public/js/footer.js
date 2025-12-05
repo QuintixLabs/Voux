@@ -25,6 +25,8 @@ async function injectFooter() {
     });
   } catch (error) {
     console.warn('Footer failed to load', error);
+  } finally {
+    document.body.classList.add('footer-mounted');
   }
 }
 
