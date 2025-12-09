@@ -23,7 +23,7 @@
 
   function apply(theme) {
     const safe = sanitize(theme);
-    document.body.setAttribute('data-theme', safe);
+    document.documentElement.setAttribute('data-theme', safe);
     return safe;
   }
 

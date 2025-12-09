@@ -12,6 +12,7 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet" />
   <link rel="icon" type="image/png" href="/assets/logo.png" />
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css"/> <!-- 'monolith' theme -->
   <link rel="stylesheet" href="/styles.css?v=%APP_VERSION%" />
 </head>
 
@@ -173,7 +174,14 @@
             <div class="admin-search__field">
               <i class="ri-search-line" aria-hidden="true"></i>
               <input type="text" id="counterSearchInput" placeholder="Search by label, ID or Note" autocomplete="off" spellcheck="false" />
-              <button type="button" class="ghost admin-search__clear hidden" id="counterSearchClear">Clear</button>
+              <button
+                type="button"
+                class="ghost admin-search__clear hidden"
+                id="counterSearchClear"
+                aria-label="Clear search"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
             </div>
           </div>
           <div class="admin-filters">
@@ -235,6 +243,7 @@
 
   <div data-footer-root></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js" defer></script>
   <script src="/js/modal.js?v=%APP_VERSION%" defer></script>
   <script src="/js/theme.js?v=%APP_VERSION%" defer></script>
   <script src="/js/nav.js?v=%APP_VERSION%" defer></script>

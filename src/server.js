@@ -41,7 +41,16 @@ const {
   updateCounterMetadata,
   removeTagAssignments
 } = require('./db');
-const { getConfig, updateConfig, listTagCatalog, addTagToCatalog, filterTagIds, mergeTagCatalog, removeTagFromCatalog } = require('./configStore');
+const {
+  getConfig,
+  updateConfig,
+  listTagCatalog,
+  addTagToCatalog,
+  updateTagInCatalog,
+  filterTagIds,
+  mergeTagCatalog,
+  removeTagFromCatalog
+} = require('./configStore');
 const requireAdmin = require('./middleware/requireAdmin');
 const {
   verifyAdmin,
@@ -87,8 +96,17 @@ const app = express();
 app.set('trust proxy', true);
 app.use(express.json());
 
+/* ------------------------------------------------------------------------------------------------ */
+
+/*
+  where we serve files from
+*/
+
 const staticDir = path.join(__dirname, '..', 'public');
-  const notFoundPage = path.join(staticDir, '404.html');
+const notFoundPage = path.join(staticDir, '404.html');
+
+/* ------------------------------------------------------------------------------------------------ */
+
 const htmlCache = new Map();
 const IS_DEV = String(process.env.DEV_MODE || process.env.NODE_ENV || '').toLowerCase() === 'development';
 
@@ -338,6 +356,29 @@ app.post('/api/tags', requireAdmin, (req, res) => {
       return res.status(400).json({ error: 'Tag name required.' });
     }
     res.status(400).json({ error: error.message || 'Failed to create tag.' });
+  }
+});
+
+app.patch('/api/tags/:id', requireAdmin, (req, res) => {
+  const tagId = String(req.params.id || '').trim();
+  if (!tagId) {
+    return res.status(400).json({ error: 'tag_id_required' });
+  }
+  const { name, color } = req.body || {};
+  try {
+    const updated = updateTagInCatalog(tagId, { name, color });
+    if (!updated) {
+      return res.status(404).json({ error: 'tag_not_found' });
+    }
+    res.json({ tag: updated });
+  } catch (error) {
+    if (error.message === 'tag_exists') {
+      return res.status(409).json({ error: 'Tag already exists.' });
+    }
+    if (error.message === 'name_required') {
+      return res.status(400).json({ error: 'Tag name required.' });
+    }
+    res.status(400).json({ error: error.message || 'Failed to update tag.' });
   }
 });
 

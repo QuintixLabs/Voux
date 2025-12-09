@@ -103,6 +103,7 @@ module.exports = {
   updateConfig,
   listTagCatalog,
   addTagToCatalog,
+  updateTagInCatalog,
   ensureTagExists,
   mergeTagCatalog,
   filterTagIds,
@@ -189,6 +190,41 @@ function addTagToCatalog({ name, color }) {
   config.tagCatalog = [...listTagCatalog(), newTag];
   persistConfig();
   return newTag;
+}
+
+function updateTagInCatalog(tagId, { name, color } = {}) {
+  const normalizedId = typeof tagId === 'string' ? tagId.trim() : '';
+  if (!normalizedId) {
+    throw new Error('tag_id_required');
+  }
+  const catalog = listTagCatalog();
+  const index = catalog.findIndex((tag) => tag.id === normalizedId);
+  if (index === -1) return null;
+
+  const next = { ...catalog[index] };
+
+  if (name !== undefined) {
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+    if (!normalizedName) {
+      throw new Error('name_required');
+    }
+    const collision = catalog.some(
+      (tag) => tag.id !== normalizedId && tag.name.toLowerCase() === normalizedName.toLowerCase()
+    );
+    if (collision) {
+      throw new Error('tag_exists');
+    }
+    next.name = normalizedName.slice(0, 40);
+  }
+
+  if (color !== undefined) {
+    next.color = sanitizeColor(color);
+  }
+
+  catalog[index] = next;
+  config.tagCatalog = catalog;
+  persistConfig();
+  return next;
 }
 
 function ensureTagExists(tagId) {

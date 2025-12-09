@@ -60,6 +60,7 @@ if (!toastContainer) {
 }
 let tagFilterMenuOpen = false;
 const tagSelectorRegistry = new Set();
+let pickrReadyPromise = null;
 
 const STORAGE_KEY = 'vouxAdminAuth';
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000; // 12h
@@ -162,7 +163,7 @@ function appendPreviewParam(url) {
   }
 }
 
-init();
+document.addEventListener('DOMContentLoaded', init);
 
 function init() {
   if (deleteAllBtn) deleteAllBtn.disabled = true;
@@ -234,6 +235,14 @@ function init() {
   updateActivityRangeButtons();
   updateTagCounterHints();
 }
+
+// function to ensure that pickr library is loaded
+function ensurePickrLoaded() {
+    if (window.Pickr && typeof window.Pickr.create === 'function') {
+      return Promise.resolve(window.Pickr);
+    }
+    return Promise.reject(new Error('Pickr not loaded'));
+  }
 
 async function fetchConfig() {
   try {
@@ -1466,6 +1475,17 @@ function renderTagFilterList() {
     chipLabel.className = 'tag-chip__label';
     chipLabel.textContent = tag.name || tag.id;
     chip.appendChild(chipLabel);
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'tag-chip__edit';
+    editBtn.setAttribute('aria-label', `Edit ${tag.name || tag.id}`);
+    editBtn.innerHTML = '<i class="ri-edit-2-line"></i>';
+    editBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openTagEditDialog(tag);
+    });
+    chip.appendChild(editBtn);
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'tag-chip__remove';
@@ -1617,6 +1637,41 @@ function handleTagContextMenu(event, tag) {
   confirmTagDeletion(tag);
 }
 
+async function openTagEditDialog(tag) {
+  if (!state.token) {
+    await showAlert('Log in first.');
+    return;
+  }
+  const result = await openTagDialog(state.tags.length, state.totalOverall || state.total || 0, {
+    id: tag?.id,
+    name: tag?.name,
+    color: tag?.color
+  });
+  if (!result || !result.name) return;
+  try {
+    const res = await fetch(`/api/tags/${tag.id}`, {
+      method: 'PATCH',
+      headers: {
+        ...authHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: result.name,
+        color: result.color
+      })
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(payload.error || 'Failed to update tag');
+    }
+    await fetchTags();
+    refreshTagSelectors();
+    showToast(`Updated tag "${result.name}"`);
+  } catch (error) {
+    await showAlert(error.message || 'Failed to update tag');
+  }
+}
+
 async function confirmTagDeletion(tag) {
   if (!state.token) {
     await showAlert('Log in first.');
@@ -1692,6 +1747,17 @@ function renderTagSelectorEntry(entry) {
     pillLabel.className = 'tag-chip__label';
     pillLabel.textContent = tag.name || tag.id;
     pill.appendChild(pillLabel);
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'tag-chip__edit';
+    editBtn.setAttribute('aria-label', `Edit ${tag.name || tag.id}`);
+    editBtn.innerHTML = '<i class="ri-edit-2-line"></i>';
+    editBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openTagEditDialog(tag);
+    });
+    pill.appendChild(editBtn);
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'tag-chip__remove';
@@ -1747,8 +1813,12 @@ function toggleTagSelection(selected, tagId) {
   return [...current, tagId];
 }
 
-function openTagDialog(existingCount = 0, counterTotal = 0) {
+function openTagDialog(existingCount = 0, counterTotal = 0, defaults = {}) {
   return new Promise((resolve) => {
+    const isEdit = Boolean(defaults && defaults.id);
+    const defaultName = (defaults && defaults.name) || '';
+    const defaultColor = normalizeHexColor(defaults && defaults.color) || '#4c6ef5';
+
     const overlay = document.createElement('div');
     overlay.classList.add('modal-overlay', 'tag-dialog-overlay');
     const dialog = document.createElement('div');
@@ -1756,12 +1826,15 @@ function openTagDialog(existingCount = 0, counterTotal = 0) {
 
     const title = document.createElement('h3');
     title.className = 'tag-dialog__title';
-    title.textContent = 'New tag';
+    title.textContent = isEdit ? 'Edit tag' : 'New tag';
     const limitHint = document.createElement('p');
     limitHint.className = 'tag-dialog__hint';
-    const remaining = Math.max(0, TAG_LIMIT - existingCount);
-    const totalText = Math.max(0, counterTotal || 0).toLocaleString();
-    limitHint.textContent = `You can create up to ${TAG_LIMIT} tags. ${remaining} left.`;
+    if (isEdit) {
+      limitHint.textContent = 'Update the tag name or color.';
+    } else {
+      const remaining = Math.max(0, TAG_LIMIT - existingCount);
+      limitHint.textContent = `You can create up to ${TAG_LIMIT} tags. ${remaining} left.`;
+    }
   
 
     const nameField = document.createElement('div');
@@ -1772,16 +1845,116 @@ function openTagDialog(existingCount = 0, counterTotal = 0) {
     nameInput.type = 'text';
     nameInput.maxLength = 40;
     nameInput.placeholder = 'Blog posts';
+    nameInput.value = defaultName;
     nameField.append(nameLabel, nameInput);
 
-    const colorField = document.createElement('div');
-    colorField.className = 'tag-dialog__field';
-    const colorLabel = document.createElement('label');
-    colorLabel.textContent = 'Color';
-    const colorInput = document.createElement('input');
-    colorInput.type = 'color';
-    colorInput.value = '#4c6ef5';
-    colorField.append(colorLabel, colorInput);
+
+/* Pickr library. some js i added */     
+  const colorField = document.createElement('div');
+  colorField.className = 'tag-dialog__field';
+  const colorLabel = document.createElement('label');
+  colorLabel.textContent = 'Color';
+  const colorInput = document.createElement('input');
+  colorInput.type = 'hidden';
+  colorInput.value = defaultColor;
+  const colorPickerRow = document.createElement('div');
+  colorPickerRow.className = 'tag-dialog__color-row';
+  const colorSwatch = document.createElement('button');
+  colorSwatch.type = 'button';
+  colorSwatch.className = 'tag-dialog__color-swatch';
+  colorSwatch.setAttribute('aria-label', 'Pick a color');
+  const colorValue = document.createElement('span');
+  colorValue.className = 'tag-dialog__color-value';
+  colorPickerRow.append(colorSwatch, colorValue);
+  colorField.append(colorLabel, colorPickerRow, colorInput);
+  let pickrInstance = null;
+
+  const updateColor = (hex) => {
+    if (!hex) return;
+    colorInput.value = hex;
+    colorSwatch.style.background = hex;
+    colorValue.textContent = hex.toUpperCase();
+  };
+
+  const blurHandlers = () => {
+    // prevent immediate hide when clicking current color
+    if (pickrInstance && pickrInstance.hide) {
+      pickrInstance.hide();
+    }
+  };
+
+  const initialColor = colorInput.value;
+  updateColor(colorInput.value);
+
+  ensurePickrLoaded()
+    .then(() => {
+      if (!window.Pickr || typeof window.Pickr.create !== 'function') return;
+      pickrInstance = window.Pickr.create({
+        el: colorSwatch,
+        theme: 'monolith',
+        useAsButton: true,
+        default: colorInput.value,
+        components: {
+          preview: true,
+          opacity: false,
+          hue: true,
+          interaction: {
+            input: true,
+            save: true,
+            cancel: true,
+            clear: false
+          }
+        }
+      });
+
+      const root = pickrInstance?.getRoot?.();
+      if (root?.app) {
+        ['mousedown', 'click'].forEach((evt) => {
+          root.app.addEventListener(evt, (e) => e.stopPropagation());
+        });
+        const lastColor = root.app.querySelector('.pcr-last-color');
+        if (lastColor) {
+          lastColor.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pickrInstance.show();
+          });
+        }
+      }
+
+      pickrInstance.on('change', (color) => {
+        const hex = color?.toHEXA?.()?.toString();
+        if (hex) updateColor(hex);
+      });
+      pickrInstance.on('save', (color) => {
+        const hex = color?.toHEXA?.()?.toString();
+        if (hex) updateColor(hex);
+        pickrInstance.hide();
+      });
+      pickrInstance.on('cancel', () => {
+        updateColor(initialColor);
+        if (pickrInstance && typeof pickrInstance.setColor === 'function') {
+          pickrInstance.setColor(initialColor, true);
+        }
+        pickrInstance.hide();
+      });
+      // avoid closing when clicking preview; leave open for double-click
+      pickrInstance.on('swatchselect', (color) => {
+        const hex = color?.toHEXA?.()?.toString();
+        if (hex) updateColor(hex);
+      });
+    })
+    .catch(() => {
+      // fallback to native color input if Pickr fails to load
+      colorSwatch.addEventListener('click', () => {
+        const tempInput = document.createElement('input');
+        tempInput.type = 'color';
+        tempInput.value = colorInput.value || '#4c6ef5';
+        tempInput.addEventListener('change', () => {
+          updateColor(tempInput.value);
+        });
+        tempInput.click();
+      });
+    });
 
     const actions = document.createElement('div');
     actions.className = 'tag-dialog__actions';
@@ -1819,6 +1992,9 @@ function openTagDialog(existingCount = 0, counterTotal = 0) {
       overlay.addEventListener('transitionend', removeOverlay);
       setTimeout(removeOverlay, 250);
       document.removeEventListener('keydown', onKeyDown);
+      if (pickrInstance && pickrInstance.destroyAndRemove) {
+        pickrInstance.destroyAndRemove();
+      }
       resolve(result);
     }
 
@@ -1872,9 +2048,9 @@ function applyTagStyles(element, color, options = {}) {
 
 function normalizeHexColor(color) {
   if (typeof color !== 'string') return null;
-  const value = color.trim().toLowerCase();
-  if (/^#[0-9a-f]{6}$/.test(value)) return value;
-  if (/^[0-9a-f]{6}$/.test(value)) return `#${value}`;
+  const value = color.trim();
+  const withHash = value.startsWith('#') ? value : `#${value}`;
+  if (/^#[0-9a-fA-F]{6}$/.test(withHash)) return withHash.toLowerCase();
   return null;
 }
 

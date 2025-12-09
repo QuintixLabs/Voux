@@ -4,8 +4,8 @@
   Theme color variables.
 */
 
-body:not([data-theme]),
-body[data-theme="default"] {
+html:not([data-theme]),
+html[data-theme="default"] {
   --bg-primary: #0F1115;
       --bg-secondary: #16181D;
       --bg-tertiary: #1C1E24;
@@ -19,7 +19,7 @@ body[data-theme="default"] {
       --success: #10b981;
     }
 
-body[data-theme="neutral"] {
+html[data-theme="neutral"] {
   --bg-primary: #0e0f13;
   --bg-secondary: #14161b;
   --bg-tertiary: #1b1e24;
@@ -32,7 +32,7 @@ body[data-theme="neutral"] {
   --accent-hover: #7f8691;
 }
 
-body[data-theme="ocean"] {
+html[data-theme="ocean"] {
   --bg-primary: #0b1116;
   --bg-secondary: #101823;
   --bg-tertiary: #15202c;
@@ -45,7 +45,7 @@ body[data-theme="ocean"] {
   --accent-hover: #0ea5e9;
 }
 
-body[data-theme="warm"] {
+html[data-theme="warm"] {
   --bg-primary: #120f0c;
   --bg-secondary: #18130f;
   --bg-tertiary: #1f1a13;
@@ -58,7 +58,7 @@ body[data-theme="warm"] {
   --accent-hover: #d97706;
 }
 
-body[data-theme="forest"] {
+html[data-theme="forest"] {
   --bg-primary: #0f1612;
   --bg-secondary: #131c18;
   --bg-tertiary: #19241e;
@@ -71,7 +71,7 @@ body[data-theme="forest"] {
   --accent-hover: #22c55e;
 }
 
-body[data-theme="ember"] {
+html[data-theme="ember"] {
   --bg-primary: #12100f;
   --bg-secondary: #181513;
   --bg-tertiary: #1f1a17;
@@ -84,7 +84,7 @@ body[data-theme="ember"] {
   --accent-hover: #f59e0b;
 }
 
-body[data-theme="blush"] {
+html[data-theme="blush"] {
   --bg-primary: #120e12;
   --bg-secondary: #18131a;
   --bg-tertiary: #201924;
@@ -97,7 +97,7 @@ body[data-theme="blush"] {
   --accent-hover: #ec4899;
 }
 
-body[data-theme="crimson"] {
+html[data-theme="crimson"] {
   --bg-primary: #140c0c;
   --bg-secondary: #1a1111;
   --bg-tertiary: #211616;
