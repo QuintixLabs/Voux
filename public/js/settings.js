@@ -29,6 +29,7 @@ const brandNameInputField = document.getElementById('brandNameInput');
 const homeTitleInputField = document.getElementById('homeTitleInput');
 const themeSelect = document.getElementById('themeSelect');
 const brandingStatusLabel = document.getElementById('brandingStatus');
+const resetBrandingBtn = document.getElementById('resetBranding');
 const throttleSelect = document.getElementById('throttleSelect');
 const purgeInactiveButton = document.getElementById('purgeInactiveButton');
 const apiKeysPagination = document.getElementById('apiKeysPagination');
@@ -38,6 +39,11 @@ const apiKeysPageInfo = document.getElementById('apiKeysPageInfo');
 const DEFAULT_BRAND_NAME = 'Voux';
 const DEFAULT_HOME_TITLE = 'Voux · Simple Free & Open Source Hit Counter for Blogs and Websites';
 const DEFAULT_THROTTLE_SECONDS = 0;
+let initialBranding = {
+  brandName: null,
+  homeTitle: null,
+  theme: null
+};
 let backupBusy = false;
 let activeAdminToken = null;
 const apiKeyPager = {
@@ -134,6 +140,12 @@ function populateForm(config) {
     }
     throttleSelect.value = safe;
   }
+  initialBranding = {
+    brandName: brandNameInputField?.value?.trim() || DEFAULT_BRAND_NAME,
+    homeTitle: homeTitleInputField?.value?.trim() || DEFAULT_HOME_TITLE,
+    theme: (themeSelect?.value || 'default').trim()
+  };
+  setBrandingDirty(false);
 }
 
 function setupBackupControls(token) {
@@ -155,6 +167,9 @@ function setupBrandingForm(token) {
   if (!brandingForm) return;
   brandingForm.addEventListener('submit', (event) => handleBrandingSubmit(token, event));
   themeSelect?.addEventListener('change', handleThemePreview);
+  brandNameInputField?.addEventListener('input', checkBrandingDirty);
+  homeTitleInputField?.addEventListener('input', checkBrandingDirty);
+  resetBrandingBtn?.addEventListener('click', handleBrandingReset);
 }
 async function handleToggleChange(token, patch, successMessage = 'Updated', control) {
   try {
@@ -434,6 +449,16 @@ async function handlePurgeInactive(token) {
     variant: 'danger'
   });
   if (!confirmed) return;
+  const siteUrl = window.location?.origin || window.location?.href || 'this site';
+  const confirmedFinal = await modalConfirm({
+    title: 'Really remove inactive counters?',
+    message: `This will permanently remove every counter that has no hits for 14 days on: <strong style="color:#fff;">${siteUrl}</strong>. You cannot undo this.`,
+    confirmLabel: 'Yes, delete inactive',
+    cancelLabel: 'Cancel',
+    variant: 'danger',
+    allowHtml: true
+  });
+  if (!confirmedFinal) return;
   purgeInactiveButton.disabled = true;
   try {
     const res = await fetch('/api/counters/purge-inactive', {
@@ -672,6 +697,12 @@ async function handleBrandingSubmit(token, event) {
     setBrandingStatus('');
     applyThemeClass(payload.theme);
     showToast('Branding updated');
+    initialBranding = {
+      brandName: payload.brandName,
+      homeTitle: payload.homeTitle,
+      theme: payload.theme
+    };
+    setBrandingDirty(false);
   } catch (error) {
     setBrandingStatus('');
     await showAlert(error.message || 'Failed to update branding');
@@ -682,7 +713,7 @@ function handleThemePreview() {
   if (!themeSelect) return;
   const theme = (themeSelect.value || 'default').trim();
   applyThemeClass(theme);
-  setBrandingStatus('Unsaved changes');
+  checkBrandingDirty();
 }
 
 function populateThemeOptions() {
@@ -705,8 +736,95 @@ function setBrandingStatus(message) {
     brandingStatusLabel.textContent = message || '';
   }
 }
+
+function setBrandingDirty(isDirty) {
+  setBrandingStatus(isDirty ? 'Unsaved changes' : '');
+}
+
+function checkBrandingDirty() {
+  const current = {
+    brandName: (brandNameInputField?.value || '').trim() || DEFAULT_BRAND_NAME,
+    homeTitle: (homeTitleInputField?.value || '').trim() || DEFAULT_HOME_TITLE,
+    theme: (themeSelect?.value || 'default').trim()
+  };
+  const isDirty =
+    current.brandName !== initialBranding.brandName ||
+    current.homeTitle !== initialBranding.homeTitle ||
+    current.theme !== initialBranding.theme;
+  setBrandingDirty(isDirty);
+}
+
+async function handleBrandingReset() {
+  const confirmed = await modalConfirm({
+    title: 'Reset branding to defaults?',
+    message: 'This will reset branding to the default values and save them immediately.',
+    confirmLabel: 'Reset to defaults',
+    cancelLabel: 'Cancel',
+    variant: 'danger'
+  });
+  if (!confirmed) return;
+  if (!activeAdminToken) {
+    await showAlert('Log in again to update branding.');
+    return;
+  }
+  const defaults = {
+    brandName: DEFAULT_BRAND_NAME,
+    homeTitle: DEFAULT_HOME_TITLE,
+    theme: 'default'
+  };
+  if (brandNameInputField) {
+    brandNameInputField.value = defaults.brandName;
+  }
+  if (homeTitleInputField) {
+    homeTitleInputField.value = defaults.homeTitle;
+  }
+  if (themeSelect) {
+    themeSelect.value = defaults.theme;
+    applyThemeClass(defaults.theme);
+  }
+  try {
+    setBrandingStatus('');
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-voux-admin': activeAdminToken
+      },
+      body: JSON.stringify(defaults)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to reset branding');
+    }
+    await res.json().catch(() => ({}));
+    initialBranding = { ...defaults };
+    setBrandingDirty(false);
+    showToast('Branding reset to defaults');
+  } catch (error) {
+    await showAlert(error.message || 'Failed to reset branding');
+  }
+}
 function showSettingsCards() {
   document.querySelectorAll('.settings-card').forEach((card) => {
     card.classList.remove('hidden');
   });
 }
+
+// toggle hint tooltips
+(function(){
+  const icons=document.querySelectorAll('.hint-icon[data-tooltip]');
+  icons.forEach((icon)=>{
+    icon.addEventListener('click',(e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const isOpen=icon.classList.contains('is-open');
+      icons.forEach((i)=>i.classList.remove('is-open'));
+      if(!isOpen){
+        icon.classList.add('is-open');
+      }
+    });
+  });
+  document.addEventListener('click',()=>{
+    icons.forEach((i)=>i.classList.remove('is-open'));
+  });
+})();

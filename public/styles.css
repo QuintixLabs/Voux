@@ -1532,7 +1532,7 @@ body.modal-open {
       display: flex;
       flex-direction: column;
       gap: 0.85rem;
-      padding: 0.85rem 1rem;
+      padding: 0.85rem 2.5rem 0.85rem 1rem;
       
       border: 1px solid var(--border-primary);
       border-radius: 10px;
@@ -1866,6 +1866,10 @@ body.modal-open {
       transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
     }
 
+    .branding-reset{
+      margin-top: 10px;
+    }
+
     .inactive-counters {
       padding: 0.85rem 1rem;
       border-radius: 8px;
@@ -2086,6 +2090,70 @@ body.modal-open {
   gap: 1rem;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   padding: 0.75rem 0rem;
+}
+
+.hint-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-left: 0.35rem;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 50%;
+  font-size: 0.7rem;
+  vertical-align: middle;
+  cursor: pointer;
+  position: relative;
+}
+
+.hint-icon i {
+  line-height: 1;
+}
+
+.hint-icon[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(-4px) scale(0.96);
+  background: var(--bg-secondary);
+  border: 1px solid var(--accent);
+  color: #fff;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.80rem;
+  white-space: normal;
+  max-width: min(260px, 90vw);
+  min-width: 180px;
+  text-align: left;
+  line-height: 1.35;
+  z-index: 10;
+  overflow-wrap: break-word;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.hint-icon[data-tooltip].is-open::after,
+.hint-icon[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(-8px) scale(1);
+}
+
+.hint-icon[data-tooltip].is-open::before,
+.hint-icon[data-tooltip]:focus-visible::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+@media (max-width: 520px) {
+  .hint-icon[data-tooltip]::after {
+    max-width: min(220px, 90vw);
+    min-width: 160px;
+  }
 }
 
 .settings-card.hidden {

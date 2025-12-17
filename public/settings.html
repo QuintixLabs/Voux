@@ -135,26 +135,41 @@
       <h2>Branding</h2>
       <form id="brandingForm" class="api-key-form" action="javascript:void(0);">
         <div class="field">
-          <label for="brandNameInput">Brand display name</label>
+          <label for="brandNameInput">
+            Brand display name
+            <span class="hint-icon" data-tooltip='Used anywhere you see "Brand · Page".' aria-label='Used anywhere you see "Brand · Page".'>
+              <i class="ri-question-mark" aria-hidden="true"></i>
+            </span>
+          </label>
           <input type="text" id="brandNameInput" maxlength="80" placeholder="Voux" />
-          <small class="hint">Used anywhere you see "Brand · Page".</small>
         </div>
         <div class="field">
-          <label for="themeSelect">Theme</label>
+          <label for="themeSelect">
+            Theme
+            <span class="hint-icon" data-tooltip="Pick a preset color palette for your instance." aria-label="Pick a preset color palette for your instance.">
+              <i class="ri-question-mark" aria-hidden="true"></i>
+            </span>
+          </label>
           <select id="themeSelect">
             <!--
             it will detect them automatically 
             configure themes in theme.js and styles.css
             -->
           </select>
-          <small class="hint">Pick a preset color palette for your instance.</small>
         </div>
         <div class="field">
-          <label for="homeTitleInput">Homepage title</label>
+          <label for="homeTitleInput">
+            Homepage title
+            <span class="hint-icon" data-tooltip="Used on the homepage only." aria-label="Used on the homepage only.">
+              <i class="ri-question-mark" aria-hidden="true"></i>
+            </span>
+          </label>
           <input type="text" id="homeTitleInput" maxlength="120" placeholder="Voux · Simple Free & Open Source Hit Counter" />
-          <small class="hint">Used on the homepage only.</small>
         </div>
-        <button type="submit"><i class="ri-save-line"></i> Save branding</button>
+        <div class="branding-actions">
+          <button type="submit"><i class="ri-save-line"></i> Save branding</button>
+          <button type="button" class="danger ghost branding-reset" id="resetBranding"><i class="ri-restart-line"></i> Reset to defaults</button>
+        </div>
       </form>
       <p class="hint branding-status" id="brandingStatus"></p>
     </section>
