@@ -435,6 +435,36 @@ body.modal-open {
   overflow-wrap: anywhere;
 }
 
+.modal__input-wrap {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modal__input-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.modal__input {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.modal__input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.modal__input-hint {
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
+}
+
 .modal__actions {
   display: flex;
   justify-content: flex-end;
@@ -472,6 +502,12 @@ body.modal-open {
 
 .modal__button:hover {
   filter: brightness(1.05);
+}
+
+.modal__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: none;
 }
 
     .private-card {
@@ -538,6 +574,10 @@ body.modal-open {
   background: var(--bg-secondary);
 }
 
+/*--------------------------------------------------------------
+  DETAILS/SUMMARY EXPANDER FOR THE GUIDES ON HOME PAGE
+--------------------------------------------------------------*/
+
 .expander {
   padding: 0;
   overflow: hidden;
@@ -549,9 +589,27 @@ body.modal-open {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 1.35rem 1.5rem;
+  padding: 1.25rem 1.5rem;
   cursor: pointer;
   font-weight: 600;
+  position: relative;
+  transition: color 0.2s ease, background 0.2s ease;
+  border-bottom: 1px solid transparent;
+  margin: 0;
+}
+
+.expander summary:hover {
+  background: var(--bg-tertiary);
+}
+
+.expander[open] summary {
+  border-bottom-color: var(--border-primary);
+}
+
+.expander summary span {
+  position: relative;
+  display: inline-block;
+  padding-top: 0.05rem;
 }
 
 .expander summary::-webkit-details-marker {
@@ -559,14 +617,32 @@ body.modal-open {
 }
 
 .expander__content {
-  padding: 0 1.5rem 1.35rem;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s ease;
+}
+
+.expander[open] .expander__content {
+  grid-template-rows: 1fr;
+}
+
+.expander__content > div {
+  overflow: hidden;
+}
+
+.expander__content > div > .expander__content-inner {
+  padding: 0 1.5rem 0;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
 }
 
+.expander[open] .expander__content > div > .expander__content-inner {
+  padding: 1rem 1.5rem 1.35rem;
+}
+
 .expander summary i {
-  transition: transform 0.2s ease;
+  transition: transform 0.4s ease;
 }
 
 .expander[open] summary i {
@@ -1785,15 +1861,26 @@ body.modal-open {
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.activity-tooltip::after {
+.activity-tooltip::before {
   content: '';
   position: absolute;
   top: 100%;
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
+  border-top-color: var(--border-primary);
+}
+
+.activity-tooltip::after {
+  content: '';
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
   border-top-color: rgba(15, 17, 21, 0.95);
 }
+
 
 .activity-tooltip--visible {
   opacity: 1;

@@ -23,6 +23,97 @@ let currentThrottleSeconds = 0;
 const themeHelper = window.VouxTheme;
 const START_VALUE_DIGIT_LIMIT = 18;
 
+/*
+ -----------------------------------------------------------
+ Guides details/summary smooth animation for the home page
+ -----------------------------------------------------------
+*/
+
+document.querySelectorAll('.expander').forEach(details => {
+  const content = details.querySelector('.expander__content');
+  const summary = details.querySelector('summary');
+  const arrow = summary.querySelector('i');
+  let isAnimating = false;
+  let closeTimeout = null;
+  let targetState = null; // Track what state we're animating to
+  
+  summary.addEventListener('click', (e) => {
+    // Always prevent default and handle manually
+    e.preventDefault();
+    
+    // If already animating, ignore the click
+    if (isAnimating) {
+      return;
+    }
+    
+    // Clear any pending close timeout
+    if (closeTimeout) {
+      clearTimeout(closeTimeout);
+      closeTimeout = null;
+    }
+    
+    isAnimating = true;
+    
+    // If currently open, animate close
+    if (details.open) {
+      targetState = 'closing';
+      
+      // Manually rotate arrow immediately
+      if (arrow) {
+        arrow.style.transform = 'rotate(0deg)';
+      }
+      
+      // Animate closing
+      content.style.gridTemplateRows = '1fr';
+      void content.offsetHeight;
+      requestAnimationFrame(() => {
+        content.style.gridTemplateRows = '0fr';
+      });
+      
+      // Wait for animation to finish, then actually close
+      closeTimeout = setTimeout(() => {
+        details.removeAttribute('open');
+        if (arrow) {
+          arrow.style.transform = ''; // Reset to CSS control
+        }
+        isAnimating = false;
+        targetState = null;
+        closeTimeout = null;
+      }, 400); // Match the CSS transition duration
+    } else {
+      targetState = 'opening';
+      
+      // Opening - add open attribute first
+      details.setAttribute('open', '');
+      
+      // Manually rotate arrow immediately
+      if (arrow) {
+        arrow.style.transform = 'rotate(180deg)';
+      }
+      
+      content.style.gridTemplateRows = '0fr';
+      void content.offsetHeight;
+      requestAnimationFrame(() => {
+        content.style.gridTemplateRows = '1fr';
+        setTimeout(() => {
+          if (arrow) {
+            arrow.style.transform = ''; // Reset to CSS control
+          }
+          isAnimating = false;
+          targetState = null;
+        }, 400);
+      });
+    }
+  });
+  
+  // Initialize closed state
+  if (!details.open) {
+    content.style.gridTemplateRows = '0fr';
+  }
+});
+// --------------------------------------------------------------------
+
+
 function modalApi() {
   return window.VouxModal;
 }
@@ -128,7 +219,6 @@ function setFormState(disabled) {
   });
 }
 
-// main.js
 document.querySelectorAll('.copy-button').forEach((button) => {
   button.addEventListener('click', () => {
     const block = button.closest('.code-snippet') || button.parentElement;

@@ -117,6 +117,14 @@ async function showConfirm(options) {
   return window.confirm(options?.message || 'Are you sure?');
 }
 
+async function showConfirmWithInput(options) {
+  if (modalApi()?.confirmWithInput) {
+    return modalApi().confirmWithInput(options);
+  }
+  const entered = window.prompt(options?.promptMessage || 'Type DELETE to confirm');
+  return entered && entered.trim() === (options?.inputMatch || 'DELETE');
+}
+
 function showToast(message, variant = 'success') {
   if (!toastContainer) return;
   const toast = document.createElement('div');
@@ -468,20 +476,24 @@ async function handleDeleteAll() {
     await showAlert('Log in first.');
     return;
   }
+  const siteUrl = window.location?.origin || window.location?.href || 'this site';
   const confirmed = await showConfirm({
-    title: 'Delete all counters?',
-    message: 'This action removes every counter permanently. This cannot be undone.',
-    confirmLabel: 'Delete all',
-    variant: 'danger',
-    cancelLabel: 'Cancel'
+    title: 'Really delete everything?',
+    message: `This will permanently remove every counter and their data on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
+    allowHtml: true,
+    confirmLabel: 'Continue',
+    cancelLabel: 'Cancel',
+    variant: 'danger'
   });
   if (!confirmed) return;
-  const siteUrl = window.location?.origin || window.location?.href || 'this site';
-  const confirmedFinal = await showConfirm({
-    title: 'Really delete everything?',
-    message: `This will permanently remove every counter and their data on: <strong style="color:#fff;">${siteUrl}</strong>. You cannot undo this.`,
-    allowHtml: true,
-    confirmLabel: 'Yes, delete all counters',
+  const confirmedFinal = await showConfirmWithInput({
+    title: 'Delete all counters?',
+    message: 'Type DELETE to permanently remove every counter.',
+    inputPlaceholder: 'DELETE',
+    inputMatch: 'DELETE',
+    inputHint: 'This cannot be undone.',
+    promptMessage: 'Type DELETE to permanently remove every counter.', // fallback
+    confirmLabel: 'Delete all counters',
     cancelLabel: 'Cancel',
     variant: 'danger'
   });

@@ -715,6 +715,11 @@ function hashToken(token) {
 
 function normalizeApiKeyRow(row) {
   if (!row) return null;
+  const normalizeTimestamp = (value) => {
+    if (value == null) return null;
+    if (typeof value === 'bigint') return Number(value);
+    return Number(value);
+  };
   let allowed = [];
   if (row.allowed_counters) {
     try {
@@ -731,8 +736,8 @@ function normalizeApiKeyRow(row) {
     name: row.name,
     scope: row.scope === 'limited' ? 'limited' : 'global',
     allowedCounters: allowed,
-    createdAt: row.created_at || 0,
-    lastUsedAt: row.last_used_at || null,
+    createdAt: normalizeTimestamp(row.created_at) || 0,
+    lastUsedAt: normalizeTimestamp(row.last_used_at),
     disabled: Boolean(row.disabled)
   };
 }

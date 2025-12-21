@@ -292,6 +292,14 @@ function modalConfirm(options) {
   return Promise.resolve(window.confirm(message));
 }
 
+function modalConfirmWithInput(options) {
+  if (modalApi()?.confirmWithInput) {
+    return modalApi().confirmWithInput(options);
+  }
+  const entered = window.prompt(options?.promptMessage || 'Type DELETE to confirm');
+  return Promise.resolve(entered && entered.trim() === (options?.inputMatch || 'DELETE'));
+}
+
 async function handleBackupDownload(token) {
   if (backupBusy) {
     showToast('Finish the current backup task first', 'danger');
@@ -442,23 +450,28 @@ async function handlePurgeInactive(token) {
     await showAlert('Log in again to manage counters.');
     return;
   }
-  const confirmed = await modalConfirm({
-    title: 'Delete inactive counters?',
-    message: 'Counters without hits for 14 days will be permanently removed. This cannot be undone.',
-    confirmLabel: 'Delete inactive',
-    variant: 'danger'
-  });
-  if (!confirmed) return;
   const siteUrl = window.location?.origin || window.location?.href || 'this site';
   const confirmedFinal = await modalConfirm({
     title: 'Really remove inactive counters?',
-    message: `This will permanently remove every counter that has no hits for 14 days on: <strong style="color:#fff;">${siteUrl}</strong>. You cannot undo this.`,
-    confirmLabel: 'Yes, delete inactive',
+    message: `This will permanently remove every counter that has no hits for 14 days on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
+    confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
     variant: 'danger',
     allowHtml: true
   });
   if (!confirmedFinal) return;
+  const confirmedInput = await modalConfirmWithInput({
+    title: 'Delete inactive counters?',
+    message: 'Type DELETE to permanently remove inactive counters.',
+    inputPlaceholder: 'DELETE',
+    inputMatch: 'DELETE',
+    inputHint: 'This cannot be undone.',
+    promptMessage: 'Type DELETE to permanently remove inactive counters.', // fallback if modal is not available
+    confirmLabel: 'Delete inactive',
+    cancelLabel: 'Cancel',
+    variant: 'danger'
+  });
+  if (!confirmedInput) return;
   purgeInactiveButton.disabled = true;
   try {
     const res = await fetch('/api/counters/purge-inactive', {
@@ -582,6 +595,7 @@ async function handleApiKeyCreate(token, event) {
   if (!apiKeyNameInput || !apiKeyScopeSelect) return;
   const name = apiKeyNameInput.value.trim();
   const scope = apiKeyScopeSelect.value === 'limited' ? 'limited' : 'global';
+  const previousScope = apiKeyScopeSelect.value;
   let allowed = [];
   if (scope === 'limited' && apiKeyCountersInput) {
     allowed = apiKeyCountersInput.value
@@ -610,6 +624,9 @@ async function handleApiKeyCreate(token, event) {
       await showAlert(`Copy your new API key now:\n${payload.token}`, { title: 'API key created' });
     }
     apiKeyForm?.reset();
+    if (apiKeyScopeSelect) {
+      apiKeyScopeSelect.value = previousScope;
+    }
     updateApiKeyScopeState();
     loadApiKeys(token);
   } catch (error) {
