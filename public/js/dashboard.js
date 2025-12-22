@@ -1047,13 +1047,28 @@ function getCooldownPayload(selectEl) {
 async function handleDeleteFiltered() {
   if (!state.token || state.modeFilter === 'all') return;
   const label = state.modeFilter === 'unique' ? 'unique counters' : 'every-visit counters';
+  const siteUrl = window.location?.origin || window.location?.href || 'this site';
   const confirmed = await showConfirm({
     title: 'Delete filtered counters?',
-    message: `This removes every ${label} currently on this instance. Continue?`,
-    confirmLabel: 'Delete filtered',
+    message: `This will permanently remove all ${label} on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
+    allowHtml: true,
+    confirmLabel: 'Continue',
+    cancelLabel: 'Cancel',
     variant: 'danger'
   });
   if (!confirmed) return;
+  const confirmedFinal = await showConfirmWithInput({
+    title: 'Delete filtered counters?',
+    message: `Type DELETE to permanently remove all ${label}.`,
+    inputPlaceholder: 'DELETE',
+    inputMatch: 'DELETE',
+    inputHint: 'This cannot be undone.',
+    promptMessage: `Type DELETE to permanently remove all ${label}.`, // fallback
+    confirmLabel: 'Delete filtered',
+    cancelLabel: 'Cancel',
+    variant: 'danger'
+  });
+  if (!confirmedFinal) return;
   try {
     deleteFilteredBtn.disabled = true;
     const res = await fetch(`/api/counters?mode=${state.modeFilter}`, {

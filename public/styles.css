@@ -19,6 +19,21 @@ body {
       -moz-osx-font-smoothing: grayscale;
     }
 
+img {
+      user-select: none;
+    }
+
+::selection {
+      background: color-mix(in srgb, var(--accent) 28%, transparent);
+      color: var(--text-primary);
+    }
+
+/* Support for ancient Firefox users too -.- */
+::-moz-selection {
+      background: color-mix(in srgb, var(--accent) 28%, transparent);
+      color: var(--text-primary);
+    }
+
 /*--------------------------------------------------------------
   SCROLLBAR
 --------------------------------------------------------------*/
@@ -2614,7 +2629,7 @@ body.modal-open {
   display: inline-flex;
   align-items: center;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
 }
 
 .brand img {
