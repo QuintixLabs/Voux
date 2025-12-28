@@ -77,6 +77,20 @@ html::-webkit-scrollbar-thumb:hover {
   visibility: visible;
 }
 
+/* hope this fixes it */
+@keyframes page-fallback {
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+body:not(.content-mounted) .page {
+  animation: page-fallback 0.18s ease 0.6s forwards;
+}
+
+/* ------------------------------- */
+
 @media (min-width: 768px) {
   .page {
     padding: 5rem 2rem 6rem;
@@ -879,6 +893,12 @@ body.modal-open {
   color: var(--text-secondary);
   margin-right: 0.75rem;
   font-weight: 400;
+}
+
+@media (max-width: 600px) {
+  .admin-filter{
+    margin-top: 0.5rem;
+  }
 }
 
 .admin-filter select {

@@ -38,6 +38,7 @@ const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
 const adminPreview = document.querySelector('#adminPreview');
 const adminPreviewTarget = document.querySelector('#adminPreviewTarget');
 const modeFilterSelect = document.querySelector('#modeFilter');
+const sortFilterSelect = document.querySelector('#sortFilter');
 const activityRangeControls = document.querySelector('#activityRangeControls');
 const adminThrottleHint = document.querySelector('#adminThrottleHint');
 const tagFilterControls = document.querySelector('#tagFilterControls');
@@ -85,6 +86,7 @@ const state = {
   loadingLogin: false,
   allowedModes: { unique: true, unlimited: true },
   modeFilter: 'all',
+  sort: 'newest',
   autoRefreshTimer: null,
   editPanelsOpen: 0,
   activityRange: '7d',
@@ -190,6 +192,7 @@ function init() {
   deleteFilteredBtn?.addEventListener('click', handleDeleteFiltered);
   createForm?.addEventListener('submit', handleCreateCounter);
   modeFilterSelect?.addEventListener('change', handleModeFilterChange);
+  sortFilterSelect?.addEventListener('change', handleSortChange);
   adminCooldownSelect?.addEventListener('change', refreshAdminModeControls);
   counterSearchInput?.addEventListener('input', handleSearchInput);
   counterSearchInput?.addEventListener('search', handleSearchInput);
@@ -308,6 +311,14 @@ function handleModeFilterChange() {
   if (!modeFilterSelect) return;
   state.modeFilter = modeFilterSelect.value;
   updateDeleteFilteredState();
+  if (state.token) {
+    refreshCounters(1);
+  }
+}
+
+function handleSortChange() {
+  if (!sortFilterSelect) return;
+  state.sort = sortFilterSelect.value || 'newest';
   if (state.token) {
     refreshCounters(1);
   }
@@ -440,6 +451,11 @@ async function fetchCounters(page) {
   }
   if (state.modeFilter && state.modeFilter !== 'all') {
     params.append('mode', state.modeFilter);
+  }
+  if (state.sort === 'inactive') {
+    params.append('inactive', '1');
+  } else if (state.sort && state.sort !== 'newest') {
+    params.append('sort', state.sort);
   }
   if (state.tagFilter && state.tagFilter.length) {
     state.tagFilter.forEach((tagId) => {
@@ -1425,6 +1441,9 @@ function updateCreateCardVisibility() {
 function updateDeleteFilteredState() {
   if (modeFilterSelect) {
     modeFilterSelect.value = state.modeFilter;
+  }
+  if (sortFilterSelect) {
+    sortFilterSelect.value = state.sort || 'newest';
   }
   const isGlobal = state.modeFilter === 'all';
   if (deleteFilteredBtn) {

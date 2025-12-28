@@ -134,7 +134,7 @@ const insertCounterTagStmt = db.prepare('INSERT OR IGNORE INTO counter_tags (cou
 const deleteCounterTagsStmt = db.prepare('DELETE FROM counter_tags WHERE counter_id = ?');
 const deleteTagsByTagStmt = db.prepare('DELETE FROM counter_tags WHERE tag_id = ?');
 
-function buildCounterQuery({ search, mode, tags, limit, offset, count = false }) {
+function buildCounterQuery({ search, mode, tags, limit, offset, count = false, sort = 'newest', inactiveBefore = null }) {
   let sql = count ? 'SELECT COUNT(*) as total FROM counters' : `SELECT ${baseSelectFields} FROM counters`;
   const conditions = [];
   const params = {};
@@ -164,11 +164,25 @@ function buildCounterQuery({ search, mode, tags, limit, offset, count = false })
       params[`tag${idx}`] = tag;
     });
   }
+  if (Number.isFinite(inactiveBefore)) {
+    conditions.push(
+      `COALESCE((SELECT MAX(last_hit) FROM hits WHERE counter_id = counters.id), created_at) < @inactiveBefore`
+    );
+    params.inactiveBefore = inactiveBefore;
+  }
   if (conditions.length) {
     sql += ` WHERE ${conditions.join(' AND ')}`;
   }
   if (!count) {
-    sql += ' ORDER BY created_at DESC LIMIT @limit OFFSET @offset';
+    let orderBy = 'created_at DESC';
+    if (sort === 'oldest') {
+      orderBy = 'created_at ASC';
+    } else if (sort === 'views') {
+      orderBy = 'value DESC, created_at DESC';
+    } else if (sort === 'last_hit') {
+      orderBy = `COALESCE((SELECT MAX(last_hit) FROM hits WHERE counter_id = counters.id), 0) DESC, created_at DESC`;
+    }
+    sql += ` ORDER BY ${orderBy} LIMIT @limit OFFSET @offset`;
     params.limit = limit;
     params.offset = offset;
   }
@@ -241,14 +255,14 @@ function listCounters() {
   return attachTagsToCounters(listCountersStmt.all());
 }
 
-function listCountersPage(limit, offset, search, mode, tags) {
-  const { sql, params } = buildCounterQuery({ search, mode, tags, limit, offset });
+function listCountersPage(limit, offset, search, mode, tags, sort, inactiveBefore) {
+  const { sql, params } = buildCounterQuery({ search, mode, tags, limit, offset, sort, inactiveBefore });
   const rows = db.prepare(sql).all(params);
   return attachTagsToCounters(rows);
 }
 
-function countCounters(search, mode, tags) {
-  const { sql, params } = buildCounterQuery({ search, mode, tags, count: true });
+function countCounters(search, mode, tags, inactiveBefore) {
+  const { sql, params } = buildCounterQuery({ search, mode, tags, count: true, inactiveBefore });
   const { total } = db.prepare(sql).get(params);
   const normalized = typeof total === 'bigint' ? Number(total) : total;
   return Number.isFinite(normalized) ? normalized : 0;

@@ -84,7 +84,7 @@ const INACTIVE_THRESHOLD_DAYS = Math.max(
   1,
   Number.isFinite(Number(process.env.INACTIVE_DAYS_THRESHOLD))
     ? Number(process.env.INACTIVE_DAYS_THRESHOLD)
-    : 14
+    : 30
 );
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const LABEL_LIMIT = 80;
@@ -133,19 +133,30 @@ app.get('/api/counters', requireAdmin, (req, res) => {
   if (req.query.mode !== undefined && !modeFilter) {
     return res.status(400).json({ error: 'invalid_mode' });
   }
+  const sort = normalizeSort(req.query.sort);
+  if (req.query.sort !== undefined && !sort) {
+    return res.status(400).json({ error: 'invalid_sort' });
+  }
+  const inactiveOnly = normalizeInactiveFilter(req.query.inactive);
+  if (req.query.inactive !== undefined && inactiveOnly === null) {
+    return res.status(400).json({ error: 'invalid_inactive' });
+  }
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
   const pageSizeRaw = parseInt(req.query.pageSize, 10);
   const pageSize = Math.max(1, Math.min(pageSizeRaw || DEFAULT_PAGE_SIZE, 100));
   const searchQuery = extractSearchQuery(req.query.q ?? req.query.search);
   const tagFilter = normalizeTagFilter(req.query.tags);
   const totalOverall = countCounters();
+  const inactiveBefore = inactiveOnly ? Date.now() - INACTIVE_THRESHOLD_DAYS * DAY_MS : null;
   const totalMatching =
-    searchQuery || modeFilter || tagFilter.length ? countCounters(searchQuery, modeFilter, tagFilter) : totalOverall;
+    searchQuery || modeFilter || tagFilter.length || inactiveOnly
+      ? countCounters(searchQuery, modeFilter, tagFilter, inactiveBefore)
+      : totalOverall;
   const totalPages = Math.max(1, Math.ceil(Math.max(totalMatching, 1) / pageSize));
   const safePage = Math.min(page, totalPages);
   const offset = (safePage - 1) * pageSize;
   const dayStart = getDayStart();
-  const counters = listCountersPage(pageSize, offset, searchQuery, modeFilter, tagFilter).map((counter) =>
+  const counters = listCountersPage(pageSize, offset, searchQuery, modeFilter, tagFilter, sort || 'newest', inactiveBefore).map((counter) =>
     serializeCounterWithStats(counter, dayStart, { includeNote: true, includeTags: true })
   );
 
@@ -878,6 +889,31 @@ function normalizeModeFilter(value) {
   return null;
 }
 
+function normalizeSort(value) {
+  if (value === undefined || value === null) return null;
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === undefined || raw === null) return null;
+  const normalized = String(raw).trim().toLowerCase();
+  if (normalized === 'newest' || normalized === 'oldest' || normalized === 'views' || normalized === 'last_hit') {
+    return normalized;
+  }
+  return null;
+}
+
+function normalizeInactiveFilter(value) {
+  if (value === undefined || value === null) return null;
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === undefined || raw === null) return null;
+  const normalized = String(raw).trim().toLowerCase();
+  if (normalized === '1' || normalized === 'true' || normalized === 'yes') {
+    return true;
+  }
+  if (normalized === '0' || normalized === 'false' || normalized === 'no') {
+    return false;
+  }
+  return null;
+}
+
 function getDefaultMode(runtimeConfig = getConfig()) {
   const allowed = runtimeConfig?.allowedModes || {};
   return allowed.unique !== false ? 'unique' : 'unlimited';
@@ -996,7 +1032,7 @@ function buildInactiveStatus(counter, lastHit) {
   return {
     isInactive,
     days,
-    label: isInactive ? `Inactive ${Math.max(1, days)}d` : '',
+    label: isInactive ? `Inactive ${INACTIVE_THRESHOLD_DAYS}d` : '',
     thresholdDays: INACTIVE_THRESHOLD_DAYS
   };
 }

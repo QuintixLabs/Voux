@@ -453,7 +453,7 @@ async function handlePurgeInactive(token) {
   const siteUrl = window.location?.origin || window.location?.href || 'this site';
   const confirmedFinal = await modalConfirm({
     title: 'Really remove inactive counters?',
-    message: `This will permanently remove every counter that has no hits for 14 days on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
+    message: `This will permanently remove every counter that has no hits for 30 days on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
     confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
     variant: 'danger',
@@ -462,11 +462,11 @@ async function handlePurgeInactive(token) {
   if (!confirmedFinal) return;
   const confirmedInput = await modalConfirmWithInput({
     title: 'Delete inactive counters?',
-    message: 'Type DELETE to permanently remove inactive counters.',
+    message: 'Type DELETE to permanently remove inactive counters (30 days).',
     inputPlaceholder: 'DELETE',
     inputMatch: 'DELETE',
     inputHint: 'This cannot be undone.',
-    promptMessage: 'Type DELETE to permanently remove inactive counters.', // fallback if modal is not available
+    promptMessage: 'Type DELETE to permanently remove inactive counters (30 days).', // fallback if modal is not available
     confirmLabel: 'Delete inactive',
     cancelLabel: 'Cancel',
     variant: 'danger'
@@ -480,7 +480,7 @@ async function handlePurgeInactive(token) {
         'Content-Type': 'application/json',
         'x-voux-admin': token
       },
-      body: JSON.stringify({ days: 14 })
+      body: JSON.stringify({ days: 30 })
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

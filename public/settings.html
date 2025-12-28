@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
     rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet" />
-  <link rel="icon" href="assets/favicon.ico">
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
   <link rel="stylesheet" href="/styles.css?v=%APP_VERSION%" />
 </head>
@@ -125,8 +125,8 @@
         </div>
         <div class="field">
           <label>Inactive counters</label>
-          <button type="button" id="purgeInactiveButton" class="danger ghost inactive-counters"><i class="ri-delete-bin-line"></i> Delete counters inactive for 14 days</button>
-          <small class="hint">Counters with no hits for 14 days will be permanently removed.</small>
+          <button type="button" id="purgeInactiveButton" class="danger ghost inactive-counters"><i class="ri-delete-bin-line"></i> Delete counters inactive for 30 days</button>
+          <small class="hint">Counters with no hits for 30 days will be permanently removed.</small>
         </div>
       </div>
       <p class="hint" id="settingsStatus">Loading...</p>

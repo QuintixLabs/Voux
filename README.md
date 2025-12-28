@@ -129,7 +129,7 @@ SQLite lives in `data/counters.db`. Back it up occasionally if you care about th
 
 - `GET /api/config` – tells the UI what's enabled: `{ privateMode, showGuides, allowedModes, defaultMode, adminPageSize }`.
 - `POST /api/counters` – create a counter (admin token required when private mode is on). Body at minimum: `{ "label": "Blog Views", "startValue": 0, "mode": "unique" }`. Add `"tags": ["tag_id_here"]` to auto-assign colored tags.
-- `GET /api/counters?page=1&pageSize=20&mode=unique&tags=tagA&tags=tagB` – paginated list of counters (admin only). Filter by counting mode and/or by one or more tag IDs.
+- `GET /api/counters?page=1&pageSize=20&mode=unique&tags=tagA&tags=tagB&sort=views` – paginated list of counters (admin only). Filter by counting mode and/or by one or more tag IDs.
 - `GET /api/counters/:id` – fetch a single counter plus its embed snippet (public; notes are omitted).
 - `GET /embed/:id.js` – the script you drop into your site.
 - `DELETE /api/counters/:id` – delete a single counter (admin only).
