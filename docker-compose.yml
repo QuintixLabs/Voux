@@ -1,0 +1,9 @@
+services:
+  voux:
+    image: ghcr.io/quintixlabs/voux/voux:latest
+    ports:
+      - "8787:8787"
+    environment:
+      - ADMIN_TOKEN=your-secret
+    volumes:
+      - ./data:/app/data
