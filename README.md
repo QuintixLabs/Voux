@@ -95,6 +95,11 @@ docker run -d \
   ghcr.io/quintixlabs/voux/voux:latest
 ```
 
+Or use our [docker-compose.yml](https://github.com/QuintixLabs/Voux/blob/master/docker-compose.yml), which is simpler. Just run:
+
+```bash
+docker compose up -d
+```
 
 - Change `ADMIN_TOKEN` to your own password (do not leave it as the example).
 - Mount `./data` so counters survive restarts.
