@@ -131,10 +131,14 @@
     <section id="result" class="card hidden result">
       <h2>Your embed code</h2>
       <p>Drop this script where you want the counter to appear:</p>
-      <textarea id="embedSnippet" readonly></textarea>
+      <div class="embed-snippet">
+        <button type="button" class="ghost embed-snippet__copy" id="embedCopy" aria-label="Copy embed code">
+          <i class="ri-file-copy-line" aria-hidden="true"></i>
+        </button>
+        <textarea id="embedSnippet" readonly></textarea>
+      </div>
 
       <div class="preview">
-        <p>Live preview</p>
         <div id="previewTarget">
           <em>Paste the snippet on any page.</em>
         </div>
@@ -242,7 +246,7 @@ npm install --production   # for production installs</code></pre>
 
         
         <p><span class="code-inline">🐋 Docker</span></p>
-        <p>Or run Voux via Docker and pull the prebuilt image from GHCR:</p>
+        <p>Run Voux via Docker and pull the prebuilt image from GHCR:</p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
           <pre><code class="language-bash">docker run -d \
@@ -251,6 +255,11 @@ npm install --production   # for production installs</code></pre>
   -e ADMIN_TOKEN=your-secret \
   -v $(pwd)/data:/app/data \
   ghcr.io/quintixlabs/voux/voux:latest</code></pre>
+        </div>
+        <p>Or use our <a href="https://github.com/QuintixLabs/Voux/blob/master/docker-compose.yml" target="_blank">docker-compose.yml</a>, which is simpler. Just run:</p>
+        <div class="code-snippet">
+          <button class="copy-button"><i class="ri-file-copy-line"></i>Copy</button>
+          <pre><code class="language-bash">docker compose up -d</code></pre>
         </div>
         <ul class="self-host-list">
           <li>Change <span class="code-inline">ADMIN_TOKEN</span> to your own password (do not leave it as the example).</li>

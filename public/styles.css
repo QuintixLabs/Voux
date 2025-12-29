@@ -564,32 +564,22 @@ body.modal-open {
     }
 
     .preview {
-      margin-top: 1.5rem;
-      padding: 1.5rem;
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border-primary);
-      border-radius: 12px;
-    }
-
-    .preview > p {
-      font-size: 0.8125rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 1rem;
+      margin-top: 1rem;
+      padding: 0;
+      background: transparent;
+      border: none;
     }
 
     #previewTarget,
     #adminPreviewTarget {
-      min-height: 80px;
+      min-height: 70px;
       display: flex;
       align-items: center;
       justify-content: center;
       background: var(--bg-secondary);
-      border: 1px dashed var(--border-primary);
+      border: 1px solid var(--border-primary);
       border-radius: 10px;
-      padding: 1.5rem;
+      padding: 1rem;
     }
 
     #previewTarget em,
@@ -2791,13 +2781,12 @@ body.modal-open {
 }
 
 #adminEmbedSnippet {
-  margin-top: 0.75rem;
   width: 100%;
   min-height: 70px;
   background: #0b0b0b;
   border: 1px solid var(--border-primary);
   border-radius: 10px;
-  padding: 0.75rem;
+  padding: 0.75rem 2.5rem 0.75rem 0.75rem;
   font-family: 'SF Mono', 'Cascadia Code', monospace;
   font-size: 0.85rem;
 }
@@ -2808,8 +2797,45 @@ body.modal-open {
   background: #0b0b0b;
   border: 1px solid var(--border-primary);
   border-radius: 10px;
-  padding: 0.75rem;
+  padding: 0.75rem 2.5rem 0.75rem 0.75rem;
   font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+
+.embed-snippet {
+  position: relative;
+}
+
+.embed-block {
+  margin-top: 0.9rem;
+}
+
+.embed-block__head {
+  margin-bottom: 0.5rem;
+}
+
+.embed-block__head h4 {
+  margin: 0 0 0.2rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.embed-snippet__copy {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.embed-snippet__copy.copied {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #34d399;
 }
 
 

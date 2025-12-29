@@ -84,7 +84,7 @@ During development, set `NODE_ENV=development` in your `.env` to serve HTML/JS/C
 
 ### `🐋 Docker`
 
-Or run Voux via Docker:
+Run Voux via Docker:
 
 ```bash
 docker run -d \

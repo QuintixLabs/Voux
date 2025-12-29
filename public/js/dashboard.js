@@ -32,6 +32,8 @@ const createForm = document.querySelector('#create-admin-form');
 const createLabelInput = document.querySelector('#adminLabel');
 const createNoteInput = document.querySelector('#adminNote');
 const createStartInput = document.querySelector('#adminStartValue');
+const adminEmbedBlock = document.querySelector('#adminEmbedBlock');
+const adminEmbedCopy = document.querySelector('#adminEmbedCopy');
 const adminEmbedSnippet = document.querySelector('#adminEmbedSnippet');
 const createCard = document.querySelector('#createCard');
 const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
@@ -191,6 +193,7 @@ function init() {
   deleteAllBtn?.addEventListener('click', handleDeleteAll);
   deleteFilteredBtn?.addEventListener('click', handleDeleteFiltered);
   createForm?.addEventListener('submit', handleCreateCounter);
+  adminEmbedCopy?.addEventListener('click', handleAdminEmbedCopy);
   modeFilterSelect?.addEventListener('change', handleModeFilterChange);
   sortFilterSelect?.addEventListener('change', handleSortChange);
   adminCooldownSelect?.addEventListener('change', refreshAdminModeControls);
@@ -570,7 +573,7 @@ async function handleCreateCounter(event) {
     const data = await res.json();
     if (adminEmbedSnippet) {
       adminEmbedSnippet.value = data.embedCode;
-      adminEmbedSnippet.classList.remove('hidden');
+      adminEmbedBlock?.classList.remove('hidden');
     }
     if (data.embedUrl) {
       renderAdminPreview(data.embedUrl);
@@ -945,7 +948,8 @@ function hideDashboard() {
   loginCard?.classList.remove('login-card--pending');
   dashboardCard?.classList.add('hidden');
   adminControls?.classList.add('hidden');
-  adminEmbedSnippet?.classList.add('hidden');
+  adminEmbedBlock?.classList.add('hidden');
+  if (adminEmbedSnippet) adminEmbedSnippet.value = '';
   paginationEl?.classList.add('hidden');
   deleteAllBtn.disabled = true;
   state.tags = [];
@@ -1434,8 +1438,32 @@ function updateCreateCardVisibility() {
     createCard.classList.remove('hidden');
   } else {
     createCard.classList.add('hidden');
-    adminEmbedSnippet?.classList.add('hidden');
+    adminEmbedBlock?.classList.add('hidden');
+    if (adminEmbedSnippet) adminEmbedSnippet.value = '';
   }
+}
+
+function handleAdminEmbedCopy() {
+  const text = adminEmbedSnippet?.value || '';
+  if (!text || !adminEmbedCopy) return;
+  if (adminEmbedCopy._copying) return;
+  adminEmbedCopy._copying = true;
+  navigator.clipboard.writeText(text).then(() => {
+    const original = adminEmbedCopy.dataset.originalIcon || adminEmbedCopy.innerHTML;
+    adminEmbedCopy.dataset.originalIcon = original;
+    adminEmbedCopy.classList.add('copied');
+    adminEmbedCopy.innerHTML = '<i class="ri-check-line"></i>';
+    if (adminEmbedCopy._copyTimeout) {
+      clearTimeout(adminEmbedCopy._copyTimeout);
+    }
+    adminEmbedCopy._copyTimeout = setTimeout(() => {
+      adminEmbedCopy.classList.remove('copied');
+      adminEmbedCopy.innerHTML = adminEmbedCopy.dataset.originalIcon || original;
+      adminEmbedCopy._copying = false;
+    }, 1400);
+  }).catch(() => {
+    adminEmbedCopy._copying = false;
+  });
 }
 
 function updateDeleteFilteredState() {

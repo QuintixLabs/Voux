@@ -144,9 +144,19 @@
             </div>
             <button type="submit">Generate</button>
           </form>
-          <textarea id="adminEmbedSnippet" class="hidden" readonly></textarea>
+          <div id="adminEmbedBlock" class="embed-block hidden">
+            <div class="embed-block__head">
+              <h4>Your embed code</h4>
+              <p class="hint">Drop this script where you want the counter to appear:</p>
+            </div>
+            <div class="embed-snippet">
+              <button type="button" class="ghost embed-snippet__copy" id="adminEmbedCopy" aria-label="Copy embed code">
+                <i class="ri-file-copy-line" aria-hidden="true"></i>
+              </button>
+              <textarea id="adminEmbedSnippet" readonly></textarea>
+            </div>
+          </div>
           <div id="adminPreview" class="preview hidden">
-            <p>Live preview</p>
             <div id="adminPreviewTarget">
               <em>Paste the snippet on any page.</em>
             </div>

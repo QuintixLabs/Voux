@@ -7,6 +7,7 @@
 const form = document.querySelector('#create-form');
 const resultSection = document.querySelector('#result');
 const snippetArea = document.querySelector('#embedSnippet');
+const embedCopyBtn = document.querySelector('#embedCopy');
 const previewTarget = document.querySelector('#previewTarget');
 const builderSection = document.querySelector('#builderSection');
 const privateDashboardCard = document.querySelector('#privateDashboardCard');
@@ -201,6 +202,31 @@ if (form) {
   });
 }
 
+if (embedCopyBtn) {
+  embedCopyBtn.addEventListener('click', () => {
+    const text = snippetArea?.value || '';
+    if (!text) return;
+    if (embedCopyBtn._copying) return;
+    embedCopyBtn._copying = true;
+    navigator.clipboard.writeText(text).then(() => {
+      const original = embedCopyBtn.dataset.originalIcon || embedCopyBtn.innerHTML;
+      embedCopyBtn.dataset.originalIcon = original;
+      embedCopyBtn.classList.add('copied');
+      embedCopyBtn.innerHTML = '<i class="ri-check-line"></i>';
+      if (embedCopyBtn._copyTimeout) {
+        clearTimeout(embedCopyBtn._copyTimeout);
+      }
+      embedCopyBtn._copyTimeout = setTimeout(() => {
+        embedCopyBtn.classList.remove('copied');
+        embedCopyBtn.innerHTML = embedCopyBtn.dataset.originalIcon || original;
+        embedCopyBtn._copying = false;
+      }, 1400);
+    }).catch(() => {
+      embedCopyBtn._copying = false;
+    });
+  });
+}
+
 function renderPreview(embedUrl) {
   previewTarget.innerHTML = '';
   const wrapper = document.createElement('span');
@@ -254,10 +280,10 @@ async function initConfig() {
     allowedModes = normalizeAllowedModes(data.allowedModes);
     defaultMode = data.defaultMode === 'unlimited' && allowedModes.unlimited !== false ? 'unlimited' : 'unique';
     currentThrottleSeconds = Number(data.unlimitedThrottleSeconds) || 0;
-    if (cooldownSelect) {
-      applyAllowedModesToSelect(cooldownSelect);
-      cooldownSelect.value = defaultMode;
-    }
+  if (cooldownSelect) {
+    applyAllowedModesToSelect(cooldownSelect);
+    cooldownSelect.value = defaultMode;
+  }
 
     if (isPrivateMode) {
       form?.classList.add('hidden');
