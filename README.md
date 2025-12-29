@@ -22,7 +22,7 @@
 - Multi-select toolbar lets you download per-counter **JSON** or delete groups of counters in one go.
 - The **dashboard** gives you `search`, `pagination`, `inline edits`, `notes`, `filters`, and `auto-refreshing stats`.
 - Toggle the instance between `public/private` however you like.
-- See **7-day activity charts** and **inactive badges** so you can spot old or unused counters fast.
+- See **7-day** and **30-day** activity charts, plus inactive badges, so you can spot old or unused counters fast.
 - Owner **API** keys so collaborators can manage their own counters without using the main admin password.
 - Change your **instance name** and **homepage title** easily from the `Settings`.
 - You can turn on per-IP limits for **"Every visit"** counters to slow down spam refreshes.
