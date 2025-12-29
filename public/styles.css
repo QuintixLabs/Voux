@@ -926,7 +926,6 @@ body.modal-open {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
 }
 
 @media (max-width: 460px) {
