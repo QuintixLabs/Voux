@@ -136,22 +136,22 @@
       <h2>Branding</h2>
       <form id="brandingForm" class="api-key-form" action="javascript:void(0);">
         <div class="field">
-          <label for="brandNameInput">
+          <div class="field__label" id="brandNameLabel">
             Brand display name
             <span class="hint-icon" data-tooltip='Used anywhere you see "Brand · Page".' aria-label='Used anywhere you see "Brand · Page".'>
               <i class="ri-question-mark" aria-hidden="true"></i>
             </span>
-          </label>
-          <input type="text" id="brandNameInput" maxlength="80" placeholder="Voux" />
+          </div>
+          <input type="text" id="brandNameInput" aria-labelledby="brandNameLabel" maxlength="80" placeholder="Voux" />
         </div>
         <div class="field">
-          <label for="themeSelect">
+          <div class="field__label" id="themeSelectLabel">
             Theme
             <span class="hint-icon" data-tooltip="Pick a preset color palette for your instance." aria-label="Pick a preset color palette for your instance.">
               <i class="ri-question-mark" aria-hidden="true"></i>
             </span>
-          </label>
-          <select id="themeSelect">
+          </div>
+          <select id="themeSelect" aria-labelledby="themeSelectLabel">
             <!--
             it will detect them automatically 
             configure themes in theme.js and styles.css
@@ -159,13 +159,13 @@
           </select>
         </div>
         <div class="field">
-          <label for="homeTitleInput">
+          <div class="field__label" id="homeTitleLabel">
             Homepage title
             <span class="hint-icon" data-tooltip="Used on the homepage only." aria-label="Used on the homepage only.">
               <i class="ri-question-mark" aria-hidden="true"></i>
             </span>
-          </label>
-          <input type="text" id="homeTitleInput" maxlength="120" placeholder="Voux · Simple Free & Open Source Hit Counter" />
+          </div>
+          <input type="text" id="homeTitleInput" aria-labelledby="homeTitleLabel" maxlength="120" placeholder="Voux · Simple Free & Open Source Hit Counter" />
         </div>
         <div class="branding-actions">
           <button type="submit"><i class="ri-save-line"></i> Save branding</button>
