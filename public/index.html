@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.8.0/fonts/remixicon.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
   <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
   <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
@@ -91,18 +91,19 @@
       <form id="create-form" class="form">
         <div class="field">
           <div class="field__head">
-            <label for="label">Label (optional)</label>
+            <div class="field__label" id="publicLabelLabel">Label <span class="optional-tag">Optional</span></div>
             <span class="hint">Leave empty if you only want the number.</span>
           </div>
-          <input type="text" id="label" name="label" maxlength="80" placeholder="Blog Views" />
+          <input type="text" id="label" name="label" aria-labelledby="publicLabelLabel" maxlength="80" placeholder="Blog Views" />
         </div>
 
         <div class="field">
-          <label for="startValue">Starting value</label>
+          <div class="field__label" id="publicStartValueLabel">Starting value</div>
           <input
             type="text"
             id="startValue"
             name="startValue"
+            aria-labelledby="publicStartValueLabel"
             inputmode="numeric"
             pattern="[0-9]*"
             maxlength="18"
@@ -111,8 +112,8 @@
         </div>
 
         <div class="field">
-          <label for="cooldownSelect">Counting mode</label>
-          <select id="cooldownSelect" name="cooldownSelect">
+          <div class="field__label" id="publicModeLabel">Counting mode</div>
+          <select id="cooldownSelect" name="cooldownSelect" aria-labelledby="publicModeLabel">
             <option value="unique">Unique visitors</option>
             <option value="unlimited">Every visit</option>
           </select>

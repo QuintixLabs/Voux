@@ -724,9 +724,9 @@ function renderCounterList(counters = state.latestCounters) {
     const fieldsWrapper = document.createElement('div');
     fieldsWrapper.className = 'counter-edit__fields';
     fieldsWrapper.append(
-      buildEditField('Label (optional)', labelInput),
+      buildEditField('Label <span class="optional-tag">Optional</span>', labelInput, { allowHtml: true }),
       buildEditField('Value', valueInput),
-      buildEditField('Note (optional)', noteInput)
+      buildEditField('Note <span class="optional-tag">Optional</span>', noteInput, { allowHtml: true })
     );
     let editTags = extractTagIds(counter.tags);
     const tagField = document.createElement('div');
@@ -734,7 +734,7 @@ function renderCounterList(counters = state.latestCounters) {
     const tagHead = document.createElement('div');
     tagHead.className = 'counter-edit__field-label counter-edit__field-label--actions';
     const tagLabelText = document.createElement('span');
-    tagLabelText.textContent = 'Tags (optional)';
+    tagLabelText.innerHTML = 'Tags <span class="optional-tag">Optional</span>';
     const tagInlineBtn = document.createElement('button');
     tagInlineBtn.type = 'button';
     tagInlineBtn.className = 'ghost tag-inline-button';
@@ -2157,12 +2157,16 @@ function renderAdminThrottleHint() {
   adminThrottleHint.classList.remove('hidden');
 }
 
-function buildEditField(labelText, control) {
+function buildEditField(labelText, control, options = {}) {
   const wrapper = document.createElement('label');
   wrapper.className = 'counter-edit__field';
   const title = document.createElement('span');
   title.className = 'counter-edit__field-label';
-  title.textContent = labelText;
+  if (options.allowHtml) {
+    title.innerHTML = labelText;
+  } else {
+    title.textContent = labelText;
+  }
   wrapper.append(title, control);
   return wrapper;
 }

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
     rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.8.0/fonts/remixicon.css" rel="stylesheet"/>
   <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
   <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
@@ -101,15 +101,16 @@
           
           <form id="create-admin-form" class="form compact" action="javascript:void(0);">
             <div class="field__head">
-              <label for="label">Label (optional)</label>
+              <div class="field__label" id="adminLabelLabel">Label <span class="optional-tag">Optional</span></div>
               <span class="hint">Leave empty if you only want the number.</span>
             </div>
-            <input type="text" id="adminLabel" maxlength="80" placeholder="Blog Views" />
+            <input type="text" id="adminLabel" aria-labelledby="adminLabelLabel" maxlength="80" placeholder="Blog Views" />
             <div class="field">
-              <label for="adminStartValue">Starting value</label>
+              <div class="field__label" id="adminStartValueLabel">Starting value</div>
               <input
                 type="text"
                 id="adminStartValue"
+                aria-labelledby="adminStartValueLabel"
                 inputmode="numeric"
                 pattern="[0-9]*"
                 maxlength="18"
@@ -117,12 +118,12 @@
               />
             </div>
             <div class="field">
-              <label for="adminNote">Note (optional)</label>
-              <textarea id="adminNote" maxlength="200" rows="2" placeholder="Add a private note about this counter"></textarea>
+              <div class="field__label" id="adminNoteLabel">Note <span class="optional-tag">Optional</span></div>
+              <textarea id="adminNote" aria-labelledby="adminNoteLabel" maxlength="200" rows="2" placeholder="Add a private note about this counter"></textarea>
             </div>
             <div class="field">
               <div class="field__head">
-                <label for="createTagPicker">Tags (optional)</label>
+                <div class="field__label" id="createTagLabel">Tags <span class="optional-tag">Optional</span></div>
                 <div class="tag-inline-actions">
                   <span class="tag-inline-hint" id="createTagCounterHint">0 counters</span>
                   <button type="button" class="ghost tag-inline-button" id="createTagManage">
@@ -131,13 +132,13 @@
                   </button>
                 </div>
               </div>
-              <div id="createTagPicker" class="tag-picker">
+              <div id="createTagPicker" class="tag-picker" aria-labelledby="createTagLabel">
                 <p class="hint">No tags yet. Create one.</p>
               </div>
             </div>
             <div class="field">
-              <label for="adminCooldownSelect">Counting mode</label>
-              <select id="adminCooldownSelect">
+              <div class="field__label" id="adminModeLabel">Counting mode</div>
+              <select id="adminCooldownSelect" aria-labelledby="adminModeLabel">
                 <option value="unique">Unique visitors</option>
                 <option value="unlimited">Every visit</option>
               </select>

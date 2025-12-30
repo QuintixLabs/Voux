@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
     rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.8.0/fonts/remixicon.css" rel="stylesheet"/>
   <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
   <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
@@ -92,7 +92,7 @@
 
         <div class="mode-selector">
           <div class="mode-selector__head">
-            <strong><i class="ri-checkbox-multiple-line"></i> Allowed counting modes</strong>
+            <p><i class="ri-checkbox-multiple-line"></i> Allowed counting modes</p>
             <small>Pick the modes your instance should offer. Counters in disallowed modes keep working but new ones cannot be created.</small>
         </div>
         <div class="mode-selector__options">
@@ -177,7 +177,7 @@
 
     <section class="card settings-card hidden" id="backupCard">
       <h2>Backup &amp; Restore</h2>
-      <p>Download all counters as JSON or restore from a previous backup when moving servers.</p>
+      <span class="settings-desc">Download all counters as JSON or restore from a previous backup when moving servers.</span>
       <div class="backup-actions">
         <button type="button" id="downloadBackup"><i class="ri-download-cloud-line"></i> Download backup</button>
         <label class="file-upload">
@@ -190,7 +190,7 @@
 
     <section class="card settings-card hidden" id="apiKeysCard">
       <h2>Owner API keys</h2>
-      <p>Create scoped keys so collaborators can reset or delete their own counters without the main admin password.</p>
+      <span class="settings-desc">Create scoped keys so collaborators can reset or delete their own counters without the main admin password.</span>
       <div id="apiKeysList" class="api-keys-list" aria-live="polite"></div>
       <div id="apiKeysPagination" class="api-keys-pagination hidden">
         <button type="button" id="apiKeysPrev" class="ghost"><i class="ri-arrow-left-line"></i></button>
