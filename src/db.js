@@ -179,6 +179,8 @@ function buildCounterQuery({ search, mode, tags, limit, offset, count = false, s
       orderBy = 'created_at ASC';
     } else if (sort === 'views') {
       orderBy = 'value DESC, created_at DESC';
+    } else if (sort === 'views_asc') {
+      orderBy = 'value ASC, created_at ASC';
     } else if (sort === 'last_hit') {
       orderBy = `COALESCE((SELECT MAX(last_hit) FROM hits WHERE counter_id = counters.id), 0) DESC, created_at DESC`;
     }

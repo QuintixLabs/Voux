@@ -894,7 +894,7 @@ function normalizeSort(value) {
   const raw = Array.isArray(value) ? value[0] : value;
   if (raw === undefined || raw === null) return null;
   const normalized = String(raw).trim().toLowerCase();
-  if (normalized === 'newest' || normalized === 'oldest' || normalized === 'views' || normalized === 'last_hit') {
+  if (normalized === 'newest' || normalized === 'oldest' || normalized === 'views' || normalized === 'views_asc' || normalized === 'last_hit') {
     return normalized;
   }
   return null;

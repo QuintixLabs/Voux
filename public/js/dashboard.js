@@ -209,6 +209,8 @@ function init() {
   document.addEventListener('click', handleDocumentClick);
   document.addEventListener('keydown', handleGlobalKeydown);
   tagFilterButton?.addEventListener('click', handleTagFilterToggle);
+  const tagFilterLabel = tagFilterControls?.querySelector('span');
+  tagFilterLabel?.addEventListener('click', handleTagFilterLabelClick);
   clearTagFilterBtn?.addEventListener('click', clearTagFilterSelection);
   tagFilterCreateBtn?.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -664,12 +666,12 @@ function renderCounterList(counters = state.latestCounters) {
 
     const value = document.createElement('div');
     value.className = 'counter-meta__value';
-    value.innerHTML = `Value <span class="badge">${formatNumber(counter.value)}</span>`;
+    value.innerHTML = `<i class="ri-eye-line" aria-hidden="true"></i> Value <span class="badge">${formatNumber(counter.value)}</span>`;
 
     const mode = document.createElement('div');
     mode.className = 'counter-meta__mode';
     const labelText = counter.cooldownLabel || 'Unique visitors';
-    mode.textContent = `Mode: ${labelText}`;
+    mode.innerHTML = `<i class="ri-timer-2-line" aria-hidden="true"></i> Mode: ${labelText}`;
 
     const stats = document.createElement('div');
     stats.className = 'counter-meta__stats';
@@ -704,6 +706,7 @@ function renderCounterList(counters = state.latestCounters) {
     labelInput.type = 'text';
     labelInput.name = 'counterLabel';
     labelInput.maxLength = 80;
+    labelInput.placeholder = 'Blog Views';
     labelInput.value = counter.label || '';
 
     const valueInput = document.createElement('input');
@@ -712,6 +715,7 @@ function renderCounterList(counters = state.latestCounters) {
     valueInput.inputMode = 'numeric';
     valueInput.pattern = '[0-9]*';
     valueInput.maxLength = START_VALUE_DIGIT_LIMIT;
+    valueInput.placeholder = '0';
     valueInput.value = counter.value;
     limitStartValueInput(valueInput);
 
@@ -773,6 +777,7 @@ function renderCounterList(counters = state.latestCounters) {
       if (isEditOpen === open) return;
       isEditOpen = open;
       editPanel.classList.toggle('hidden', !open);
+      row.classList.toggle('counter-row--editing', open);
       editBtn.classList.toggle('active', open);
       editBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
       if (open) {
@@ -1604,6 +1609,12 @@ function closeTagFilterMenu() {
   toggleTagFilterMenu(false);
 }
 
+function handleTagFilterLabelClick(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+  closeTagFilterMenu();
+}
+
 function handleDocumentClick(event) {
   if (!tagFilterMenuOpen) return;
   if (!tagFilterControls) return;
@@ -2312,11 +2323,11 @@ function buildActivityBlock(activity) {
         scheduleHide();
       }
     };
-    bar.addEventListener('mouseenter', handleEnter);
-    bar.addEventListener('mouseleave', handleLeave);
+    track.addEventListener('mouseenter', handleEnter);
+    track.addEventListener('mouseleave', handleLeave);
+    track.addEventListener('click', handleEnter);
     bar.addEventListener('focus', handleEnter);
     bar.addEventListener('blur', handleLeave);
-    bar.addEventListener('click', handleEnter);
     bar.append(track, dayLabel);
     bars.appendChild(bar);
     activityState.bars.push(bar);
@@ -2405,7 +2416,7 @@ function updateCounterRow(row, counter) {
   const modeEl = row.querySelector('.counter-meta__mode');
   if (modeEl) {
     const labelText = counter.cooldownLabel || 'Unique visitors';
-    modeEl.textContent = `Mode: ${labelText}`;
+    modeEl.innerHTML = `<i class="ri-timer-2-line" aria-hidden="true"></i> Mode: ${labelText}`;
   }
   const statEls = row.querySelectorAll('.counter-meta__stat');
   const lastHitStat = statEls[0];

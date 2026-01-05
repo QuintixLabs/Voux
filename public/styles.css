@@ -902,6 +902,10 @@ body.modal-open {
   font-weight: 400;
 }
 
+.admin-filter > span {
+  cursor: default;
+}
+
 @media (max-width: 600px) {
   .admin-filter{
     margin-top: 0.5rem;
@@ -1351,10 +1355,11 @@ body.modal-open {
 }
 
 .activity-range__label {
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
+  font-size: 0.80rem;
+  color: var(--text-secondary);
+  font-weight: 400;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  letter-spacing: 0.03rem;
 }
 
 .activity-range__options {
@@ -1398,9 +1403,9 @@ body.modal-open {
 }
 
 .activity-range__button--active {
-  border-color: rgba(96, 165, 250, 0.8);
-  background: rgba(96, 165, 250, 0.15);
-  color: #dbeafe;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text-primary);
 }
 
 .activity-range__button:not(.activity-range__button--active):hover {
@@ -1432,14 +1437,15 @@ body.modal-open {
 }
 
 .counter-total__label {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 .counter-total__value {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
   min-width: 2ch;
@@ -1521,6 +1527,12 @@ body.modal-open {
 .counter-edit__field textarea {
   resize: vertical;
   min-height: 60px;
+}
+
+.counter-edit__field input::placeholder,
+.counter-edit__field textarea::placeholder {
+  color: var(--text-tertiary);
+  font-weight: 400;
 }
 
 .counter-edit__actions {
@@ -1664,10 +1676,12 @@ body.modal-open {
       background: var(--bg-secondary);
     }
 
-    .counter-row--selected {
+    .counter-row--selected,
+    .counter-row--editing {
       border-color: var(--accent);
       background: var(--bg-tertiary);
     }
+
 
     .counter-select {
       position: absolute;
@@ -1733,7 +1747,8 @@ body.modal-open {
     .counter-meta__note {
       font-size: 0.78rem;
       color: var(--text-tertiary);
-      margin-bottom: 0.15rem;
+      margin-top: 0.30rem;
+      margin-bottom: 0.10rem;
       word-break: break-word;
       white-space: pre-wrap;
     }
@@ -1749,19 +1764,20 @@ body.modal-open {
     }
 
     .counter-meta__value {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 400;
       color: var(--text-secondary);
+      opacity: 0.90;
       word-break: break-all;
       overflow-wrap: break-word;
     }
 
     .counter-meta__mode {
       font-size: 0.8rem;
-      color: var(--text-tertiary);
-    }
+      font-weight: 400;
+      color: var(--text-secondary);
+      opacity: 0.90;
+      }
 
     .counter-meta__stats {
       display: flex;
@@ -1802,15 +1818,22 @@ body.modal-open {
       border: 1px solid var(--border-primary);
       border-radius: 10px;
       padding: 0.2rem 0.75rem;
-      font-size: 0.78rem;
+      font-size: 0.77rem;
       color: var(--text-secondary);
+    }
+
+    .counter-meta__value i,
+    .counter-meta__mode i {
+      font-size: 0.9rem;
+      color: var(--text-tertiary);
     }
 
     .counter-meta__stat-label {
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-size: 0.68rem;
-      color: var(--text-tertiary);
+      letter-spacing: 0.06em;
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--text-secondary);
     }
 
     .counter-meta__stat-value {
@@ -2811,6 +2834,19 @@ body.modal-open {
   font-family: 'Inter', sans-serif;
   font-weight: 600;
   letter-spacing: -0.01em;
+}
+
+.login-card h2{
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* meh idk if it looks good like this :/ */
+.login-card p{
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-weight: 0;
 }
 
 .settings-card h2 {
