@@ -4,10 +4,16 @@
   Loads, stores, and updates runtime config (private mode, branding, allowed modes, tags).
 */
 
+/* ========================================================================== */
+/* Dependencies                                                               */
+/* ========================================================================== */
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+/* ========================================================================== */
+/* Paths + defaults                                                           */
+/* ========================================================================== */
 const DATA_DIR = path.resolve(__dirname, '..', 'data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 
@@ -31,6 +37,9 @@ const defaultConfig = {
 
 let config = loadConfig();
 
+/* ========================================================================== */
+/* Config lifecycle                                                           */
+/* ========================================================================== */
 function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
@@ -98,6 +107,9 @@ function updateConfig(patch = {}) {
   return getConfig();
 }
 
+/* ========================================================================== */
+/* Exports                                                                    */
+/* ========================================================================== */
 module.exports = {
   getConfig,
   updateConfig,
@@ -110,6 +122,9 @@ module.exports = {
   removeTagFromCatalog
 };
 
+/* ========================================================================== */
+/* Sanitizers                                                                 */
+/* ========================================================================== */
 function normalizeAllowedModes(envValue) {
   const normalized = String(envValue || '').trim().toLowerCase();
   if (!normalized) {
@@ -170,6 +185,9 @@ function sanitizeColor(value) {
   return '#4c6ef5';
 }
 
+/* ========================================================================== */
+/* Tag catalog                                                                */
+/* ========================================================================== */
 function listTagCatalog() {
   return Array.isArray(config.tagCatalog) ? config.tagCatalog.map((tag) => ({ ...tag })) : [];
 }
@@ -227,6 +245,9 @@ function updateTagInCatalog(tagId, { name, color } = {}) {
   return next;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Tag helpers                                                                */
+/* -------------------------------------------------------------------------- */
 function ensureTagExists(tagId) {
   const catalog = listTagCatalog();
   return catalog.some((tag) => tag.id === tagId);

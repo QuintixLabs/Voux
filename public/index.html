@@ -13,7 +13,7 @@
   <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
   <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
-  <link rel="stylesheet" href="/styles.css?v=%APP_VERSION%" />
+  <link rel="stylesheet" href="/css/styles.css?v=%APP_VERSION%" />
 
   <meta name="theme-color" content="#0F1115">
   <meta name="description" content="Create your own self-hosted counter with Voux. Free, open source, and easy to add to any blog or website.">
@@ -55,19 +55,21 @@
       <img src="/assets/logo-text.png" alt="Voux" />
     </a>
     <div class="nav-account">
-      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu">
-        <i class="ri-account-circle-fill"></i>
-      </button>
-      <div class="account-menu" id="navAccountMenu">
-        <a href="/dashboard" class="account-menu__link">
+      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"></button>
+            <div class="account-menu" id="navAccountMenu">
+<a href="/profile" class="account-menu__link">
+          <i class="ri-user-3-line"></i>
+          Profile
+        </a>
+<a href="/dashboard" class="account-menu__link">
           <i class="ri-eye-2-line"></i>
           Dashboard
         </a>
-        <a href="/settings" class="account-menu__link">
+<a href="/settings" class="account-menu__link">
           <i class="ri-settings-3-line"></i>
           Settings
         </a>
-        <button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
+<button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
           <i class="ri-logout-box-r-line"></i>
           Log out
         </button>
@@ -94,7 +96,7 @@
             <div class="field__label" id="publicLabelLabel">Label <span class="optional-tag">Optional</span></div>
             <span class="hint">Leave empty if you only want the number.</span>
           </div>
-          <input type="text" id="label" name="label" aria-labelledby="publicLabelLabel" maxlength="80" placeholder="Blog Views" />
+          <input type="text" id="label" name="label" aria-labelledby="publicLabelLabel" maxlength="80" placeholder="Views:" />
         </div>
 
         <div class="field">
@@ -226,8 +228,8 @@ npm install --production   # for production installs</code></pre>
           <pre><code class="language-bash">cp .env.example .env</code></pre>
         </div>
         <p>Open <span class="code-inline">.env</span> and set your settings. 
-        This is where you configure your admin token, site URL, port, and other options. 
-        You must set <strong>ADMIN_TOKEN</strong> to something secret before running the server,
+        This is where you configure your admin login, site URL, port, and other options. 
+        You must set <strong>ADMIN_USERNAME</strong> + <strong>ADMIN_PASSWORD</strong> before running the server,
         and if you want to configure your own instance for development, add <strong>DEV_MODE=development</strong>. 
         For more settings check <a href="https://github.com/QuintixLabs/Voux?tab=readme-ov-file#-configuration" target="_blank">Github</a></p>
 
@@ -254,7 +256,8 @@ npm install --production   # for production installs</code></pre>
           <pre><code class="language-bash">docker run -d \
   --name voux \
   -p 8787:8787 \
-  -e ADMIN_TOKEN=your-secret \
+  -e ADMIN_USERNAME=admin \
+  -e ADMIN_PASSWORD=your-secret \
   -v $(pwd)/data:/app/data \
   ghcr.io/quintixlabs/voux/voux:latest</code></pre>
         </div>
@@ -264,7 +267,7 @@ npm install --production   # for production installs</code></pre>
           <pre><code class="language-bash">docker compose up -d</code></pre>
         </div>
         <ul class="self-host-list">
-          <li>Change <span class="code-inline">ADMIN_TOKEN</span> to your own password (do not leave it as the example).</li>
+          <li>Change <span class="code-inline">ADMIN_USERNAME</span> + <span class="code-inline">ADMIN_PASSWORD</span> to your own login (do not leave it as the example).</li>
           <li>Mount <span class="code-inline">./data</span> so counters survive restarts.</li>
           <li>Add more <span class="code-inline">-e VAR=value</span> flags for <a href="https://github.com/QuintixLabs/Voux?tab=readme-ov-file#-configuration" target="_blank">more settings</a> if you need them.</li>
         </ul>

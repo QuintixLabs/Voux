@@ -14,10 +14,10 @@
   <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css"/> <!-- 'monolith' theme -->
-  <link rel="stylesheet" href="/styles.css?v=%APP_VERSION%" />
+  <link rel="stylesheet" href="/css/styles.css?v=%APP_VERSION%" />
 </head>
 
-<body data-page="dashboard">
+<body data-page="dashboard" class="dashboard-footer-hidden">
 
   <!-- JS DISABLED DETECTION -->
   <noscript>
@@ -40,19 +40,21 @@
       <img src="/assets/logo-text.png" alt="Voux" />
     </a>
     <div class="nav-account">
-      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu">
-        <i class="ri-account-circle-fill"></i>
-      </button>
-      <div class="account-menu" id="navAccountMenu">
-        <a href="/dashboard" class="account-menu__link">
+      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"></button>
+            <div class="account-menu" id="navAccountMenu">
+<a href="/profile" class="account-menu__link">
+          <i class="ri-user-3-line"></i>
+          Profile
+        </a>
+<a href="/dashboard" class="account-menu__link">
           <i class="ri-eye-2-line"></i>
           Dashboard
         </a>
-        <a href="/settings" class="account-menu__link">
+<a href="/settings" class="account-menu__link">
           <i class="ri-settings-3-line"></i>
           Settings
         </a>
-        <button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
+<button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
           <i class="ri-logout-box-r-line"></i>
           Log out
         </button>
@@ -74,37 +76,40 @@
 
     <section class="card login-card login-card--pending hidden" id="loginCard">
       <h2>Dashboard Login</h2>
-      <p>Enter your password to continue. You'll stay signed in for 12 hours.</p>
+      <p>Enter your username + password to continue. You'll stay signed in for 12 hours.</p>
       <p id="loginStatus" class="hint hidden">Checking your session...</p>
-      <form id="admin-form" class="admin-form" action="javascript:void(0);" novalidate>
+      <form id="admin-form" class="admin-form login-form" action="javascript:void(0);" novalidate>
+        <div class="input-icon">
+          <span class="input-icon__icon" aria-hidden="true"><i class="ri-user-3-line"></i></span>
+          <input type="text" id="loginUsername" placeholder="Username" autocomplete="username" required />
+        </div>
         <div class="password-field">
-          <input type="password" id="adminToken" placeholder="Password" autocomplete="current-password" required />
+          <span class="password-field__icon" aria-hidden="true"><i class="ri-lock-line"></i></span>
+          <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" required />
           <button type="button" class="password-toggle" aria-label="Show password">
             <i class="ri-eye-off-line" aria-hidden="true"></i>
           </button>
         </div>
         <button type="submit">Log in</button>
       </form>
-      <p id="loginError" class="form-error hidden" role="alert" aria-live="polite">Incorrect password. Try again.</p>
+      <p id="loginError" class="form-error hidden" role="alert" aria-live="polite">Login failed. Check your details.</p>
     </section>
 
     <section class="card hidden" id="dashboardCard">
-      <header class="dashboard-head">
-        <div>
-          <h2 id="dashboardTitle">Dashboard</h2>
-          <p class="hint" id="dashboardSubtitle">Authenticated</p>
-        </div>
-      </header>
-
       <div class="dashboard-grid">
         <section class="dashboard-card hidden" id="createCard">
-          
+          <header class="dashboard-head dashboard-head--card">
+            <div>
+              <h2 id="dashboardTitle">Dashboard</h2>
+              <p class="hint" id="dashboardSubtitle">Authenticated</p>
+            </div>
+          </header>
           <form id="create-admin-form" class="form compact" action="javascript:void(0);">
             <div class="field__head">
               <div class="field__label" id="adminLabelLabel">Label <span class="optional-tag">Optional</span></div>
               <span class="hint">Leave empty if you only want the number.</span>
             </div>
-            <input type="text" id="adminLabel" aria-labelledby="adminLabelLabel" maxlength="80" placeholder="Blog Views" />
+            <input type="text" id="adminLabel" aria-labelledby="adminLabelLabel" maxlength="80" placeholder="Views:" />
             <div class="field">
               <div class="field__label" id="adminStartValueLabel">Starting value</div>
               <input
@@ -229,6 +234,14 @@
                 <p class="tag-count-hint">0 tags</p>
               </div>
             </div>
+            <div class="admin-filter admin-filter--toggle hidden" id="ownerFilterWrap">
+              <span>My counters only</span>
+              <button type="button" class="admin-toggle" id="ownerFilterToggle" aria-pressed="false">
+                <span class="admin-toggle__track">
+                  <span class="admin-toggle__thumb"></span>
+                </span>
+              </button>
+            </div>
           </div>
           <div class="activity-range" id="activityRangeControls">
             <span class="activity-range__label">Stats range</span>
@@ -269,6 +282,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js" defer></script>
   <script src="/js/modal.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/errors.js?v=%APP_VERSION%" defer></script>
   <script src="/js/theme.js?v=%APP_VERSION%" defer></script>
   <script src="/js/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/footer.js?v=%APP_VERSION%" defer></script>

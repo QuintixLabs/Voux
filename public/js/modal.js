@@ -5,6 +5,9 @@
 */
 
 (() => {
+  /* ------------------------------------------------------------------------ */
+  /* Constants + state                                                        */
+  /* ------------------------------------------------------------------------ */
   const OVERLAY_CLASS = 'modal-overlay';
   const OPEN_CLASS = 'modal-overlay--open';
   let overlay;
@@ -17,7 +20,59 @@
   let dismissible = true;
   let resolver = null;
   let openFrame = null;
+  let globalKeysInstalled = false;
 
+  /* ------------------------------------------------------------------------ */
+  /* Global key handling                                                      */
+  /* ------------------------------------------------------------------------ */
+  function handleGlobalModalKeys(event) {
+    if (event.defaultPrevented) return;
+    const activeOverlay = document.querySelector(`.${OVERLAY_CLASS}.${OPEN_CLASS}`);
+    if (!activeOverlay) return;
+    const allowEscape = activeOverlay.dataset.modalAllowEscape !== 'false';
+    const allowEnter = activeOverlay.dataset.modalAllowEnter !== 'false';
+    if (event.key === 'Escape' && allowEscape) {
+      event.preventDefault();
+      if (activeOverlay === overlay) {
+        if (dismissible) {
+          closeModal(false);
+        }
+        return;
+      }
+      const escapeSelector = activeOverlay.dataset.modalEscape;
+      const escapeTarget = escapeSelector ? activeOverlay.querySelector(escapeSelector) : null;
+      escapeTarget?.click();
+      return;
+    }
+    if (event.key === 'Enter' && allowEnter) {
+      if (event.target?.tagName === 'TEXTAREA') return;
+      event.preventDefault();
+      if (activeOverlay === overlay) {
+        const primary = activeOverlay.querySelector('.modal__button--primary');
+        if (primary && !primary.disabled) {
+          primary.click();
+        }
+        return;
+      }
+      const enterSelector = activeOverlay.dataset.modalEnter;
+      const enterTarget = enterSelector ? activeOverlay.querySelector(enterSelector) : null;
+      if (enterTarget && !enterTarget.disabled) {
+        enterTarget.click();
+      }
+    }
+  }
+
+  function ensureGlobalKeys() {
+    if (globalKeysInstalled) return;
+    document.addEventListener('keydown', handleGlobalModalKeys);
+    globalKeysInstalled = true;
+  }
+
+  ensureGlobalKeys();
+
+  /* ------------------------------------------------------------------------ */
+  /* Element setup                                                            */
+  /* ------------------------------------------------------------------------ */
   function ensureElements() {
     if (overlay) return;
     overlay = document.createElement('div');
@@ -51,16 +106,11 @@
         closeModal(false);
       }
     });
-
-    document.addEventListener('keydown', (event) => {
-      if (!overlay.classList.contains(OPEN_CLASS)) return;
-      if (event.key === 'Escape' && dismissible) {
-        event.preventDefault();
-        closeModal(false);
-      }
-    });
   }
 
+  /* ------------------------------------------------------------------------ */
+  /* Input helpers                                                            */
+  /* ------------------------------------------------------------------------ */
   function clearInput() {
     if (inputWrap) {
       inputWrap.remove();
@@ -69,10 +119,18 @@
     }
   }
 
+  /* ------------------------------------------------------------------------ */
+  /* Modal open/close                                                         */
+  /* ------------------------------------------------------------------------ */
   function openModal({ title, message, buttons, allowClose = true, allowHtml = false, input }) {
     ensureElements();
     dismissible = allowClose;
+    ensureGlobalKeys();
     overlay.style.display = 'flex';
+    overlay.dataset.modalEnter = '.modal__button--primary';
+    overlay.dataset.modalEscape = '.modal__button--ghost';
+    overlay.dataset.modalAllowEnter = 'true';
+    overlay.dataset.modalAllowEscape = dismissible ? 'true' : 'false';
     titleEl.textContent = title || '';
     if (allowHtml) {
       messageEl.innerHTML = message || '';
@@ -172,6 +230,9 @@
     }
   }
 
+  /* ------------------------------------------------------------------------ */
+  /* Public API                                                               */
+  /* ------------------------------------------------------------------------ */
   async function showAlert(message, options = {}) {
     return openModal({
       title: options.title || 'Heads up',

@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-page-title="Profile">Voux · Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
+    rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.8.0/fonts/remixicon.css" rel="stylesheet"/>
+  <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
+  <link rel="stylesheet" href="/css/styles.css?v=%APP_VERSION%" />
+  <style>
+    html.auth-pending body { opacity: 0; visibility: hidden; }
+  </style>
+  <script>
+    document.documentElement.classList.add('auth-pending');
+  </script>
+</head>
+
+<body data-page="profile">
+
+  <!-- JS DISABLED DETECTION -->
+  <noscript>
+    <style>
+      body { opacity: 1 !important; }
+      html, body { overflow: hidden; height: 100%; }
+    </style>
+    <div class="noscript-overlay">
+      <div class="noscript-overlay__card">
+        <h2>JavaScript required</h2>
+        <p>
+          Voux only runs its own scripts to fetch data from the API and render the UI. No third-party ads, trackers, analytics, miners, or fingerprinting are loaded.
+        </p>
+      </div>
+    </div>
+  </noscript>
+
+  <header class="site-nav">
+    <a class="brand" href="/">
+      <img src="/assets/logo-text.png" alt="Voux" />
+    </a>
+    <div class="nav-account">
+      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"></button>
+            <div class="account-menu" id="navAccountMenu">
+<a href="/profile" class="account-menu__link">
+          <i class="ri-user-3-line"></i>
+          Profile
+        </a>
+<a href="/dashboard" class="account-menu__link">
+          <i class="ri-eye-2-line"></i>
+          Dashboard
+        </a>
+<a href="/settings" class="account-menu__link">
+          <i class="ri-settings-3-line"></i>
+          Settings
+        </a>
+<button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
+          <i class="ri-logout-box-r-line"></i>
+          Log out
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">
+        <span class="eyebrow-logo">
+          <img src="/assets/logo.png" alt="Voux logo" />
+        </span>
+        <span data-brand-text data-brand-page="Profile">Voux · Profile</span>
+      </p>
+      <h1>Your profile</h1>
+      <p>Manage your personal account details.</p>
+    </header>
+
+      <form id="profileForm" class="api-key-form" action="javascript:void(0);">
+        <div class="field">
+          <div class="field__label">Profile photo</div>
+          <div class="profile-avatar">
+            <button type="button" class="profile-avatar__button" id="profileAvatarButton" aria-label="Upload profile photo">
+              <img id="profileAvatarPreview" alt="" />
+              <span id="profileAvatarFallback">?</span>
+            </button>
+            <div class="profile-avatar__meta">
+              <div class="profile-avatar__copy">
+                <p>Click to upload a square photo.</p>
+                <small class="hint">PNG or JPG up to 2MB.</small>
+              </div>
+              <button type="button" class="ghost profile-avatar__remove" id="profileAvatarRemove">Remove photo</button>
+            </div>
+          </div>
+          <input type="file" id="profileAvatarFile" accept="image/*" class="hidden" />
+        </div>
+        <div class="field">
+          <div class="field__label">Display name <span class="optional-tag">Optional</span></div>
+          <div class="profile-display">
+            <span id="profileDisplayText" class="profile-display__value">No display name</span>
+            <button type="button" class="ghost profile-display__edit" id="profileDisplayEdit" aria-label="Edit display name">
+              <i class="ri-pencil-line"></i>
+            </button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field__label">Username <span class="optional-tag">Used to sign in</span></div>
+          <div class="profile-username">
+            <span id="profileUsernameText" class="profile-username__value">username</span>
+            <button type="button" class="ghost profile-username__edit" id="profileUsernameEdit" aria-label="Edit username">
+              <i class="ri-pencil-line"></i>
+            </button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="profile-role-inline">
+            <span class="profile-role-inline__label">Role:</span>
+            <span id="profileRoleText" class="profile-role-inline__value">Member</span>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field__label">Password</div>
+          <button type="button" class="danger ghost profile-password-reset" id="profilePasswordReset">Reset password</button>
+        </div>
+      </form>
+  </main>
+
+  <div class="modal-overlay" id="profilePasswordModal" aria-hidden="true" data-modal-enter="#profilePasswordSave" data-modal-escape="#profilePasswordCancel">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profilePasswordTitle">
+      <h2 class="modal__title" id="profilePasswordTitle">Reset password</h2>
+      <p class="modal__message" id="profilePasswordMessage"></p>
+      <div class="modal__input-wrap">
+        <div class="modal__input-label">Current password</div>
+        <div class="password-field password-field--no-icon">
+          <input class="modal__input" type="password" id="profilePasswordCurrent" autocomplete="current-password" placeholder="Current password" />
+          <button type="button" class="password-toggle" aria-label="Show password">
+            <i class="ri-eye-off-line" aria-hidden="true"></i>
+          </button>
+        </div>
+        <small class="modal__input-error is-hidden" id="profilePasswordCurrentError"></small>
+      </div>
+      <div class="modal__input-wrap">
+        <div class="modal__input-label">New password</div>
+        <div class="password-field password-field--no-icon">
+          <input class="modal__input" type="password" id="profilePasswordNew" autocomplete="new-password" minlength="6" placeholder="New password" />
+          <button type="button" class="password-toggle" aria-label="Show password">
+            <i class="ri-eye-off-line" aria-hidden="true"></i>
+          </button>
+        </div>
+        <small class="modal__input-error is-hidden" id="profilePasswordNewError"></small>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="modal__button modal__button--primary" id="profilePasswordSave">Reset password</button>
+        <button type="button" class="modal__button modal__button--ghost" id="profilePasswordCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="profileUsernameModal" aria-hidden="true" data-modal-enter="#profileUsernameSave" data-modal-escape="#profileUsernameCancel">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profileUsernameTitle">
+      <h2 class="modal__title" id="profileUsernameTitle">Change username</h2>
+      <p class="modal__message" id="profileUsernameMessage">This updates your sign-in name.</p>
+      <div class="modal__input-wrap">
+        <div class="modal__input-label">New username</div>
+        <input class="modal__input" type="text" id="profileUsernameNew" maxlength="40" placeholder="New username" />
+        <small class="modal__input-error is-hidden" id="profileUsernameNewError"></small>
+      </div>
+      <div class="modal__input-wrap">
+        <div class="modal__input-label">Current password</div>
+        <div class="password-field password-field--no-icon">
+          <input class="modal__input" type="password" id="profileUsernamePassword" autocomplete="current-password" placeholder="Current password" />
+          <button type="button" class="password-toggle" aria-label="Show password">
+            <i class="ri-eye-off-line" aria-hidden="true"></i>
+          </button>
+        </div>
+        <small class="modal__input-error is-hidden" id="profileUsernameError"></small>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="modal__button modal__button--primary" id="profileUsernameSave">Save username</button>
+        <button type="button" class="modal__button modal__button--ghost" id="profileUsernameCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="profileDisplayModal" aria-hidden="true" data-modal-enter="#profileDisplaySave" data-modal-escape="#profileDisplayCancel">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profileDisplayTitle">
+      <h2 class="modal__title" id="profileDisplayTitle">Change display name</h2>
+      <p class="modal__message">This name shows up in the dashboard and profile.</p>
+      <div class="modal__input-wrap">
+        <div class="modal__input-label">Display name</div>
+        <input class="modal__input" type="text" id="profileDisplayNew" maxlength="80" placeholder="Display name" />
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="modal__button modal__button--primary" id="profileDisplaySave">Save name</button>
+        <button type="button" class="modal__button modal__button--ghost" id="profileDisplayCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div data-footer-root></div>
+
+  <script src="/js/modal.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/errors.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/nav.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/brand.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/footer.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/theme.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/profile.js?v=%APP_VERSION%" defer></script>
+</body>
+
+</html>

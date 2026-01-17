@@ -4,10 +4,14 @@
   Admin dashboard logic: login, list/manage counters, create counters, tags, and previews.
 */
 
+/* -------------------------------------------------------------------------- */
+/* DOM references                                                             */
+/* -------------------------------------------------------------------------- */
 const loginCard = document.querySelector('#loginCard');
 const dashboardCard = document.querySelector('#dashboardCard');
 const adminForm = document.querySelector('#admin-form');
-const adminTokenInput = document.querySelector('#adminToken');
+const loginUsernameInput = document.querySelector('#loginUsername');
+const loginPasswordInput = document.querySelector('#loginPassword');
 const loginError = document.querySelector('#loginError');
 const loginStatus = document.querySelector('#loginStatus');
 const dashboardSubtitle = document.querySelector('#dashboardSubtitle');
@@ -54,7 +58,13 @@ const createTagManageBtn = document.querySelector('#createTagManage');
 const createTagCounterHint = document.querySelector('#createTagCounterHint');
 const tagFilterCountHint = document.querySelector('.tag-count-hint');
 const topPaginationInfo = document.querySelector('#topPaginationInfo');
+const ownerFilterWrap = document.querySelector('#ownerFilterWrap');
+const ownerFilterToggle = document.querySelector('#ownerFilterToggle');
 const themeHelper = window.VouxTheme;
+
+/* -------------------------------------------------------------------------- */
+/* Toasts                                                                     */
+/* -------------------------------------------------------------------------- */
 let toastContainer = document.querySelector('.toast-stack');
 if (!toastContainer) {
   toastContainer = document.createElement('div');
@@ -65,8 +75,9 @@ let tagFilterMenuOpen = false;
 const tagSelectorRegistry = new Set();
 let pickrReadyPromise = null;
 
-const STORAGE_KEY = 'vouxAdminAuth';
-const TOKEN_TTL_MS = 12 * 60 * 60 * 1000; // 12h
+/* -------------------------------------------------------------------------- */
+/* Constants                                                                  */
+/* -------------------------------------------------------------------------- */
 const RANGE_LABELS = {
   today: 'Today',
   '7d': '7 days',
@@ -76,8 +87,12 @@ const RANGE_LABELS = {
 const TAG_LIMIT = 20;
 const START_VALUE_DIGIT_LIMIT = 18;
 
+/* -------------------------------------------------------------------------- */
+/* State                                                                      */
+/* -------------------------------------------------------------------------- */
 const state = {
-  token: '',
+  user: null,
+  isAdmin: false,
   page: 1,
   totalPages: 1,
   total: 0,
@@ -92,6 +107,7 @@ const state = {
   autoRefreshTimer: null,
   editPanelsOpen: 0,
   activityRange: '7d',
+  ownerOnly: false,
   latestCounters: [],
   selectedIds: new Set(),
   tags: [],
@@ -101,6 +117,27 @@ const state = {
 };
 
 let searchDebounce = null;
+const OWNER_FILTER_STORAGE_KEY = 'voux_owner_only';
+
+function loadOwnerFilterPreference() {
+  try {
+    return window.localStorage.getItem(OWNER_FILTER_STORAGE_KEY) === 'true';
+  } catch (_) {
+    return false;
+  }
+}
+
+function saveOwnerFilterPreference(value) {
+  try {
+    window.localStorage.setItem(OWNER_FILTER_STORAGE_KEY, value ? 'true' : 'false');
+  } catch (_) {
+    // ignore
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Modal helpers                                                              */
+/* -------------------------------------------------------------------------- */
 
 function modalApi() {
   return window.VouxModal;
@@ -112,6 +149,13 @@ async function showAlert(message, options) {
   } else {
     window.alert(message);
   }
+}
+
+function normalizeAuthMessage(error, fallback) {
+  if (window.VouxErrors?.normalizeAuthError) {
+    return window.VouxErrors.normalizeAuthError(error, fallback);
+  }
+  return error?.message || fallback;
 }
 
 async function showConfirm(options) {
@@ -146,6 +190,16 @@ function showToast(message, variant = 'success') {
 }
 window.showToast = showToast;
 
+function authFetch(url, options = {}) {
+  return fetch(url, {
+    credentials: 'include',
+    ...options,
+    headers: {
+      ...options.headers
+    }
+  });
+}
+
 function limitStartValueInput(input) {
   if (!input) return;
   const enforceDigits = () => {
@@ -177,6 +231,15 @@ function appendPreviewParam(url) {
 
 document.addEventListener('DOMContentLoaded', init);
 
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) {
+    checkSession();
+  }
+});
+
+/* -------------------------------------------------------------------------- */
+/* Init + boot                                                                */
+/* -------------------------------------------------------------------------- */
 function init() {
   if (deleteAllBtn) deleteAllBtn.disabled = true;
   adminForm?.addEventListener('submit', onLoginSubmit);
@@ -196,6 +259,7 @@ function init() {
   adminEmbedCopy?.addEventListener('click', handleAdminEmbedCopy);
   modeFilterSelect?.addEventListener('change', handleModeFilterChange);
   sortFilterSelect?.addEventListener('change', handleSortChange);
+  ownerFilterToggle?.addEventListener('click', handleOwnerFilterToggle);
   adminCooldownSelect?.addEventListener('change', refreshAdminModeControls);
   counterSearchInput?.addEventListener('input', handleSearchInput);
   counterSearchInput?.addEventListener('search', handleSearchInput);
@@ -233,15 +297,8 @@ function init() {
   // no extra change handler needed for simple dropdown
   fetchConfig()
     .then(() => {
-      const stored = loadStoredToken();
-      if (stored) {
-        state.token = stored;
-        setTokenStoredState(true);
-        showStatusHint('Checking your session...');
-        attemptLogin(true);
-      } else {
-        revealLoginCard();
-      }
+      showStatusHint('Checking your session...');
+      checkSession();
     })
     .catch((err) => {
       console.warn('Admin init failed', err);
@@ -252,6 +309,9 @@ function init() {
   updateTagCounterHints();
 }
 
+/* -------------------------------------------------------------------------- */
+/* Pickr loader                                                               */
+/* -------------------------------------------------------------------------- */
 // function to ensure that pickr library is loaded
 function ensurePickrLoaded() {
     if (window.Pickr && typeof window.Pickr.create === 'function') {
@@ -260,6 +320,9 @@ function ensurePickrLoaded() {
     return Promise.reject(new Error('Pickr not loaded'));
   }
 
+/* -------------------------------------------------------------------------- */
+/* Config + session                                                           */
+/* -------------------------------------------------------------------------- */
 async function fetchConfig() {
   try {
     const res = await fetch('/api/config');
@@ -269,6 +332,7 @@ async function fetchConfig() {
     if (data.adminPageSize) {
       state.pageSize = Number(data.adminPageSize) || state.pageSize;
     }
+    document.documentElement.style.setProperty('--admin-page-size', state.pageSize);
     state.privateMode = Boolean(data.privateMode);
     state.allowedModes = normalizeAllowedModes(data.allowedModes);
     state.throttleSeconds = Number(data.unlimitedThrottleSeconds) || 0;
@@ -283,10 +347,35 @@ async function fetchConfig() {
     updateDeleteFilteredState();
     renderAdminThrottleHint();
   } catch (error) {
-    console.warn('Failed to fetch config', error);
+    if (error?.name !== 'AbortError') {
+      console.warn('Failed to fetch config', error);
+    }
   }
 }
 
+async function checkSession() {
+  setLoginPending(true, 'Checking your session...');
+  setLoginLoading(true);
+  try {
+    const res = await fetch('/api/session', { credentials: 'include' });
+    if (!res.ok) {
+      revealLoginCard();
+      return;
+    }
+    const data = await res.json();
+    setUserSession(data?.user || null);
+    showDashboard();
+  } catch (error) {
+    console.warn('Session check failed', error);
+    revealLoginCard();
+  } finally {
+    setLoginLoading(false);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Search + filters                                                           */
+/* -------------------------------------------------------------------------- */
 function handleSearchInput() {
   if (!counterSearchInput) return;
   toggleSearchClear();
@@ -295,7 +384,7 @@ function handleSearchInput() {
   searchDebounce = setTimeout(() => {
     if (value === state.searchQuery) return;
     state.searchQuery = value;
-    if (state.token) {
+    if (state.user) {
       refreshCounters(1);
     }
   }, 250);
@@ -307,16 +396,31 @@ function handleSearchClear() {
   toggleSearchClear();
   if (!state.searchQuery) return;
   state.searchQuery = '';
-  if (state.token) {
+  if (state.user) {
     refreshCounters(1);
   }
+}
+
+function handleOwnerFilterToggle() {
+  if (!state.isAdmin) return;
+  state.ownerOnly = !state.ownerOnly;
+  saveOwnerFilterPreference(state.ownerOnly);
+  syncOwnerFilterToggle();
+  if (state.user) {
+    refreshCounters(1);
+  }
+}
+
+function syncOwnerFilterToggle() {
+  if (!ownerFilterToggle) return;
+  ownerFilterToggle.setAttribute('aria-pressed', state.ownerOnly ? 'true' : 'false');
 }
 
 function handleModeFilterChange() {
   if (!modeFilterSelect) return;
   state.modeFilter = modeFilterSelect.value;
   updateDeleteFilteredState();
-  if (state.token) {
+  if (state.user) {
     refreshCounters(1);
   }
 }
@@ -324,7 +428,7 @@ function handleModeFilterChange() {
 function handleSortChange() {
   if (!sortFilterSelect) return;
   state.sort = sortFilterSelect.value || 'newest';
-  if (state.token) {
+  if (state.user) {
     refreshCounters(1);
   }
 }
@@ -344,76 +448,66 @@ function handleActivityRangeClick(event) {
   renderCounterList(state.latestCounters);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Auth + login                                                               */
+/* -------------------------------------------------------------------------- */
 async function onLoginSubmit(event) {
   event.preventDefault();
   hideLoginError();
-  const token = adminTokenInput?.value.trim();
-  if (!token && !state.token) {
-    showLoginError('Enter your admin token.');
+  const username = loginUsernameInput?.value.trim();
+  const password = loginPasswordInput?.value;
+  if (!username || !password) {
+    showLoginError('Enter your username and password.');
     return;
   }
-  if (token) {
-    state.token = token;
-  }
-  setLoginPending(true, 'Signing in...');
-  await attemptLogin(false);
+  setLoginPending(true /*, 'Signing in...'*/);
+  await attemptLogin(username, password);
 }
 
-async function attemptLogin(fromStored) {
-  if (!state.token) {
-    showLoginError('Admin token missing.');
-    return;
-  }
+async function attemptLogin(username, password) {
   setLoginLoading(true);
   try {
-    await refreshCounters(1);
-    await fetchTags();
-    if (!fromStored) {
-      storeToken(state.token);
-      setTokenStoredState(true);
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, password })
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      const code = error?.error;
+      if (res.status === 429) {
+        throw Object.assign(new Error(error?.message || 'Too many attempts. Try again soon.'), { code: 'rate_limit' });
+      }
+      throw Object.assign(new Error(error?.message || 'Login failed. Check your details.'), { code: code || 'unauthorized' });
     }
-    adminTokenInput.value = '';
+    const data = await res.json();
+    setUserSession(data?.user || null);
+    if (window.VouxErrors?.cacheNavUser) {
+      window.VouxErrors.cacheNavUser(data?.user || null);
+    }
+    if (loginUsernameInput) loginUsernameInput.value = '';
+    loginPasswordInput.value = '';
     showDashboard();
   } catch (error) {
-    handleAuthFailure(error, fromStored);
+    const code = error?.code;
+    if (code === 'rate_limit') {
+      showLoginError(error?.message || 'Too many attempts. Try again soon.');
+    } else {
+      showLoginError(error?.message || 'Login failed. Check your details.');
+    }
+    revealLoginCard();
   } finally {
     setLoginLoading(false);
-    if (!state.token) {
-      revealLoginCard();
-    }
   }
 }
 
-function handleAuthFailure(error, fromStored) {
-  const code = error?.code;
-  if (code === 'unauthorized') {
-    clearStoredToken();
-    state.token = '';
-    hideDashboard();
-    const message = error?.message || 'Incorrect password. Try again.';
-    showLoginError(message);
-    revealLoginCard();
-    adminTokenInput?.focus();
-    return;
-  }
-  if (code === 'rate_limit') {
-    showLoginError(error?.message || 'Too many attempts. Try again soon.');
-    revealLoginCard();
-    return;
-  }
-  if (fromStored) {
-    showToast(error?.message || 'Unable to reach the server. Retrying...', 'error');
-    setLoginPending(true, 'Reconnecting...');
-    setTimeout(() => attemptLogin(true), Math.max(1500, (error?.retryAfterSeconds || 1) * 1000));
-  } else {
-    showLoginError(error?.message || 'Unable to reach the server. Try again.');
-    revealLoginCard();
-  }
-}
-
+/* -------------------------------------------------------------------------- */
+/* Counters fetch + refresh                                                   */
+/* -------------------------------------------------------------------------- */
 async function refreshCounters(page = 1, options = {}) {
   const { silent = false } = options;
-  if (!state.token) throw new Error('Admin token missing.');
+  if (!state.user) throw new Error('Not authenticated.');
   try {
     const data = await fetchCounters(page);
     const counters = data.counters || [];
@@ -432,8 +526,10 @@ async function refreshCounters(page = 1, options = {}) {
     updatePagination();
     updateCounterTotal();
     updateTagCounterHints();
-    deleteAllBtn.disabled = false;
+    updateDeleteFilteredState();
     adminControls?.classList.remove('hidden');
+    adminControls?.classList.remove('is-loading');
+    document.body.classList.remove('dashboard-footer-hidden');
     if (!silent) {
       scheduleAutoRefresh();
     }
@@ -467,13 +563,14 @@ async function fetchCounters(page) {
       params.append('tags', tagId);
     });
   }
+  if (state.ownerOnly && state.isAdmin) {
+    params.append('owner', 'me');
+  }
   const url = `/api/counters?${params.toString()}`;
-  const res = await fetch(url, {
-    headers: authHeaders()
-  });
+  const res = await authFetch(url);
   if (res.status === 401 || res.status === 403) {
     const err = await res.json().catch(() => ({}));
-    const unauthorized = new Error(err?.message || 'Invalid admin token.');
+    const unauthorized = new Error(err?.message || 'Unauthorized.');
     unauthorized.code = 'unauthorized';
     throw unauthorized;
   }
@@ -492,15 +589,15 @@ async function fetchCounters(page) {
   return res.json();
 }
 
+/* -------------------------------------------------------------------------- */
+/* Bulk actions + create                                                      */
+/* -------------------------------------------------------------------------- */
 async function handleDeleteAll() {
-  if (!state.token) {
-    await showAlert('Log in first.');
-    return;
-  }
   const siteUrl = window.location?.origin || window.location?.href || 'this site';
+  const targetLabel = state.isAdmin ? 'every counter' : 'your counters';
   const confirmed = await showConfirm({
     title: 'Really delete everything?',
-    message: `This will permanently remove every counter and their data on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
+    message: `This will permanently remove ${targetLabel} and their data on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
     allowHtml: true,
     confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
@@ -509,11 +606,11 @@ async function handleDeleteAll() {
   if (!confirmed) return;
   const confirmedFinal = await showConfirmWithInput({
     title: 'Delete all counters?',
-    message: 'Type DELETE to permanently remove every counter.',
+    message: `Type DELETE to permanently remove ${targetLabel}.`,
     inputPlaceholder: 'DELETE',
     inputMatch: 'DELETE',
     inputHint: 'This cannot be undone.',
-    promptMessage: 'Type DELETE to permanently remove every counter.', // fallback
+    promptMessage: `Type DELETE to permanently remove ${targetLabel}.`, // fallback
     confirmLabel: 'Delete all counters',
     cancelLabel: 'Cancel',
     variant: 'danger'
@@ -521,18 +618,17 @@ async function handleDeleteAll() {
   if (!confirmedFinal) return;
   try {
     deleteAllBtn.disabled = true;
-    const res = await fetch('/api/counters', {
-      method: 'DELETE',
-      headers: authHeaders()
+    const res = await authFetch('/api/counters', {
+      method: 'DELETE'
     });
-    if (res.status === 401) throw new Error('Invalid admin token.');
+    if (res.status === 401) throw new Error('Unauthorized.');
     if (!res.ok) throw new Error('Failed to delete counters');
     const payload = await res.json().catch(() => ({}));
     await refreshCounters(1);
     clearSelection();
     showToast(`Deleted ${payload.deleted ?? 'all'} counters`);
   } catch (error) {
-    await showAlert(error.message || 'Failed to delete counters');
+    await showAlert(normalizeAuthMessage(error, 'Failed to delete counters'));
   } finally {
     deleteAllBtn.disabled = false;
   }
@@ -540,7 +636,7 @@ async function handleDeleteAll() {
 
 async function handleCreateCounter(event) {
   event.preventDefault();
-  if (!state.token) {
+  if (!state.user) {
     await showAlert('Log in first.');
     return;
   }
@@ -555,21 +651,31 @@ async function handleCreateCounter(event) {
   try {
     payload.mode = getCooldownPayload(adminCooldownSelect);
   } catch (error) {
-    await showAlert(error.message || 'Invalid counting mode');
+    await showAlert(normalizeAuthMessage(error, 'Invalid counting mode'));
     return;
   }
   try {
-    const res = await fetch('/api/counters', {
+    const res = await authFetch('/api/counters', {
       method: 'POST',
       headers: {
-        ...authHeaders(),
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
-    if (res.status === 401) throw new Error('Invalid admin token.');
+    if (res.status === 401) throw new Error('Unauthorized.');
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
+      if (err && typeof err.message === 'string' && err.message.trim()) {
+        throw new Error(err.message.trim());
+      }
+      if (err && err.error === 'rate_limited') {
+        const wait = typeof err.retryAfterSeconds === 'number' ? err.retryAfterSeconds : null;
+        if (wait) {
+          const pretty = wait === 1 ? '1 second' : `${wait} seconds`;
+          throw new Error(`Too many new counters at once. Try again in ${pretty}.`);
+        }
+        throw new Error('Too many new counters right now. Try again in a moment.');
+      }
       throw new Error(err.error || 'Failed to create counter');
     }
     const data = await res.json();
@@ -595,10 +701,13 @@ async function handleCreateCounter(event) {
     }
     await refreshCounters(state.page);
   } catch (error) {
-    await showAlert(error.message || 'Failed to create counter');
+    await showAlert(normalizeAuthMessage(error, 'Failed to create counter'));
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Render: admin preview + list                                               */
+/* -------------------------------------------------------------------------- */
 function renderAdminPreview(embedUrl) {
   if (!adminPreview || !adminPreviewTarget) return;
   adminPreviewTarget.innerHTML = '';
@@ -706,7 +815,7 @@ function renderCounterList(counters = state.latestCounters) {
     labelInput.type = 'text';
     labelInput.name = 'counterLabel';
     labelInput.maxLength = 80;
-    labelInput.placeholder = 'Blog Views';
+    labelInput.placeholder = 'Views:';
     labelInput.value = counter.label || '';
 
     const valueInput = document.createElement('input');
@@ -733,6 +842,7 @@ function renderCounterList(counters = state.latestCounters) {
       buildEditField('Note <span class="optional-tag">Optional</span>', noteInput, { allowHtml: true })
     );
     let editTags = extractTagIds(counter.tags);
+    let canEditTags = counter.canEditTags !== false;
     const tagField = document.createElement('div');
     tagField.className = 'counter-edit__field counter-edit__field--tags';
     const tagHead = document.createElement('div');
@@ -747,6 +857,13 @@ function renderCounterList(counters = state.latestCounters) {
     tagHead.append(tagLabelText, tagInlineBtn);
     const tagSelector = document.createElement('div');
     tagSelector.className = 'tag-picker';
+    const tagDisabledHint = document.createElement('p');
+    tagDisabledHint.className = 'tag-disabled-hint hidden';
+    const ownerLabel = counter.ownerUsername || 'someone else';
+    tagDisabledHint.textContent = 'Tags are disabled because this counter is owned by ';
+    const ownerStrong = document.createElement('strong');
+    ownerStrong.textContent = ownerLabel;
+    tagDisabledHint.append(ownerStrong, document.createTextNode('.'));
     const editTagSelectorEntry = registerTagSelector(tagSelector, {
       getSelected: () => editTags.slice(),
       setSelected: (next) => {
@@ -754,7 +871,7 @@ function renderCounterList(counters = state.latestCounters) {
       },
       emptyMessage: 'No tags yet. Use "New tag" to create one.'
     });
-    tagField.append(tagHead, tagSelector);
+    tagField.append(tagHead, tagSelector, tagDisabledHint);
     fieldsWrapper.appendChild(tagField);
 
     const editActions = document.createElement('div');
@@ -787,6 +904,13 @@ function renderCounterList(counters = state.latestCounters) {
       changeEditPanelCount(open ? 1 : -1);
     };
 
+    const updateTagEditState = (allowTags) => {
+      canEditTags = allowTags;
+      tagInlineBtn.classList.toggle('hidden', !allowTags);
+      tagSelector.classList.toggle('hidden', !allowTags);
+      tagDisabledHint.classList.toggle('hidden', allowTags);
+    };
+
     const submitEdit = async () => {
       const nextLabel = labelInput.value.trim();
       const rawValue = (valueInput.value || '').replace(/[^\d]/g, '').slice(0, START_VALUE_DIGIT_LIMIT);
@@ -798,17 +922,20 @@ function renderCounterList(counters = state.latestCounters) {
       const nextNote = noteInput.value.trim();
       editSave.disabled = true;
       try {
-        await updateCounterMetadataRequest(counter.id, {
+        const payload = {
           label: nextLabel,
           value: nextValue,
-          note: nextNote,
-          tags: editTags
-        });
+          note: nextNote
+        };
+        if (canEditTags) {
+          payload.tags = editTags;
+        }
+        await updateCounterMetadataRequest(counter.id, payload);
         toggleEdit(false);
         await refreshCounters(state.page);
         showToast(`Updated ${counter.id}`);
       } catch (error) {
-        await showAlert(error.message || 'Failed to update counter');
+        await showAlert(normalizeAuthMessage(error, 'Failed to update counter'));
       } finally {
         editSave.disabled = false;
       }
@@ -825,6 +952,7 @@ function renderCounterList(counters = state.latestCounters) {
       noteInput.value = counter.note || '';
       editTags = extractTagIds(counter.tags);
       refreshTagSelectorEntry(editTagSelectorEntry);
+      updateTagEditState(counter.canEditTags !== false);
       toggleEdit(true);
     });
 
@@ -892,6 +1020,9 @@ function renderCounterList(counters = state.latestCounters) {
   updateSelectionToolbar();
 }
 
+/* -------------------------------------------------------------------------- */
+/* Row actions                                                                */
+/* -------------------------------------------------------------------------- */
 async function removeCounter(id) {
   const confirmed = await showConfirm({
     title: 'Delete counter?',
@@ -901,11 +1032,10 @@ async function removeCounter(id) {
   });
   if (!confirmed) return;
   try {
-    const res = await fetch(`/api/counters/${id}`, {
-      method: 'DELETE',
-      headers: authHeaders()
+    const res = await authFetch(`/api/counters/${id}`, {
+      method: 'DELETE'
     });
-    if (res.status === 401) throw new Error('Invalid admin token.');
+    if (res.status === 401) throw new Error('Unauthorized.');
     if (!res.ok) throw new Error('Failed to delete counter');
     state.selectedIds.delete(id);
     const nextPage = state.page > 1 && counterListEl.children.length === 1 ? state.page - 1 : state.page;
@@ -913,10 +1043,13 @@ async function removeCounter(id) {
     updateSelectionToolbar();
     showToast(`Deleted ${id}`);
   } catch (error) {
-    await showAlert(error.message || 'Failed to delete counter');
+    await showAlert(normalizeAuthMessage(error, 'Failed to delete counter'));
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Pagination + totals                                                        */
+/* -------------------------------------------------------------------------- */
 function updatePagination() {
   if (!paginationEl || !paginationInfo || !prevPageBtn || !nextPageBtn) return;
   if (state.totalPages <= 1) {
@@ -940,10 +1073,23 @@ function updateCounterTotal() {
   counterTotalValue.textContent = total.toLocaleString();
 }
 
+/* -------------------------------------------------------------------------- */
+/* Dashboard UI                                                               */
+/* -------------------------------------------------------------------------- */
 function showDashboard() {
   loginCard?.classList.add('hidden');
   loginCard?.classList.remove('login-card--pending');
   dashboardCard?.classList.remove('hidden');
+  document.body.classList.add('dashboard-footer-hidden');
+  if (adminControls) {
+    adminControls.classList.remove('hidden');
+    adminControls.classList.add('is-loading');
+  }
+  if (dashboardSubtitle) {
+    const name = state.user?.displayName || state.user?.username || 'Signed in';
+    const instanceLabel = state.privateMode ? 'Private instance' : 'Public instance';
+    dashboardSubtitle.textContent = `${name} · ${instanceLabel}`;
+  }
   hideLoginError();
 }
 
@@ -953,6 +1099,8 @@ function hideDashboard() {
   loginCard?.classList.remove('login-card--pending');
   dashboardCard?.classList.add('hidden');
   adminControls?.classList.add('hidden');
+  adminControls?.classList.remove('is-loading');
+  document.body.classList.add('dashboard-footer-hidden');
   adminEmbedBlock?.classList.add('hidden');
   if (adminEmbedSnippet) adminEmbedSnippet.value = '';
   paginationEl?.classList.add('hidden');
@@ -966,23 +1114,19 @@ function hideDashboard() {
   closeTagFilterMenu();
 }
 
+/* -------------------------------------------------------------------------- */
+/* Login UI                                                                   */
+/* -------------------------------------------------------------------------- */
 function showLoginError(message) {
-  if (loginError) {
-    loginError.textContent = message;
-    loginError.classList.remove('hidden');
-  }
-  if (adminTokenInput) {
-    adminTokenInput.classList.add('input-error');
-    adminTokenInput.setAttribute('aria-invalid', 'true');
-  }
+  showToast(message || 'Login failed. Check your details.', 'danger');
+  loginPasswordInput?.classList.add('input-error');
+  loginPasswordInput?.setAttribute('aria-invalid', 'true');
 }
 
 function hideLoginError() {
   loginError?.classList.add('hidden');
-  if (adminTokenInput) {
-    adminTokenInput.classList.remove('input-error');
-    adminTokenInput.removeAttribute('aria-invalid');
-  }
+  loginPasswordInput?.classList.remove('input-error');
+  loginPasswordInput?.removeAttribute('aria-invalid');
 }
 
 function setLoginLoading(loading) {
@@ -993,43 +1137,31 @@ function setLoginLoading(loading) {
   });
 }
 
-function storeToken(token) {
-  try {
-    const payload = { token, expiresAt: Date.now() + TOKEN_TTL_MS };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } catch (err) {
-    console.warn('Unable to store token', err);
+/* -------------------------------------------------------------------------- */
+/* Session state                                                              */
+/* -------------------------------------------------------------------------- */
+async function setUserSession(user) {
+  state.user = user || null;
+  state.isAdmin = Boolean(user?.isAdmin || user?.role === 'admin');
+  if (!state.user) {
+    state.ownerOnly = false;
+    syncOwnerFilterToggle();
+    hideDashboard();
+    revealLoginCard();
+    return;
   }
-}
-
-function loadStoredToken() {
+  state.ownerOnly = state.isAdmin ? loadOwnerFilterPreference() : false;
+  syncOwnerFilterToggle();
+  document.dispatchEvent(new CustomEvent('voux:session-updated', { detail: { user: state.user } }));
+  updateCreateCardVisibility();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed.token || !parsed.expiresAt || parsed.expiresAt < Date.now()) {
-      localStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
-    return parsed.token;
-  } catch (err) {
-    console.warn('Failed to parse stored token', err);
-    return null;
-  }
-}
-
-function clearStoredToken() {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (err) {
-    console.warn('Failed to clear stored token', err);
-  }
-  setTokenStoredState(false);
-}
-
-function setTokenStoredState(stored) {
-  if (adminTokenInput) {
-    adminTokenInput.placeholder = stored ? 'Token saved (expires in 12h)' : 'Admin token';
+    await refreshCounters(1);
+    await fetchTags();
+    updateAdminVisibility();
+  } catch (error) {
+    hideDashboard();
+    revealLoginCard();
+    showLoginError(error?.message || 'Session expired. Log in again.');
   }
 }
 
@@ -1037,7 +1169,7 @@ function setLoginPending(pending, message) {
   if (!loginCard) return;
   loginCard.classList.toggle('login-card--pending', Boolean(pending));
   if (pending) {
-    showStatusHint(message || 'Working...');
+    // showStatusHint(message || 'Working...');
   } else {
     showStatusHint('');
   }
@@ -1047,17 +1179,17 @@ function revealLoginCard() {
   if (!loginCard) return;
   loginCard.classList.remove('login-card--pending');
   loginCard.classList.remove('hidden');
+  document.body.classList.remove('dashboard-footer-hidden');
   showStatusHint('');
 }
 
+/* -------------------------------------------------------------------------- */
+/* Create helpers                                                             */
+/* -------------------------------------------------------------------------- */
 function showStatusHint(message) {
   if (!loginStatus) return;
   loginStatus.textContent = message || '';
   loginStatus.classList.toggle('hidden', !message);
-}
-
-function authHeaders() {
-  return { 'x-voux-admin': state.token };
 }
 
 function getCooldownPayload(selectEl) {
@@ -1069,13 +1201,17 @@ function getCooldownPayload(selectEl) {
   return mode;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Bulk delete (filtered)                                                     */
+/* -------------------------------------------------------------------------- */
 async function handleDeleteFiltered() {
-  if (!state.token || state.modeFilter === 'all') return;
+  if (state.modeFilter === 'all') return;
   const label = state.modeFilter === 'unique' ? 'unique counters' : 'every-visit counters';
   const siteUrl = window.location?.origin || window.location?.href || 'this site';
+  const scopeLabel = state.isAdmin ? `all ${label}` : `your ${label}`;
   const confirmed = await showConfirm({
     title: 'Delete filtered counters?',
-    message: `This will permanently remove all ${label} on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
+    message: `This will permanently remove ${scopeLabel} on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
     allowHtml: true,
     confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
@@ -1084,11 +1220,11 @@ async function handleDeleteFiltered() {
   if (!confirmed) return;
   const confirmedFinal = await showConfirmWithInput({
     title: 'Delete filtered counters?',
-    message: `Type DELETE to permanently remove all ${label}.`,
+    message: `Type DELETE to permanently remove ${scopeLabel}.`,
     inputPlaceholder: 'DELETE',
     inputMatch: 'DELETE',
     inputHint: 'This cannot be undone.',
-    promptMessage: `Type DELETE to permanently remove all ${label}.`, // fallback
+    promptMessage: `Type DELETE to permanently remove ${scopeLabel}.`, // fallback
     confirmLabel: 'Delete filtered',
     cancelLabel: 'Cancel',
     variant: 'danger'
@@ -1096,23 +1232,25 @@ async function handleDeleteFiltered() {
   if (!confirmedFinal) return;
   try {
     deleteFilteredBtn.disabled = true;
-    const res = await fetch(`/api/counters?mode=${state.modeFilter}`, {
-      method: 'DELETE',
-      headers: authHeaders()
+    const res = await authFetch(`/api/counters?mode=${state.modeFilter}`, {
+      method: 'DELETE'
     });
-    if (res.status === 401) throw new Error('Invalid admin token.');
+    if (res.status === 401) throw new Error('Unauthorized.');
     if (!res.ok) throw new Error('Failed to delete counters');
     await refreshCounters(1);
     clearSelection();
-    showToast(`Deleted ${label}`);
+    showToast(`Deleted ${scopeLabel}`);
   } catch (error) {
-    await showAlert(error.message || 'Failed to delete counters');
+    await showAlert(normalizeAuthMessage(error, 'Failed to delete counters'));
   } finally {
     deleteFilteredBtn.disabled = false;
     updateDeleteFilteredState();
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Selection + bulk actions                                                   */
+/* -------------------------------------------------------------------------- */
 function toggleSelection(counterId, selected, row) {
   if (!counterId) return;
   if (selected) {
@@ -1161,6 +1299,9 @@ function updateSelectionToolbar() {
   document.body.classList.toggle('selection-active', active);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Exports + downloads                                                        */
+/* -------------------------------------------------------------------------- */
 async function handleDownloadSelected() {
   const ids = Array.from(state.selectedIds);
   if (!ids.length) {
@@ -1188,16 +1329,15 @@ async function handleDownloadSingle(id, label, button) {
 async function downloadCountersByIds(ids, filenamePrefix) {
   if (!ids.length) return;
   try {
-    const res = await fetch('/api/counters/export-selected', {
+    const res = await authFetch('/api/counters/export-selected', {
       method: 'POST',
       headers: {
-        ...authHeaders(),
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ ids })
     });
     if (res.status === 401) {
-      throw new Error('Invalid admin token.');
+      throw new Error('Unauthorized.');
     }
     if (res.status === 404) {
       throw new Error('Counters not found.');
@@ -1210,7 +1350,7 @@ async function downloadCountersByIds(ids, filenamePrefix) {
     triggerJsonDownload(payload, filenamePrefix || 'counters');
     showToast(ids.length === 1 ? `Exported ${ids[0]}` : `Exported ${ids.length} counters`);
   } catch (error) {
-    await showAlert(error.message || 'Failed to download counters');
+    await showAlert(normalizeAuthMessage(error, 'Failed to download counters'));
   }
 }
 
@@ -1251,15 +1391,14 @@ async function handleDeleteSelected() {
   if (!confirmed) return;
   if (deleteSelectedBtn) deleteSelectedBtn.disabled = true;
   try {
-    const res = await fetch('/api/counters/bulk-delete', {
+    const res = await authFetch('/api/counters/bulk-delete', {
       method: 'POST',
       headers: {
-        ...authHeaders(),
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ ids })
     });
-    if (res.status === 401) throw new Error('Invalid admin token.');
+    if (res.status === 401) throw new Error('Unauthorized.');
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to delete counters');
@@ -1270,12 +1409,15 @@ async function handleDeleteSelected() {
     updateSelectionToolbar();
     showToast(`Deleted ${data.deleted ?? ids.length} counters`);
   } catch (error) {
-    await showAlert(error.message || 'Failed to delete counters');
+    await showAlert(normalizeAuthMessage(error, 'Failed to delete counters'));
   } finally {
     if (deleteSelectedBtn) deleteSelectedBtn.disabled = false;
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Pagination hotkeys                                                         */
+/* -------------------------------------------------------------------------- */
 function handleSelectAll() {
   const ids = state.latestCounters.map((counter) => counter.id);
   const allSelected = ids.every((id) => state.selectedIds.has(id));
@@ -1300,18 +1442,28 @@ function handlePaginationHotkeys(event) {
     const top = window.scrollY;
     requestAnimationFrame(() => window.scrollTo({ top, left: 0, behavior: 'auto' }));
   };
+  // arrow left previous page
   if (event.key === 'ArrowLeft' && !prevPageBtn?.disabled) {
     event.preventDefault();
     handlePageNavigation(Math.max(1, state.page - 1), { skipScroll: true });
     keepScroll();
   }
+  // arrow right next page
   if (event.key === 'ArrowRight' && !nextPageBtn?.disabled) {
     event.preventDefault();
     handlePageNavigation(Math.min(state.totalPages, state.page + 1), { skipScroll: true });
     keepScroll();
   }
+  // shift + a select all 
+  if (event.shiftKey && (event.key === 'A' || event.key === 'a')) {
+    event.preventDefault();
+    handleSelectAll();
+  }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Formatting                                                                 */
+/* -------------------------------------------------------------------------- */
 function formatNumber(value) {
   if (value === null || value === undefined) return '0';
   if (typeof value === 'bigint') {
@@ -1358,6 +1510,9 @@ function formatLastHit(timestamp) {
   return new Date(timestamp).toLocaleDateString();
 }
 
+/* -------------------------------------------------------------------------- */
+/* Pagination navigation                                                      */
+/* -------------------------------------------------------------------------- */
 async function handlePageNavigation(nextPage, options = {}) {
   try {
     await refreshCounters(nextPage);
@@ -1378,6 +1533,9 @@ function ensurePaginationInView() {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Query helpers                                                              */
+/* -------------------------------------------------------------------------- */
 function truncateQuery(query) {
   if (!query) return '';
   return query.length > 32 ? `${query.slice(0, 32)}…` : query;
@@ -1395,16 +1553,18 @@ function extractTagIds(tags) {
     .filter(Boolean);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Counter updates                                                            */
+/* -------------------------------------------------------------------------- */
 async function updateCounterMetadataRequest(id, payload) {
-  const res = await fetch(`/api/counters/${id}`, {
+  const res = await authFetch(`/api/counters/${id}`, {
     method: 'PATCH',
     headers: {
-      ...authHeaders(),
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload)
   });
-  if (res.status === 401) throw new Error('Invalid admin token.');
+  if (res.status === 401) throw new Error('Unauthorized.');
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Failed to update counter');
@@ -1412,6 +1572,9 @@ async function updateCounterMetadataRequest(id, payload) {
   return res.json().catch(() => ({}));
 }
 
+/* -------------------------------------------------------------------------- */
+/* Clipboard helpers                                                          */
+/* -------------------------------------------------------------------------- */
 async function copyEmbedSnippet(counterId, button) {
   const origin = window.location.origin.replace(/\/+$/, '');
   const snippet = `<script async src="${origin}/embed/${counterId}.js"></script>`;
@@ -1437,9 +1600,13 @@ async function copyEmbedSnippet(counterId, button) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Create card UI                                                             */
+/* -------------------------------------------------------------------------- */
 function updateCreateCardVisibility() {
   if (!createCard) return;
-  if (state.privateMode) {
+  const canCreate = !state.privateMode || state.isAdmin;
+  if (canCreate) {
     createCard.classList.remove('hidden');
   } else {
     createCard.classList.add('hidden');
@@ -1448,6 +1615,9 @@ function updateCreateCardVisibility() {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Admin embed copy                                                           */
+/* -------------------------------------------------------------------------- */
 function handleAdminEmbedCopy() {
   const text = adminEmbedSnippet?.value || '';
   if (!text || !adminEmbedCopy) return;
@@ -1471,6 +1641,9 @@ function handleAdminEmbedCopy() {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Admin UI state                                                             */
+/* -------------------------------------------------------------------------- */
 function updateDeleteFilteredState() {
   if (modeFilterSelect) {
     modeFilterSelect.value = state.modeFilter;
@@ -1489,6 +1662,22 @@ function updateDeleteFilteredState() {
   }
 }
 
+function updateAdminVisibility() {
+  const isAdmin = state.isAdmin;
+  const hasUser = Boolean(state.user);
+  tagFilterCreateBtn?.classList.toggle('hidden', !hasUser);
+  createTagManageBtn?.classList.toggle('hidden', !hasUser);
+  if (!isAdmin) {
+    state.ownerOnly = false;
+  }
+  ownerFilterWrap?.classList.toggle('hidden', !isAdmin);
+  syncOwnerFilterToggle();
+  updateDeleteFilteredState();
+}
+
+/* -------------------------------------------------------------------------- */
+/* Activity range                                                             */
+/* -------------------------------------------------------------------------- */
 function updateActivityRangeButtons() {
   if (!activityRangeControls) return;
   const buttons = activityRangeControls.querySelectorAll('button[data-range]');
@@ -1499,14 +1688,15 @@ function updateActivityRangeButtons() {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Tags                                                                       */
+/* -------------------------------------------------------------------------- */
 async function fetchTags() {
-  if (!state.token) return;
+  if (!state.user) return;
   try {
-    const res = await fetch('/api/tags', {
-      headers: authHeaders()
-    });
+    const res = await authFetch('/api/tags');
     if (res.status === 401) {
-      throw new Error('Invalid admin token.');
+      throw new Error('Unauthorized.');
     }
     if (!res.ok) {
       throw new Error('Failed to load tags');
@@ -1582,6 +1772,9 @@ function renderTagFilterList() {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Tag filter menu                                                            */
+/* -------------------------------------------------------------------------- */
 function updateTagFilterButton() {
   if (tagFilterButton) {
     const count = state.tagFilter.length;
@@ -1668,11 +1861,10 @@ function setTagFilter(ids) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Tag CRUD                                                                   */
+/* -------------------------------------------------------------------------- */
 async function handleTagCreate(context) {
-  if (!state.token) {
-    await showAlert('Log in first.');
-    return;
-  }
   if (state.tags.length >= TAG_LIMIT) {
     await showAlert(`You can only create up to ${TAG_LIMIT} tags. Delete an existing tag first.`, {
       title: 'Tag limit reached'
@@ -1687,17 +1879,16 @@ async function handleTagCreate(context) {
   let createdTagId = null;
   let createdTagName = result.name;
   try {
-    const res = await fetch('/api/tags', {
+    const res = await authFetch('/api/tags', {
       method: 'POST',
       headers: {
-        ...authHeaders(),
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(result)
     });
     const payload = await res.json().catch(() => ({}));
     if (res.status === 401) {
-      throw new Error('Invalid admin token.');
+      throw new Error('Unauthorized.');
     }
     if (!res.ok) {
       throw new Error(payload.error || 'Failed to create tag');
@@ -1711,7 +1902,7 @@ async function handleTagCreate(context) {
     }
     showToast(`Created tag "${createdTagName}"`);
   } catch (error) {
-    await showAlert(error.message || 'Failed to create tag');
+    await showAlert(normalizeAuthMessage(error, 'Failed to create tag'));
   }
 }
 
@@ -1723,10 +1914,6 @@ function handleTagContextMenu(event, tag) {
 }
 
 async function openTagEditDialog(tag) {
-  if (!state.token) {
-    await showAlert('Log in first.');
-    return;
-  }
   const result = await openTagDialog(state.tags.length, state.totalOverall || state.total || 0, {
     id: tag?.id,
     name: tag?.name,
@@ -1734,10 +1921,9 @@ async function openTagEditDialog(tag) {
   });
   if (!result || !result.name) return;
   try {
-    const res = await fetch(`/api/tags/${tag.id}`, {
+    const res = await authFetch(`/api/tags/${tag.id}`, {
       method: 'PATCH',
       headers: {
-        ...authHeaders(),
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -1753,15 +1939,11 @@ async function openTagEditDialog(tag) {
     refreshTagSelectors();
     showToast(`Updated tag "${result.name}"`);
   } catch (error) {
-    await showAlert(error.message || 'Failed to update tag');
+    await showAlert(normalizeAuthMessage(error, 'Failed to update tag'));
   }
 }
 
 async function confirmTagDeletion(tag) {
-  if (!state.token) {
-    await showAlert('Log in first.');
-    return;
-  }
   const name = tag.name || tag.id;
   const confirmed = await showConfirm({
     title: 'Delete tag?',
@@ -1776,11 +1958,10 @@ async function confirmTagDeletion(tag) {
 
 async function deleteTagRequest(tagId, name) {
   try {
-    const res = await fetch(`/api/tags/${encodeURIComponent(tagId)}`, {
-      method: 'DELETE',
-      headers: authHeaders()
+    const res = await authFetch(`/api/tags/${encodeURIComponent(tagId)}`, {
+      method: 'DELETE'
     });
-    if (res.status === 401) throw new Error('Invalid admin token.');
+    if (res.status === 401) throw new Error('Unauthorized.');
     if (res.status === 404) throw new Error('Tag not found.');
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -1791,10 +1972,13 @@ async function deleteTagRequest(tagId, name) {
     updateTagCounterHints();
     showToast(`Deleted tag "${name || tagId}"`);
   } catch (error) {
-    await showAlert(error.message || 'Failed to delete tag');
+    await showAlert(normalizeAuthMessage(error, 'Failed to delete tag'));
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Tag selectors                                                              */
+/* -------------------------------------------------------------------------- */
 function registerTagSelector(container, config = {}) {
   if (!container) return null;
   const entry = {
@@ -1898,6 +2082,9 @@ function toggleTagSelection(selected, tagId) {
   return [...current, tagId];
 }
 
+/* -------------------------------------------------------------------------- */
+/* Tag dialog                                                                 */
+/* -------------------------------------------------------------------------- */
 function openTagDialog(existingCount = 0, counterTotal = 0, defaults = {}) {
   return new Promise((resolve) => {
     const isEdit = Boolean(defaults && defaults.id);
@@ -2119,6 +2306,9 @@ function openTagDialog(existingCount = 0, counterTotal = 0, defaults = {}) {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Tag styling                                                                */
+/* -------------------------------------------------------------------------- */
 function applyTagStyles(element, color, options = {}) {
   if (!element) return;
   const normalized = normalizeHexColor(color) || '#4c6ef5';
@@ -2152,6 +2342,9 @@ function getTagContrastColor(hex) {
   return luminance > 0.65 ? '#0b0f19' : '#ffffff';
 }
 
+/* -------------------------------------------------------------------------- */
+/* Admin mode controls                                                        */
+/* -------------------------------------------------------------------------- */
 function refreshAdminModeControls() {
   if (!adminCooldownSelect) return;
   applyAllowedModesToSelect(adminCooldownSelect, state.allowedModes);
@@ -2168,6 +2361,9 @@ function renderAdminThrottleHint() {
   adminThrottleHint.classList.remove('hidden');
 }
 
+/* -------------------------------------------------------------------------- */
+/* UI builders                                                                */
+/* -------------------------------------------------------------------------- */
 function buildEditField(labelText, control, options = {}) {
   const wrapper = document.createElement('label');
   wrapper.className = 'counter-edit__field';
@@ -2223,6 +2419,9 @@ function buildTagBadges(tags) {
   return wrapper;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Activity widgets                                                           */
+/* -------------------------------------------------------------------------- */
 function buildActivityBlock(activity) {
   if (!activity || !Array.isArray(activity.trend) || activity.trend.length === 0) {
     return null;
@@ -2377,6 +2576,9 @@ function updateActivityBlockData(activityEl, activity) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Patch updates                                                              */
+/* -------------------------------------------------------------------------- */
 function canPatchCounters(previous = [], next = []) {
   if (!counterListEl) return false;
   if (!Array.isArray(previous) || !Array.isArray(next)) return false;
@@ -2444,6 +2646,9 @@ function updateCounterRow(row, counter) {
   updateEditDefaults(row, counter);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Row section updates                                                        */
+/* -------------------------------------------------------------------------- */
 function updateTagsSection(row, counter) {
   const meta = row.querySelector('.counter-meta');
   if (!meta) return;
@@ -2548,6 +2753,9 @@ function updateEditDefaults(row, counter) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Activity helpers                                                           */
+/* -------------------------------------------------------------------------- */
 function resolveActivityLevel(hits, ratio) {
   const count = Number(hits) || 0;
   if (count >= 50) return 'max';
@@ -2574,10 +2782,13 @@ function getRangeStatValue(counter) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Auto refresh                                                               */
+/* -------------------------------------------------------------------------- */
 function scheduleAutoRefresh(delay = 5000) {
   cancelAutoRefresh();
   state.autoRefreshTimer = setTimeout(async () => {
-    if (!state.token) return;
+    if (!state.user) return;
     if (state.editPanelsOpen > 0) {
       scheduleAutoRefresh(delay);
       return;
@@ -2598,6 +2809,9 @@ function cancelAutoRefresh() {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Mode helpers                                                               */
+/* -------------------------------------------------------------------------- */
 function changeEditPanelCount(delta) {
   state.editPanelsOpen = Math.max(0, state.editPanelsOpen + delta);
 }
@@ -2607,7 +2821,7 @@ function applyAllowedModesToSelect(selectEl, allowed) {
   const options = Array.from(selectEl.options);
   let firstAllowed = null;
   const label = state.throttleSeconds > 0
-    ? `Every visit (throttle ${state.throttleSeconds}s)`
+    ? `Every visit (${state.throttleSeconds}s)`
     : 'Every visit';
   options.forEach((option) => {
     const mode = option.value === 'unlimited' ? 'unlimited' : 'unique';

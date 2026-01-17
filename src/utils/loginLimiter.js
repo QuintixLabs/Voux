@@ -4,12 +4,21 @@
   Tracks admin login attempts and blocks after too many failures.
 */
 
+/* ========================================================================== */
+/* Settings                                                                   */
+/* ========================================================================== */
 const MAX_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MS = 60 * 1000; // 1 minute window
 const LOCK_DURATION_MS = 45 * 1000; // lock for 45 seconds
 
+/* ========================================================================== */
+/* State                                                                      */
+/* ========================================================================== */
 const attempts = new Map();
 
+/* ========================================================================== */
+/* Helpers                                                                    */
+/* ========================================================================== */
 function cleanEntry(entry, now) {
   if (!entry) return null;
   const current = entry;
@@ -73,6 +82,9 @@ function clearLoginFailures(ip) {
   attempts.delete(ip);
 }
 
+/* ========================================================================== */
+/* Exports                                                                    */
+/* ========================================================================== */
 module.exports = {
   checkLoginBlock,
   recordLoginFailure,

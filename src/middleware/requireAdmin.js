@@ -1,12 +1,17 @@
 /*
   requireAdmin.js
 
-  Auth helpers for admin token and API keys. Applies login blocking for admin.
+  Auth helpers for sessions, users, and API keys.
 */
 
+/* ========================================================================== */
+/* Dependencies                                                               */
+/* ========================================================================== */
 const {
   findApiKeyByToken,
-  recordApiKeyUsage
+  recordApiKeyUsage,
+  findSession,
+  getUserById
 } = require('../db');
 const getClientIp = require('../utils/ip');
 const {
@@ -15,17 +20,50 @@ const {
   clearLoginFailures
 } = require('../utils/loginLimiter');
 
+/* ========================================================================== */
+/* Constants                                                                  */
+/* ========================================================================== */
+const SESSION_COOKIE = 'voux_session';
+
+/* ========================================================================== */
+/* Cookie + session helpers                                                   */
+/* ========================================================================== */
+function parseCookies(req) {
+  const header = req.headers?.cookie;
+  if (!header) return {};
+  return header.split(';').reduce((acc, pair) => {
+    const [rawKey, ...rest] = pair.split('=');
+    if (!rawKey) return acc;
+    const key = rawKey.trim();
+    const value = rest.join('=').trim();
+    if (!key) return acc;
+    acc[key] = decodeURIComponent(value || '');
+    return acc;
+  }, {});
+}
+
+function getSessionToken(req) {
+  const cookies = parseCookies(req);
+  return cookies[SESSION_COOKIE] || '';
+}
+
+/* ========================================================================== */
+/* Auth resolution                                                            */
+/* ========================================================================== */
 function authenticateRequest(req) {
   if (req.auth) {
     return req.auth;
   }
-  const adminToken = process.env.ADMIN_TOKEN;
-  const providedAdmin = req.get('x-voux-admin');
-  if (adminToken && providedAdmin && providedAdmin === adminToken) {
-    req.auth = { type: 'admin' };
-    const ip = getClientIdentifier(req);
-    clearLoginFailures(ip);
-    return req.auth;
+  const sessionToken = getSessionToken(req);
+  if (sessionToken) {
+    const session = findSession(sessionToken);
+    if (session) {
+      const user = getUserById(session.user_id);
+      if (user) {
+        req.auth = { type: user.role === 'admin' ? 'admin' : 'user', user };
+        return req.auth;
+      }
+    }
   }
   const apiToken = req.get('x-voux-key');
   if (apiToken) {
@@ -39,84 +77,68 @@ function authenticateRequest(req) {
   return null;
 }
 
+/* ========================================================================== */
+/* Role guards                                                                */
+/* ========================================================================== */
 function verifyAdmin(req) {
-  const ip = getClientIdentifier(req);
-  const block = checkLoginBlock(ip);
-  if (block.blocked) {
-    req.adminLoginBlocked = block;
-    return false;
-  }
   const auth = authenticateRequest(req);
-  if (auth && auth.type === 'admin') {
-    clearLoginFailures(ip);
-    return true;
-  }
-  const providedAdmin = req.get('x-voux-admin');
-  if (providedAdmin) {
-    const result = recordLoginFailure(ip);
-    if (result.blocked) {
-      req.adminLoginBlocked = result;
-    }
-  }
-  return false;
+  return Boolean(auth && auth.type === 'admin');
 }
 
 function requireAdmin(req, res, next) {
-  if (!process.env.ADMIN_TOKEN) {
-    return res.status(403).json({ error: 'admin_token_not_configured' });
-  }
-  const ip = getClientIdentifier(req);
-  const block = checkLoginBlock(ip);
-  if (block.blocked) {
-    setRetryAfter(res, block.retryAfterSeconds);
-    return res.status(429).json(rateLimitPayload(block.retryAfterSeconds));
-  }
   const auth = authenticateRequest(req);
   if (!auth || auth.type !== 'admin') {
-    const providedAdmin = req.get('x-voux-admin');
-    if (providedAdmin) {
-      const result = recordLoginFailure(ip);
-      if (result.blocked) {
-        setRetryAfter(res, result.retryAfterSeconds);
-        return res.status(429).json(rateLimitPayload(result.retryAfterSeconds));
-      }
-    }
     return res.status(401).json({ error: 'unauthorized' });
   }
-  clearLoginFailures(ip);
+  next();
+}
+
+function requireAuth(req, res, next) {
+  const auth = authenticateRequest(req);
+  if (!auth || auth.type === 'key') {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
   next();
 }
 
 function requireAdminOrKey(req, res, next) {
   const auth = authenticateRequest(req);
-  if (!auth) {
-    if (!process.env.ADMIN_TOKEN) {
-      return res.status(403).json({ error: 'admin_token_not_configured' });
-    }
+  if (!auth || (auth.type !== 'admin' && auth.type !== 'key')) {
     return res.status(401).json({ error: 'unauthorized' });
   }
   next();
 }
 
-function hasCounterAccess(auth, counterId) {
-  if (!auth) return false;
+function requireAuthOrKey(req, res, next) {
+  const auth = authenticateRequest(req);
+  if (!auth) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  next();
+}
+
+/* ========================================================================== */
+/* Access checks                                                              */
+/* ========================================================================== */
+function hasCounterAccess(auth, counter) {
+  if (!auth || !counter) return false;
   if (auth.type === 'admin') return true;
+  if (auth.type === 'user') {
+    return Boolean(counter.owner_id && auth.user?.id === counter.owner_id);
+  }
   if (auth.type === 'key') {
     if (auth.key.scope === 'global') {
       return true;
     }
     const allowed = auth.key.allowedCounters || [];
-    return allowed.includes(counterId);
+    return allowed.includes(counter.id);
   }
   return false;
 }
 
-module.exports = requireAdmin;
-module.exports.verifyAdmin = verifyAdmin;
-module.exports.requireAdminOrKey = requireAdminOrKey;
-module.exports.hasCounterAccess = hasCounterAccess;
-module.exports.authenticateRequest = authenticateRequest;
-module.exports.getClientIdentifier = getClientIdentifier;
+/* ========================================================================== */
+/* Rate limiting                                                              */
+/* ========================================================================== */
 function getClientIdentifier(req) {
   return getClientIp(req);
 }
@@ -135,3 +157,21 @@ function setRetryAfter(res, seconds) {
   const retrySeconds = Math.max(1, Number(seconds) || 0);
   res.set('Retry-After', String(retrySeconds));
 }
+
+/* ========================================================================== */
+/* Exports                                                                    */
+/* ========================================================================== */
+module.exports = requireAdmin;
+module.exports.verifyAdmin = verifyAdmin;
+module.exports.requireAdminOrKey = requireAdminOrKey;
+module.exports.requireAuth = requireAuth;
+module.exports.requireAuthOrKey = requireAuthOrKey;
+module.exports.hasCounterAccess = hasCounterAccess;
+module.exports.authenticateRequest = authenticateRequest;
+module.exports.getClientIdentifier = getClientIdentifier;
+module.exports.checkLoginBlock = checkLoginBlock;
+module.exports.recordLoginFailure = recordLoginFailure;
+module.exports.clearLoginFailures = clearLoginFailures;
+module.exports.rateLimitPayload = rateLimitPayload;
+module.exports.setRetryAfter = setRetryAfter;
+module.exports.getSessionToken = getSessionToken;

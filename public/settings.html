@@ -13,10 +13,16 @@
   <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
   <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
-  <link rel="stylesheet" href="/styles.css?v=%APP_VERSION%" />
+  <link rel="stylesheet" href="/css/styles.css?v=%APP_VERSION%" />
+  <style>
+    html.auth-pending body { opacity: 0; visibility: hidden; }
+  </style>
+  <script>
+    document.documentElement.classList.add('auth-pending');
+  </script>
 </head>
 
-<body data-page="settings">
+<body data-page="settings" class="settings-footer-hidden">
 
   <!-- JS DISABLED DETECTION -->
   <noscript>
@@ -39,19 +45,21 @@
       <img src="/assets/logo-text.png" alt="Voux" />
     </a>
     <div class="nav-account">
-      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu">
-        <i class="ri-account-circle-fill"></i>
-      </button>
-      <div class="account-menu" id="navAccountMenu">
-        <a href="/dashboard" class="account-menu__link">
+      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"></button>
+            <div class="account-menu" id="navAccountMenu">
+<a href="/profile" class="account-menu__link">
+          <i class="ri-user-3-line"></i>
+          Profile
+        </a>
+<a href="/dashboard" class="account-menu__link">
           <i class="ri-eye-2-line"></i>
           Dashboard
         </a>
-        <a href="/settings" class="account-menu__link">
+<a href="/settings" class="account-menu__link">
           <i class="ri-settings-3-line"></i>
           Settings
         </a>
-        <button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
+<button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
           <i class="ri-logout-box-r-line"></i>
           Log out
         </button>
@@ -67,9 +75,18 @@
         </span>
         <span data-brand-text data-brand-page="Settings">Voux · Settings</span>
       </p>
-          <h1>Instance Controls</h1>
-          <p>Manage your instance options and behavior. Only logged-in admins can make changes.</p>
+      <h1>Instance Controls</h1>
+      <p>Manage your instance options and behavior. Only logged-in admins can make changes.</p>
     </header>
+
+    <div class="settings-tabs" id="settingsTabs">
+      <button type="button" class="settings-tab settings-tab--active" data-target="all"><i class="ri-grid-fill" aria-hidden="true"></i> All</button>
+      <button type="button" class="settings-tab" data-target="settingsPanel"><i class="ri-settings-4-line" aria-hidden="true"></i> Runtime</button>
+      <button type="button" class="settings-tab" data-target="brandingCard"><i class="ri-brush-line" aria-hidden="true"></i> Branding</button>
+      <button type="button" class="settings-tab" data-target="backupCard"><i class="ri-download-cloud-line" aria-hidden="true"></i> Backup</button>
+      <button type="button" class="settings-tab" data-target="apiKeysCard"><i class="ri-key-2-line" aria-hidden="true"></i> API keys</button>
+      <button type="button" class="settings-tab" data-target="usersCard"><i class="ri-user-3-line" aria-hidden="true"></i> Users</button>
+    </div>
 
     <section class="card settings-card hidden" id="settingsPanel">
       <h2>Runtime Settings</h2>
@@ -78,7 +95,7 @@
           <input type="checkbox" id="togglePrivateMode" />
           <span>
             <strong class="mode-chip__title"><i class="ri-lock-line"></i> · Private instance</strong>
-            <small>Only logged-in admins can create counters.</small>
+            <small>Only logged-in users can create counters.</small>
           </span>
         </label>
 
@@ -113,7 +130,7 @@
         </div>
       </div>
         <div class="field">
-          <label for="throttleSelect">Every-visit throttle</label>
+          <div class="field__label">Every-visit throttle</div>
           <select id="throttleSelect">
             <option value="0">No throttle (count every refresh)</option>
             <option value="5">Throttle to 5 seconds per visitor</option>
@@ -124,7 +141,7 @@
           <small class="hint">Limits how often the same IP can increment an "Every visit" counter. Unique mode is unaffected.</small>
         </div>
         <div class="field">
-          <label>Inactive counters</label>
+          <div class="field__label">Inactive counters</div>
           <button type="button" id="purgeInactiveButton" class="danger ghost inactive-counters"><i class="ri-delete-bin-line"></i> Delete counters inactive for 30 days</button>
           <small class="hint">Counters with no hits for 30 days will be permanently removed.</small>
         </div>
@@ -190,7 +207,7 @@
 
     <section class="card settings-card hidden" id="apiKeysCard">
       <h2>Owner API keys</h2>
-      <span class="settings-desc">Create scoped keys so collaborators can reset or delete their own counters without the main admin password.</span>
+      <span class="settings-desc">Create scoped API keys so collaborators can reset or delete only their own counters, without needing an account.</span>
       <div id="apiKeysList" class="api-keys-list" aria-live="polite"></div>
       <div id="apiKeysPagination" class="api-keys-pagination hidden">
         <button type="button" id="apiKeysPrev" class="ghost"><i class="ri-arrow-left-line"></i></button>
@@ -219,11 +236,86 @@
       </form>
       <p class="hint" id="apiKeyStatus"></p>
     </section>
+
+    <section class="card settings-card hidden" id="usersCard">
+      <div class="users-head">
+        <div>
+          <h2>Users</h2>
+          <span class="settings-desc">Create accounts for people you trust. Admins have full access to all settings and counters. Members only manage their own counters.</span>
+        </div>
+        <div class="users-toolbar">
+          <div class="users-search">
+            <i class="ri-search-line" aria-hidden="true"></i>
+            <input type="search" id="usersSearch" placeholder="Search users" />
+          </div>
+          <select id="usersFilter">
+            <option value="all">All users</option>
+            <option value="owner">Show owner</option>
+            <option value="admins">Show admins</option>
+            <option value="members">Show members</option>
+          </select>
+        </div>
+      </div>
+      <div id="usersList" class="users-list" aria-live="polite"></div>
+      <div id="usersPagination" class="users-pagination hidden">
+        <button type="button" id="usersPrev" class="ghost"><i class="ri-arrow-left-line"></i></button>
+        <span id="usersPageInfo" class="pagination-info">Page 1</span>
+        <button type="button" id="usersNext" class="ghost"><i class="ri-arrow-right-line"></i></button>
+      </div>
+      <form id="userForm" class="api-key-form" action="javascript:void(0);">
+        <div class="field">
+          <div class="field__label" id="userNameLabel">Username</div>
+          <input type="text" id="userName" aria-labelledby="userNameLabel" maxlength="40" placeholder="Username" required />
+        </div>
+        <div class="field">
+          <div class="field__label" id="userDisplayLabel">Display name <span class="optional-tag">Optional</span></div>
+          <input type="text" id="userDisplay" aria-labelledby="userDisplayLabel" maxlength="80" placeholder="Display name" />
+        </div>
+        <div class="field">
+          <div class="field__label" id="userRoleLabel">Role</div>
+          <select id="userRole" aria-labelledby="userRoleLabel">
+            <option value="user">Member</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field__label" id="userPasswordLabel">Password</div>
+          <input type="password" id="userPassword" aria-labelledby="userPasswordLabel" minlength="6" placeholder="Set a password" required />
+        </div>
+        <button type="submit"><i class="ri-user-add-line"></i> Create user</button>
+      </form>
+      <p class="hint" id="userStatus"></p>
+    </section>
   </main>
+
+  <div class="modal-overlay" id="userEditModal" aria-hidden="true" data-modal-enter="#userEditSave" data-modal-escape="#userEditCancel">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="userEditTitle">
+      <h2 class="modal__title" id="userEditTitle">Edit user</h2>
+      <p class="modal__message" id="userEditMessage"></p>
+      <div class="modal__input-wrap">
+        <div class="modal__input-label">Username</div>
+        <input class="modal__input" type="text" id="userEditUsername" maxlength="40" />
+      </div>
+      <div class="modal__input-wrap">
+        <div class="modal__input-label">Display name</div>
+        <input class="modal__input" type="text" id="userEditDisplay" maxlength="80" placeholder="Display name" />
+      </div>
+      <div class="modal__input-wrap">
+        <div class="modal__input-label">New password</div>
+        <input class="modal__input" type="password" id="userEditPassword" minlength="6" placeholder="Leave blank to keep current" />
+        <small class="modal__input-hint">Leave blank to keep the current password.</small>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="modal__button modal__button--primary" id="userEditSave">Save changes</button>
+        <button type="button" class="modal__button modal__button--ghost" id="userEditCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <div data-footer-root></div>
 
   <script src="/js/modal.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/errors.js?v=%APP_VERSION%" defer></script>
   <script src="/js/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/brand.js?v=%APP_VERSION%" defer></script>
   <script src="/js/footer.js?v=%APP_VERSION%" defer></script>

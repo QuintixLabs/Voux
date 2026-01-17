@@ -13,7 +13,7 @@
   <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
   <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
-  <link rel="stylesheet" href="/styles.css?v=%APP_VERSION%" />
+  <link rel="stylesheet" href="/css/styles.css?v=%APP_VERSION%" />
 </head>
 
 <body data-page="privacy">
@@ -39,19 +39,21 @@
       <img src="/assets/logo-text.png" alt="Voux" />
     </a>
     <div class="nav-account">
-      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu">
-        <i class="ri-account-circle-fill"></i>
-      </button>
-      <div class="account-menu" id="navAccountMenu">
-        <a href="/dashboard" class="account-menu__link">
+      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"></button>
+            <div class="account-menu" id="navAccountMenu">
+<a href="/profile" class="account-menu__link">
+          <i class="ri-user-3-line"></i>
+          Profile
+        </a>
+<a href="/dashboard" class="account-menu__link">
           <i class="ri-eye-2-line"></i>
           Dashboard
         </a>
-        <a href="/settings" class="account-menu__link">
+<a href="/settings" class="account-menu__link">
           <i class="ri-settings-3-line"></i>
           Settings
         </a>
-        <button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
+<button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
           <i class="ri-logout-box-r-line"></i>
           Log out
         </button>

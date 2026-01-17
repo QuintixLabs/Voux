@@ -13,7 +13,11 @@
       if (!data) return;
       window.__VOUX_CONFIG = data;
       applyBranding(data);
-      themeHelper?.apply(data.theme);
+      if (themeHelper?.apply) {
+        themeHelper.apply(data.theme);
+      } else if (data.theme) {
+        document.documentElement.setAttribute('data-theme', data.theme);
+      }
     })
     .catch(() => {
       /* ignore */

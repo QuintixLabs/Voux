@@ -4,6 +4,9 @@
   Public builder page: creates counters, shows embed snippet, preview, and copy helpers.
 */
 
+/* -------------------------------------------------------------------------- */
+/* DOM references                                                             */
+/* -------------------------------------------------------------------------- */
 const form = document.querySelector('#create-form');
 const resultSection = document.querySelector('#result');
 const snippetArea = document.querySelector('#embedSnippet');
@@ -24,13 +27,12 @@ let currentThrottleSeconds = 0;
 const themeHelper = window.VouxTheme;
 const START_VALUE_DIGIT_LIMIT = 18;
 
-/*
- -----------------------------------------------------------
- Guides details/summary smooth animation for the home page
- -----------------------------------------------------------
-*/
 
-document.querySelectorAll('.expander').forEach(details => {
+/* -------------------------------------------------------------------------- */
+/* Guides                                                                     */
+/* -------------------------------------------------------------------------- */
+
+document.querySelectorAll('.expander').forEach((details) => {
   const content = details.querySelector('.expander__content');
   const summary = details.querySelector('summary');
   const arrow = summary.querySelector('i');
@@ -112,9 +114,11 @@ document.querySelectorAll('.expander').forEach(details => {
     content.style.gridTemplateRows = '0fr';
   }
 });
-// --------------------------------------------------------------------
 
 
+/* -------------------------------------------------------------------------- */
+/* Modal helpers                                                              */
+/* -------------------------------------------------------------------------- */
 function modalApi() {
   return window.VouxModal;
 }
@@ -127,6 +131,9 @@ async function showAlert(message, options) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Input helpers                                                              */
+/* -------------------------------------------------------------------------- */
 function limitStartValueInput(input) {
   if (!input) return;
   const enforceDigits = () => {
@@ -148,6 +155,9 @@ function readStartValue(input) {
 
 limitStartValueInput(startValueInput);
 
+/* -------------------------------------------------------------------------- */
+/* Form submission                                                            */
+/* -------------------------------------------------------------------------- */
 if (form) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -202,6 +212,9 @@ if (form) {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Embed copy                                                                 */
+/* -------------------------------------------------------------------------- */
 if (embedCopyBtn) {
   embedCopyBtn.addEventListener('click', () => {
     const text = snippetArea?.value || '';
@@ -227,6 +240,9 @@ if (embedCopyBtn) {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Preview                                                                    */
+/* -------------------------------------------------------------------------- */
 function renderPreview(embedUrl) {
   previewTarget.innerHTML = '';
   const wrapper = document.createElement('span');
@@ -238,6 +254,9 @@ function renderPreview(embedUrl) {
   previewTarget.appendChild(wrapper);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Form state                                                                 */
+/* -------------------------------------------------------------------------- */
 function setFormState(disabled) {
   if (!form) return;
   Array.from(form.elements).forEach((el) => {
@@ -245,6 +264,9 @@ function setFormState(disabled) {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Guide code copy                                                            */
+/* -------------------------------------------------------------------------- */
 document.querySelectorAll('.copy-button').forEach((button) => {
   button.addEventListener('click', () => {
     const block = button.closest('.code-snippet') || button.parentElement;
@@ -266,6 +288,9 @@ document.querySelectorAll('.copy-button').forEach((button) => {
 });
 
 
+/* -------------------------------------------------------------------------- */
+/* Config                                                                     */
+/* -------------------------------------------------------------------------- */
 initConfig();
 
 async function initConfig() {
@@ -304,6 +329,9 @@ async function initConfig() {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Guide cards                                                                */
+/* -------------------------------------------------------------------------- */
 function toggleGuideCards() {
   const shouldShow = showGuides;
   [stylingCard, selfHostCard].forEach((card) => {
@@ -312,6 +340,9 @@ function toggleGuideCards() {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Cooldown select                                                            */
+/* -------------------------------------------------------------------------- */
 function getSelectedCooldown(selectEl) {
   if (!selectEl) {
     return 'unique';
@@ -323,6 +354,9 @@ function getSelectedCooldown(selectEl) {
   return 'unique';
 }
 
+/* -------------------------------------------------------------------------- */
+/* Error messaging                                                            */
+/* -------------------------------------------------------------------------- */
 function buildCreateCounterErrorMessage(error, status) {
   if (error && typeof error.message === 'string' && error.message.trim()) {
     return error.message.trim();
@@ -344,6 +378,9 @@ function buildCreateCounterErrorMessage(error, status) {
   return 'Failed to create counter. Please try again.';
 }
 
+/* -------------------------------------------------------------------------- */
+/* URL helpers                                                                */
+/* -------------------------------------------------------------------------- */
 function appendPreviewParam(url) {
   try {
     const parsed = new URL(url, window.location.origin);
@@ -354,13 +391,16 @@ function appendPreviewParam(url) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Allowed modes                                                              */
+/* -------------------------------------------------------------------------- */
 function applyAllowedModesToSelect(selectEl) {
   if (!selectEl) return;
   const options = Array.from(selectEl.options);
   let firstAllowed = null;
 
   const throttleLabel = currentThrottleSeconds > 0
-    ? `Every visit (throttle ${currentThrottleSeconds}s)`
+    ? `Every visit (${currentThrottleSeconds}s)`
     : 'Every visit';
 
   options.forEach((option) => {

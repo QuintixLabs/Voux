@@ -4,9 +4,9 @@
   Admin settings page logic: toggles, backups, and API key management.
 */
 
-const STORAGE_KEY = 'vouxAdminAuth';
-const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
-
+/* -------------------------------------------------------------------------- */
+/* DOM references                                                             */
+/* -------------------------------------------------------------------------- */
 const settingsPanel = document.getElementById('settingsPanel');
 const togglePrivate = document.getElementById('togglePrivateMode');
 const toggleGuides = document.getElementById('toggleShowGuides');
@@ -36,6 +36,49 @@ const apiKeysPagination = document.getElementById('apiKeysPagination');
 const apiKeysPrevBtn = document.getElementById('apiKeysPrev');
 const apiKeysNextBtn = document.getElementById('apiKeysNext');
 const apiKeysPageInfo = document.getElementById('apiKeysPageInfo');
+const usersCard = document.getElementById('usersCard');
+const usersList = document.getElementById('usersList');
+const usersFilterSelect = document.getElementById('usersFilter');
+const usersSearchInput = document.getElementById('usersSearch');
+const usersPagination = document.getElementById('usersPagination');
+const usersPrevBtn = document.getElementById('usersPrev');
+const usersNextBtn = document.getElementById('usersNext');
+const usersPageInfo = document.getElementById('usersPageInfo');
+const settingsTabs = document.getElementById('settingsTabs');
+const settingsTabButtons = settingsTabs ? Array.from(settingsTabs.querySelectorAll('.settings-tab')) : [];
+let settingsTabsReady = false;
+const userForm = document.getElementById('userForm');
+const userNameInput = document.getElementById('userName');
+const userDisplayInput = document.getElementById('userDisplay');
+const userRoleSelect = document.getElementById('userRole');
+const userPasswordInput = document.getElementById('userPassword');
+const userStatusLabel = document.getElementById('userStatus');
+const userEditModal = document.getElementById('userEditModal');
+const userEditMessage = document.getElementById('userEditMessage');
+const userEditUsername = document.getElementById('userEditUsername');
+const userEditDisplay = document.getElementById('userEditDisplay');
+const userEditPassword = document.getElementById('userEditPassword');
+const userEditSave = document.getElementById('userEditSave');
+const userEditCancel = document.getElementById('userEditCancel');
+let activeUserEditor = null;
+
+
+/* -------------------------------------------------------------------------- */
+/* Users pager                                                                */
+/* -------------------------------------------------------------------------- */
+const usersPager = {
+  list: [],
+  page: 1,
+  pageSize: 4,
+  filter: 'all'
+};
+const brandingCard = document.getElementById('brandingCard');
+const backupCard = document.getElementById('backupCard');
+const backupDesc = backupCard?.querySelector('.settings-desc');
+
+/* -------------------------------------------------------------------------- */
+/* Defaults                                                                   */
+/* -------------------------------------------------------------------------- */
 const DEFAULT_BRAND_NAME = 'Voux';
 const DEFAULT_HOME_TITLE = 'Voux · Simple Free & Open Source Hit Counter for Blogs and Websites';
 const DEFAULT_THROTTLE_SECONDS = 0;
@@ -44,8 +87,12 @@ let initialBranding = {
   homeTitle: null,
   theme: null
 };
+
+/* -------------------------------------------------------------------------- */
+/* State                                                                      */
+/* -------------------------------------------------------------------------- */
 let backupBusy = false;
-let activeAdminToken = null;
+let activeUser = null;
 const apiKeyPager = {
   list: [],
   page: 1,
@@ -54,8 +101,11 @@ const apiKeyPager = {
 const themeHelper = window.VouxTheme;
 const ALLOWED_THEMES = (themeHelper?.THEMES && themeHelper.THEMES.length ? themeHelper.THEMES : ['default']);
 
-let tokenData = loadStoredToken();
 let statusTimeout = null;
+
+/* -------------------------------------------------------------------------- */
+/* Theme helpers                                                              */
+/* -------------------------------------------------------------------------- */
 
 function applyThemeClass(theme) {
   if (themeHelper?.apply) {
@@ -63,50 +113,129 @@ function applyThemeClass(theme) {
   }
 }
 
-if (!tokenData) {
-  window.location.href = '/dashboard';
-} else {
-  init(tokenData.token);
+/* -------------------------------------------------------------------------- */
+/* Networking                                                                 */
+/* -------------------------------------------------------------------------- */
+function authFetch(url, options = {}) {
+  return fetch(url, {
+    credentials: 'include',
+    ...options,
+    headers: {
+      ...options.headers
+    }
+  });
 }
 
-function init(token) {
-  activeAdminToken = token;
-  fetchSettings(token)
-    .then(({ config }) => {
+/* -------------------------------------------------------------------------- */
+/* Session                                                                    */
+/* -------------------------------------------------------------------------- */
+async function checkSession() {
+  const revealPage = () => {
+    document.documentElement.classList.remove('auth-pending');
+  };
+  const attempt = async () => {
+    const res = await fetch('/api/session', { credentials: 'include', cache: 'no-store' });
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, unauthorized: true };
+    }
+    if (!res.ok) {
+      return { ok: false, unauthorized: false };
+    }
+    const data = await res.json();
+    return { ok: Boolean(data?.user), data };
+  };
+  try {
+    let result = await attempt();
+    if (!result.ok && result.unauthorized) {
+      result = await attempt();
+    }
+    if (!result.ok) {
+      if (result.unauthorized) {
+        window.location.href = '/dashboard';
+        return;
+      }
+      revealPage();
+      showToast('Unable to load settings right now.', 'danger');
+      return;
+    }
+    activeUser = result.data?.user || null;
+    if (!activeUser) {
+      window.location.href = '/dashboard';
+      return;
+    }
+    if (activeUser.isAdmin) {
+      initAdmin();
+    } else {
+      initMember();
+    }
+    revealPage();
+  } catch (_) {
+    revealPage();
+    showToast('Unable to load settings right now.', 'danger');
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Init                                                                       */
+/* -------------------------------------------------------------------------- */
+checkSession();
+
+function initAdmin() {
+  fetchSettings()
+    .then(({ config, usersPageSize }) => {
       populateForm(config);
-      showSettingsCards();
+      if (Number.isFinite(usersPageSize) && usersPageSize > 0) {
+        usersPager.pageSize = usersPageSize;
+      }
+      initSettingsTabs(['settingsPanel', 'brandingCard', 'backupCard', 'apiKeysCard', 'usersCard']);
       setStatus('');
       togglePrivate?.addEventListener('change', () =>
-        handleToggleChange(token, { privateMode: togglePrivate.checked }, togglePrivate.checked ? 'Private instance enabled' : 'Private instance disabled', togglePrivate)
+        handleToggleChange({ privateMode: togglePrivate.checked }, togglePrivate.checked ? 'Private instance enabled' : 'Private instance disabled', togglePrivate)
       );
       toggleGuides?.addEventListener('change', () =>
-        handleToggleChange(token, { showGuides: toggleGuides.checked }, toggleGuides.checked ? 'Guide cards shown' : 'Guide cards hidden', toggleGuides)
+        handleToggleChange({ showGuides: toggleGuides.checked }, toggleGuides.checked ? 'Guide cards shown' : 'Guide cards hidden', toggleGuides)
       );
-      allowModeUniqueInput?.addEventListener('change', (event) => handleAllowedModesChange(token, event.target));
-      allowModeUnlimitedInput?.addEventListener('change', (event) => handleAllowedModesChange(token, event.target));
-      setupBackupControls(token);
-      setupApiKeys(token);
-      setupBrandingForm(token);
-      throttleSelect?.addEventListener('change', () => handleThrottleChange(token));
-      purgeInactiveButton?.addEventListener('click', () => handlePurgeInactive(token));
+      allowModeUniqueInput?.addEventListener('change', (event) => handleAllowedModesChange(event.target));
+      allowModeUnlimitedInput?.addEventListener('change', (event) => handleAllowedModesChange(event.target));
+      setupBackupControls();
+      setupApiKeys();
+      setupUsers();
+      setupBrandingForm();
+      throttleSelect?.addEventListener('change', () => handleThrottleChange());
+      purgeInactiveButton?.addEventListener('click', () => handlePurgeInactive());
+      document.body.classList.remove('settings-footer-hidden');
     })
     .catch(() => {
-      clearStoredToken();
-      window.location.href = '/dashboard';
+      showToast('Unable to load settings right now.', 'danger');
+      document.body.classList.remove('settings-footer-hidden');
     });
 }
 
-async function fetchSettings(token) {
-  const res = await fetch('/api/settings', {
-    headers: { 'x-voux-admin': token }
-  });
+function initMember() {
+  initSettingsTabs(['backupCard']);
+  if (backupDesc) {
+    backupDesc.textContent = 'Download your counters as JSON or restore them later.';
+  }
+  setupBackupControls();
+  document.body.classList.remove('settings-footer-hidden');
+}
+
+/* -------------------------------------------------------------------------- */
+/* Settings load                                                              */
+/* -------------------------------------------------------------------------- */
+async function fetchSettings() {
+  const res = await authFetch('/api/settings');
   if (!res.ok) throw new Error('Unauthorized');
   const data = await res.json();
   return {
-    config: data.config || {}
+    config: data.config || {},
+    usersPageSize: Number(data.usersPageSize)
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Settings form                                                              */
+/* -------------------------------------------------------------------------- */
 function populateForm(config) {
   if (togglePrivate) togglePrivate.checked = Boolean(config.privateMode);
   if (toggleGuides) toggleGuides.checked = Boolean(config.showGuides);
@@ -148,38 +277,388 @@ function populateForm(config) {
   setBrandingDirty(false);
 }
 
-function setupBackupControls(token) {
-  downloadBackupBtn?.addEventListener('click', () => handleBackupDownload(token));
-  restoreFileInput?.addEventListener('change', (event) => handleBackupRestore(token, event));
+/* -------------------------------------------------------------------------- */
+/* Setup helpers                                                              */
+/* -------------------------------------------------------------------------- */
+function setupBackupControls() {
+  downloadBackupBtn?.addEventListener('click', () => handleBackupDownload());
+  restoreFileInput?.addEventListener('change', (event) => handleBackupRestore(event));
 }
 
-function setupApiKeys(token) {
+function setupApiKeys() {
   if (!apiKeysCard) return;
-  loadApiKeys(token);
-  apiKeyForm?.addEventListener('submit', (event) => handleApiKeyCreate(token, event));
+  loadApiKeys();
+  apiKeyForm?.addEventListener('submit', (event) => handleApiKeyCreate(event));
   apiKeyScopeSelect?.addEventListener('change', updateApiKeyScopeState);
   apiKeysPrevBtn?.addEventListener('click', () => changeApiKeyPage(-1));
   apiKeysNextBtn?.addEventListener('click', () => changeApiKeyPage(1));
   updateApiKeyScopeState();
 }
 
-function setupBrandingForm(token) {
+function setupBrandingForm() {
   if (!brandingForm) return;
-  brandingForm.addEventListener('submit', (event) => handleBrandingSubmit(token, event));
+  brandingForm.addEventListener('submit', (event) => handleBrandingSubmit(event));
   themeSelect?.addEventListener('change', handleThemePreview);
   brandNameInputField?.addEventListener('input', checkBrandingDirty);
   homeTitleInputField?.addEventListener('input', checkBrandingDirty);
   resetBrandingBtn?.addEventListener('click', handleBrandingReset);
 }
-async function handleToggleChange(token, patch, successMessage = 'Updated', control) {
+
+function setupUsers() {
+  if (!usersCard) return;
+  loadUsers();
+  userForm?.addEventListener('submit', handleUserCreate);
+  usersFilterSelect?.addEventListener('change', () => {
+    usersPager.filter = usersFilterSelect.value || 'all';
+    usersPager.page = 1;
+    renderUsersPage();
+  });
+  usersSearchInput?.addEventListener('input', () => {
+    usersPager.page = 1;
+    renderUsersPage();
+  });
+  usersPrevBtn?.addEventListener('click', () => {
+    if (usersPager.page > 1) {
+      usersPager.page -= 1;
+      renderUsersPage();
+    }
+  });
+  usersNextBtn?.addEventListener('click', () => {
+    const totalPages = getUsersTotalPages();
+    if (usersPager.page < totalPages) {
+      usersPager.page += 1;
+      renderUsersPage();
+    }
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Users                                                                      */
+/* -------------------------------------------------------------------------- */
+async function loadUsers(silent = false) {
+  if (!usersList) return;
+  if (!silent) {
+    usersList.innerHTML = '<p class="hint">Loading users...</p>';
+  }
+  try {
+    const res = await authFetch('/api/users');
+    if (!res.ok) throw new Error('Failed to load users');
+    const data = await res.json();
+    const users = Array.isArray(data.users) ? data.users : [];
+    usersPager.list = users;
+    renderUsersPage();
+  } catch (error) {
+    if (!silent) {
+      usersList.innerHTML = '<p class="hint">Unable to load users.</p>';
+    }
+    console.warn(error);
+  }
+}
+
+function getFilteredUsers() {
+  const query = (usersSearchInput?.value || '').trim().toLowerCase();
+  const baseList = usersPager.list;
+  let filtered = baseList;
+  if (usersPager.filter === 'owner') {
+    filtered = filtered.filter((user) => user.isOwner);
+  }
+  if (usersPager.filter === 'members') {
+    filtered = filtered.filter((user) => user.role !== 'admin');
+  }
+  if (usersPager.filter === 'admins') {
+    filtered = filtered.filter((user) => user.role === 'admin');
+  }
+  if (query) {
+    filtered = filtered.filter((user) => {
+      const name = `${user.displayName || ''} ${user.username || ''}`.toLowerCase();
+      return name.includes(query);
+    });
+  }
+  return filtered;
+}
+
+function getUsersTotalPages() {
+  const total = getFilteredUsers().length;
+  return Math.max(1, Math.ceil(total / usersPager.pageSize));
+}
+
+function renderUsersPage() {
+  const filtered = getFilteredUsers();
+  const query = (usersSearchInput?.value || '').trim();
+  const totalPages = getUsersTotalPages();
+  const page = Math.min(usersPager.page, totalPages);
+  usersPager.page = page;
+  const start = (page - 1) * usersPager.pageSize;
+  const slice = filtered.slice(start, start + usersPager.pageSize);
+  renderUsers(slice, query);
+  if (usersPageInfo) {
+    usersPageInfo.textContent = `Page ${page} / ${totalPages}`;
+  }
+  if (usersPagination) {
+    usersPagination.classList.toggle('hidden', totalPages <= 1);
+  }
+  if (usersPrevBtn) usersPrevBtn.disabled = page <= 1;
+  if (usersNextBtn) usersNextBtn.disabled = page >= totalPages;
+}
+
+function renderUsers(users, query = '') {
+  if (!usersList) return;
+  usersList.innerHTML = '';
+  if (!users.length) {
+    usersList.innerHTML = query
+      ? `<p class="hint">No users found for "${query}".</p>`
+      : '<p class="hint">No users yet.</p>';
+    return;
+  }
+  users.forEach((user) => {
+    const row = document.createElement('div');
+    row.className = 'user-row';
+    const meta = document.createElement('div');
+    meta.className = 'user-row__meta';
+    const avatar = document.createElement('div');
+    avatar.className = 'user-row__avatar';
+    if (user.avatarUrl) {
+      const img = document.createElement('img');
+      img.src = user.avatarUrl;
+      img.alt = '';
+      avatar.innerHTML = '';
+      avatar.appendChild(img);
+    } else {
+      const name = (user.displayName || user.username || '?').trim();
+      avatar.textContent = name.charAt(0).toUpperCase() || '?';
+    }
+    const title = document.createElement('strong');
+    title.textContent = user.displayName ? `${user.displayName} (${user.username})` : user.username;
+    const subtitle = document.createElement('span');
+    subtitle.className = 'hint';
+    const ownerLabel = user.isOwner ? 'Owner' : null;
+    subtitle.textContent = ownerLabel || (user.role === 'admin' ? 'Admin' : 'Member');
+    meta.append(avatar, title, subtitle);
+
+    const actions = document.createElement('div');
+    actions.className = 'user-row__actions';
+    if (activeUser?.username === user.username) {
+      const badge = document.createElement('span');
+      badge.className = 'user-row__badge';
+      badge.textContent = 'Yourself';
+      actions.appendChild(badge);
+    }
+    const requesterIsOwner = Boolean(activeUser?.isOwner);
+    const canEditRole = requesterIsOwner && activeUser?.id !== user.id;
+    if (canEditRole) {
+      const roleSelect = document.createElement('select');
+      roleSelect.innerHTML = `
+        <option value="user">Member</option>
+        <option value="admin">Admin</option>
+      `;
+      roleSelect.value = user.role === 'admin' ? 'admin' : 'user';
+      roleSelect.addEventListener('change', () => handleUserRoleChange(user, roleSelect));
+      actions.appendChild(roleSelect);
+    }
+
+    if ((user.role !== 'admin' || requesterIsOwner) && activeUser?.id !== user.id) {
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'ghost';
+      editBtn.innerHTML = '<i class="ri-pencil-line"></i>';
+      editBtn.addEventListener('click', () => openUserEditor(user));
+      actions.appendChild(editBtn);
+    }
+
+    if (activeUser?.id !== user.id && (user.role !== 'admin' || requesterIsOwner)) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'danger ghost';
+      deleteBtn.innerHTML = '<i class="ri-delete-bin-line"></i>';
+      deleteBtn.addEventListener('click', () => handleUserDelete(user));
+      actions.appendChild(deleteBtn);
+    }
+
+    row.append(meta, actions);
+    usersList.appendChild(row);
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* User actions                                                               */
+/* -------------------------------------------------------------------------- */
+async function handleUserCreate(event) {
+  event.preventDefault();
+  if (!userNameInput || !userPasswordInput || !userRoleSelect) return;
+  const username = userNameInput.value.trim();
+  const password = userPasswordInput.value;
+  const role = userRoleSelect.value === 'admin' ? 'admin' : 'user';
+  const displayName = userDisplayInput?.value?.trim() || '';
+  if (!username || !password) {
+    showToast('Username and password are required.', 'danger');
+    return;
+  }
+  if (password.length < 6) {
+    showToast('Password must be at least 6 characters.', 'danger');
+    return;
+  }
+  try {
+    setUserStatus('');
+    const res = await authFetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, role, displayName })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to create user');
+    }
+    userForm.reset();
+    showToast('User created');
+    loadUsers(true);
+  } catch (error) {
+    const message = error.message === 'username_exists'
+      ? 'That username is already taken.'
+      : error.message || 'Failed to create user.';
+    showToast(message, 'danger');
+  }
+}
+
+async function handleUserRoleChange(user, roleSelect) {
+  if (!user?.id || !roleSelect) return;
+  const nextRole = roleSelect.value === 'admin' ? 'admin' : 'user';
+  const previousRole = user.role === 'admin' ? 'admin' : 'user';
+  if (nextRole === previousRole) return;
+  try {
+    const res = await authFetch(`/api/users/${user.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: nextRole })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update role');
+    }
+    const roleLabel = nextRole === 'admin' ? 'Admin' : 'Member';
+    const userLabel = user.displayName || user.username || 'user';
+    showToast(`Role updated: ${userLabel} → ${roleLabel}`);
+    loadUsers(true);
+  } catch (error) {
+    roleSelect.value = previousRole;
+    const message = error.message === 'last_admin'
+      ? 'You need at least one admin on this instance.'
+      : error.message === 'admin_edit_forbidden'
+        ? 'Admin accounts cannot be edited.'
+        : error.message === 'owner_locked'
+          ? 'The owner account cannot be edited.'
+          : error.message || 'Failed to update role';
+    await showAlert(normalizeAuthMessage(error, message));
+  }
+}
+
+function openUserEditor(user) {
+  if (!userEditModal) return;
+  activeUserEditor = user;
+  if (userEditMessage) {
+    const label = user.displayName ? `${user.displayName} (${user.username})` : user.username;
+    userEditMessage.textContent = `Editing ${label}.`;
+  }
+  if (userEditUsername) userEditUsername.value = user.username || '';
+  if (userEditDisplay) userEditDisplay.value = user.displayName || '';
+  if (userEditPassword) userEditPassword.value = '';
+  userEditModal.classList.add('modal-overlay--open');
+  userEditModal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+  userEditUsername?.focus();
+}
+
+function closeUserEditor() {
+  if (!userEditModal) return;
+  userEditModal.classList.remove('modal-overlay--open');
+  userEditModal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+  activeUserEditor = null;
+}
+
+userEditCancel?.addEventListener('click', closeUserEditor);
+userEditModal?.addEventListener('click', (event) => {
+  if (event.target === userEditModal) closeUserEditor();
+});
+
+userEditSave?.addEventListener('click', async () => {
+  if (!activeUserEditor) return;
+  const username = userEditUsername?.value?.trim().toLowerCase() || '';
+  const displayName = userEditDisplay?.value?.trim() || '';
+  const password = userEditPassword?.value || '';
+  if (!username) {
+    await showAlert('Username is required.');
+    return;
+  }
+  if (password && password.length < 6) {
+    await showAlert('Password must be at least 6 characters.');
+    return;
+  }
+  const payload = { username, displayName };
+  if (password) payload.password = password;
+  try {
+    const res = await authFetch(`/api/users/${activeUserEditor.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update user');
+    }
+    showToast('User updated');
+    closeUserEditor();
+    loadUsers(true);
+  } catch (error) {
+    const message = error.message === 'username_exists'
+      ? 'That username is already taken.'
+      : error.message === 'owner_locked'
+        ? 'The owner account cannot be edited.'
+        : error.message === 'admin_edit_forbidden'
+          ? 'Admin accounts cannot be edited.'
+          : normalizeAuthMessage(error, 'Failed to update user');
+    await showAlert(normalizeAuthMessage(error, message));
+  }
+});
+
+async function handleUserDelete(user) {
+  if (!user?.id) return;
+  const confirmed = await modalConfirm({
+    title: 'Delete user?',
+    message: `Remove "${user.username}" from this instance? Their counters will become unowned.`,
+    confirmLabel: 'Delete user',
+    variant: 'danger'
+  });
+  if (!confirmed) return;
+  try {
+    const res = await authFetch(`/api/users/${user.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to delete user');
+    }
+    showToast('User deleted');
+    loadUsers(true);
+  } catch (error) {
+    await showAlert(normalizeAuthMessage(error, 'Failed to delete user'));
+  }
+}
+
+function setUserStatus(message) {
+  if (userStatusLabel) {
+    userStatusLabel.textContent = message || '';
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Toggles + allowed modes                                                    */
+/* -------------------------------------------------------------------------- */
+async function handleToggleChange(patch, successMessage = 'Updated', control) {
   try {
     setStatus('');
     if (control) control.disabled = true;
-    const res = await fetch('/api/settings', {
+    const res = await authFetch('/api/settings', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-voux-admin': token
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(patch)
     });
@@ -189,7 +668,7 @@ async function handleToggleChange(token, patch, successMessage = 'Updated', cont
     showToast(successMessage);
   } catch (error) {
     setStatus('Error saving settings');
-    await showAlert(error.message || 'Failed to save settings');
+    await showAlert(normalizeAuthMessage(error, 'Failed to save settings'));
     resetStatusAfterDelay();
   } finally {
     if (control) control.disabled = false;
@@ -207,7 +686,7 @@ function resetStatusAfterDelay() {
   }, 1200);
 }
 
-function handleAllowedModesChange(token, sourceInput) {
+function handleAllowedModesChange(sourceInput) {
   const allowed = {
     unique: allowModeUniqueInput?.checked !== false,
     unlimited: allowModeUnlimitedInput?.checked !== false
@@ -217,31 +696,12 @@ function handleAllowedModesChange(token, sourceInput) {
     showToast('Keep at least one mode enabled.', 'danger');
     return;
   }
-  handleToggleChange(token, { allowedModes: allowed }, 'Allowed modes updated', sourceInput);
+  handleToggleChange({ allowedModes: allowed }, 'Allowed modes updated', sourceInput);
 }
 
-function loadStoredToken() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed.token || !parsed.expiresAt || parsed.expiresAt < Date.now()) {
-      localStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
-    return parsed;
-  } catch (error) {
-    console.warn('Failed to read stored token', error);
-    return null;
-  }
-}
-
-function clearStoredToken() {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (_) {}
-}
-
+/* -------------------------------------------------------------------------- */
+/* Modal helpers                                                              */
+/* -------------------------------------------------------------------------- */
 function modalApi() {
   return window.VouxModal;
 }
@@ -284,6 +744,13 @@ async function showAlert(message, options = {}) {
   }
 }
 
+function normalizeAuthMessage(error, fallback) {
+  if (window.VouxErrors?.normalizeAuthError) {
+    return window.VouxErrors.normalizeAuthError(error, fallback);
+  }
+  return error?.message || fallback;
+}
+
 function modalConfirm(options) {
   if (modalApi()?.confirm) {
     return modalApi().confirm(options);
@@ -300,7 +767,10 @@ function modalConfirmWithInput(options) {
   return Promise.resolve(entered && entered.trim() === (options?.inputMatch || 'DELETE'));
 }
 
-async function handleBackupDownload(token) {
+/* -------------------------------------------------------------------------- */
+/* Backup                                                                     */
+/* -------------------------------------------------------------------------- */
+async function handleBackupDownload() {
   if (backupBusy) {
     showToast('Finish the current backup task first', 'danger');
     return;
@@ -309,9 +779,7 @@ async function handleBackupDownload(token) {
     backupBusy = true;
     if (downloadBackupBtn) downloadBackupBtn.disabled = true;
     setBackupStatus('');
-    const res = await fetch('/api/counters/export', {
-      headers: { 'x-voux-admin': token }
-    });
+    const res = await authFetch('/api/counters/export');
     if (!res.ok) throw new Error('Failed to download backup');
     const data = await res.json();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -329,14 +797,14 @@ async function handleBackupDownload(token) {
   } catch (error) {
     setBackupStatus('');
     showToast('Backup download failed', 'danger');
-    await showAlert(error.message || 'Failed to download backup');
+    await showAlert(normalizeAuthMessage(error, 'Failed to download backup'));
   } finally {
     backupBusy = false;
     if (downloadBackupBtn) downloadBackupBtn.disabled = false;
   }
 }
 
-async function handleBackupRestore(token, event) {
+async function handleBackupRestore(event) {
   const file = event.target.files?.[0];
   if (!file) return;
   if (backupBusy) {
@@ -360,10 +828,9 @@ async function handleBackupRestore(token, event) {
     }
     if (!payload) throw new Error('Invalid backup file.');
     const confirmed = await modalConfirm({
-      title: 'Replace counters?',
-      message: 'Restoring a backup replaces every existing counter. Continue?',
-      confirmLabel: 'Replace counters',
-      variant: 'danger'
+      title: 'Restore backup?',
+      message: 'This will merge the backup counters into your current list.',
+      confirmLabel: 'Restore backup'
     });
     if (!confirmed) {
       event.target.value = '';
@@ -375,15 +842,14 @@ async function handleBackupRestore(token, event) {
     backupBusy = true;
     if (downloadBackupBtn) downloadBackupBtn.disabled = true;
     if (restoreFileInput) restoreFileInput.disabled = true;
-    const body = { counters: payload, replace: true };
+    const body = { counters: payload, replace: false };
     if (dailyPayload.length) {
       body.daily = dailyPayload;
     }
-    const res = await fetch('/api/counters/import', {
+    const res = await authFetch('/api/counters/import', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-voux-admin': token
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
     });
@@ -400,7 +866,12 @@ async function handleBackupRestore(token, event) {
   } catch (error) {
     setBackupStatus('');
     showToast('Restore failed', 'danger');
-    await showAlert(error.message || 'Failed to restore backup');
+    const message = error.message === 'counter_id_taken'
+      ? 'One or more counter IDs already exist. Remove them or edit the backup file.'
+      : error.message === 'backup_not_owned'
+      ? 'This backup includes counters owned by another user.'
+      : error.message || 'Failed to restore backup';
+    await showAlert(normalizeAuthMessage(error, message));
   } finally {
     event.target.value = '';
     backupBusy = false;
@@ -415,16 +886,18 @@ function setBackupStatus(message) {
   }
 }
 
-async function handleThrottleChange(token) {
-  if (!token || !throttleSelect) return;
+/* -------------------------------------------------------------------------- */
+/* Throttle + cleanup                                                         */
+/* -------------------------------------------------------------------------- */
+async function handleThrottleChange() {
+  if (!throttleSelect) return;
   const value = Math.max(0, Number(throttleSelect.value) || DEFAULT_THROTTLE_SECONDS);
   try {
     setStatus('');
-    const res = await fetch('/api/settings', {
+    const res = await authFetch('/api/settings', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-voux-admin': token
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ unlimitedThrottleSeconds: value })
     });
@@ -441,12 +914,12 @@ async function handleThrottleChange(token) {
     );
   } catch (error) {
     setStatus('');
-    await showAlert(error.message || 'Failed to update throttle');
+    await showAlert(normalizeAuthMessage(error, 'Failed to update throttle'));
   }
 }
 
-async function handlePurgeInactive(token) {
-  if (!token || !purgeInactiveButton) {
+async function handlePurgeInactive() {
+  if (!purgeInactiveButton) {
     await showAlert('Log in again to manage counters.');
     return;
   }
@@ -474,11 +947,10 @@ async function handlePurgeInactive(token) {
   if (!confirmedInput) return;
   purgeInactiveButton.disabled = true;
   try {
-    const res = await fetch('/api/counters/purge-inactive', {
+    const res = await authFetch('/api/counters/purge-inactive', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-voux-admin': token
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ days: 30 })
     });
@@ -490,12 +962,15 @@ async function handlePurgeInactive(token) {
     const removed = payload.removed || 0;
     showToast(`Deleted ${removed} inactive ${removed === 1 ? 'counter' : 'counters'}`);
   } catch (error) {
-    await showAlert(error.message || 'Failed to delete inactive counters');
+    await showAlert(normalizeAuthMessage(error, 'Failed to delete inactive counters'));
   } finally {
     purgeInactiveButton.disabled = false;
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Formatting                                                                 */
+/* -------------------------------------------------------------------------- */
 function formatTimestamp(value) {
   if (!value) return 'never';
   try {
@@ -516,13 +991,14 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-async function loadApiKeys(token) {
+/* -------------------------------------------------------------------------- */
+/* API keys                                                                   */
+/* -------------------------------------------------------------------------- */
+async function loadApiKeys() {
   if (!apiKeysList) return;
   try {
     apiKeysList.innerHTML = '<p class="hint">Loading keys...</p>';
-    const res = await fetch('/api/api-keys', {
-      headers: { 'x-voux-admin': token }
-    });
+    const res = await authFetch('/api/api-keys');
     if (!res.ok) throw new Error('Failed to load API keys');
     const data = await res.json();
     apiKeyPager.list = Array.isArray(data.keys) ? data.keys : [];
@@ -590,7 +1066,7 @@ function renderApiKeys() {
   }
 }
 
-async function handleApiKeyCreate(token, event) {
+async function handleApiKeyCreate(event) {
   event.preventDefault();
   if (!apiKeyNameInput || !apiKeyScopeSelect) return;
   const name = apiKeyNameInput.value.trim();
@@ -605,11 +1081,10 @@ async function handleApiKeyCreate(token, event) {
   }
   try {
     setApiKeyStatus('');
-    const res = await fetch('/api/api-keys', {
+    const res = await authFetch('/api/api-keys', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-voux-admin': token
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ name, scope, counters: allowed })
     });
@@ -628,10 +1103,10 @@ async function handleApiKeyCreate(token, event) {
       apiKeyScopeSelect.value = previousScope;
     }
     updateApiKeyScopeState();
-    loadApiKeys(token);
+    loadApiKeys();
   } catch (error) {
     setApiKeyStatus('');
-    await showAlert(error.message || 'Failed to create API key');
+    await showAlert(normalizeAuthMessage(error, 'Failed to create API key'));
   }
 }
 
@@ -644,24 +1119,18 @@ async function handleApiKeyDelete(id) {
     variant: 'danger'
   });
   if (!confirmed) return;
-  const token = activeAdminToken;
-  if (!token) {
-    await showAlert('Log in again to manage API keys.');
-    return;
-  }
   try {
-    const res = await fetch(`/api/api-keys/${id}`, {
-      method: 'DELETE',
-      headers: { 'x-voux-admin': token }
+    const res = await authFetch(`/api/api-keys/${id}`, {
+      method: 'DELETE'
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to delete API key');
     }
     showToast('API key deleted');
-    loadApiKeys(token);
+    loadApiKeys();
   } catch (error) {
-    await showAlert(error.message || 'Failed to delete API key');
+    await showAlert(normalizeAuthMessage(error, 'Failed to delete API key'));
   }
 }
 
@@ -681,12 +1150,11 @@ function changeApiKeyPage(delta) {
   renderApiKeys();
 }
 
-async function handleBrandingSubmit(token, event) {
+/* -------------------------------------------------------------------------- */
+/* Branding                                                                   */
+/* -------------------------------------------------------------------------- */
+async function handleBrandingSubmit(event) {
   event.preventDefault();
-  if (!token) {
-    await showAlert('Log in again to update branding.');
-    return;
-  }
   const payload = {
     brandName:
       (brandNameInputField?.value?.trim() || DEFAULT_BRAND_NAME).slice(0, 80),
@@ -698,11 +1166,10 @@ async function handleBrandingSubmit(token, event) {
   if (homeTitleInputField) homeTitleInputField.value = payload.homeTitle;
   try {
     setBrandingStatus('');
-    const res = await fetch('/api/settings', {
+    const res = await authFetch('/api/settings', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-voux-admin': token
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
@@ -722,7 +1189,7 @@ async function handleBrandingSubmit(token, event) {
     setBrandingDirty(false);
   } catch (error) {
     setBrandingStatus('');
-    await showAlert(error.message || 'Failed to update branding');
+    await showAlert(normalizeAuthMessage(error, 'Failed to update branding'));
   }
 }
 
@@ -780,10 +1247,6 @@ async function handleBrandingReset() {
     variant: 'danger'
   });
   if (!confirmed) return;
-  if (!activeAdminToken) {
-    await showAlert('Log in again to update branding.');
-    return;
-  }
   const defaults = {
     brandName: DEFAULT_BRAND_NAME,
     homeTitle: DEFAULT_HOME_TITLE,
@@ -801,11 +1264,10 @@ async function handleBrandingReset() {
   }
   try {
     setBrandingStatus('');
-    const res = await fetch('/api/settings', {
+    const res = await authFetch('/api/settings', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-voux-admin': activeAdminToken
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(defaults)
     });
@@ -818,15 +1280,69 @@ async function handleBrandingReset() {
     setBrandingDirty(false);
     showToast('Branding reset to defaults');
   } catch (error) {
-    await showAlert(error.message || 'Failed to reset branding');
+    await showAlert(normalizeAuthMessage(error, 'Failed to reset branding'));
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Settings tabs                                                              */
+/* -------------------------------------------------------------------------- */
 function showSettingsCards() {
   document.querySelectorAll('.settings-card').forEach((card) => {
+    card.classList.add('hidden');
+  });
+  const cards = Array.isArray(arguments[0]) ? arguments[0] : Array.from(document.querySelectorAll('.settings-card'));
+  cards.filter(Boolean).forEach((card) => {
     card.classList.remove('hidden');
   });
 }
 
+function initSettingsTabs(allowedIds = []) {
+  if (!settingsTabs || !settingsTabButtons.length) {
+    showSettingsCards();
+    return;
+  }
+  const allowedSet = new Set(allowedIds);
+  settingsTabButtons.forEach((button) => {
+    const targetId = button.dataset.target;
+    const allowed = targetId === 'all' || allowedSet.has(targetId);
+    button.classList.toggle('hidden', !allowed);
+  });
+  const firstVisible = settingsTabButtons.find((button) => !button.classList.contains('hidden'));
+  if (firstVisible) {
+    activateSettingsTab(firstVisible.dataset.target, allowedIds);
+  } else {
+    showSettingsCards();
+  }
+  if (settingsTabsReady) return;
+  settingsTabsReady = true;
+  settingsTabs.addEventListener('click', (event) => {
+    const button = event.target.closest('.settings-tab');
+    if (!button || button.classList.contains('hidden')) return;
+    const targetId = button.dataset.target;
+    if (targetId) {
+      activateSettingsTab(targetId, allowedIds);
+    }
+  });
+}
+
+function activateSettingsTab(targetId, allowedIds = []) {
+  if (!targetId) return;
+  if (targetId === 'all') {
+    const cards = allowedIds.map((id) => document.getElementById(id)).filter(Boolean);
+    showSettingsCards(cards);
+  } else {
+    const targetCard = document.getElementById(targetId);
+    showSettingsCards([targetCard]);
+  }
+  settingsTabButtons.forEach((button) => {
+    button.classList.toggle('settings-tab--active', button.dataset.target === targetId);
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Hint tooltips                                                              */
+/* -------------------------------------------------------------------------- */
 // toggle hint tooltips
 (function(){
   const icons=document.querySelectorAll('.hint-icon[data-tooltip]');

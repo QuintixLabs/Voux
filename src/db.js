@@ -4,12 +4,18 @@
   Database access for counters, hits, daily activity, tags, and API keys.
 */
 
+/* ========================================================================== */
+/* Dependencies                                                               */
+/* ========================================================================== */
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
-const { filterTagIds } = require('./configStore');
+const { listTagCatalog: listLegacyTagCatalog } = require('./configStore');
 
+/* ========================================================================== */
+/* Database setup                                                             */
+/* ========================================================================== */
 const DATA_DIR = path.resolve(__dirname, '..', 'data');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -22,6 +28,9 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 let unlimitedThrottleMs = 0;
 
+/* ========================================================================== */
+/* Schema                                                                     */
+/* ========================================================================== */
 db.exec(`
   CREATE TABLE IF NOT EXISTS counters (
     id TEXT PRIMARY KEY,
@@ -30,7 +39,8 @@ db.exec(`
     note TEXT,
     value INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
-    count_mode TEXT NOT NULL DEFAULT 'unique'
+    count_mode TEXT NOT NULL DEFAULT 'unique',
+    owner_id TEXT
   );
 
   CREATE TABLE IF NOT EXISTS hits (
@@ -62,6 +72,27 @@ db.exec(`
     disabled INTEGER NOT NULL DEFAULT 0
   );
 
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user',
+    display_name TEXT,
+    avatar_url TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    last_login_at INTEGER
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    token_hash TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
   CREATE TABLE IF NOT EXISTS counter_tags (
     counter_id TEXT NOT NULL,
     tag_id TEXT NOT NULL,
@@ -70,20 +101,47 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_counter_tags_tag ON counter_tags(tag_id);
+
+  CREATE TABLE IF NOT EXISTS tags (
+    id TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    PRIMARY KEY (id, owner_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_tags_owner ON tags(owner_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_owner_name ON tags(owner_id, name);
 `);
 
-const baseSelectFields = 'id, label, theme, note, value, created_at, count_mode';
+/* ========================================================================== */
+/* Migrations + indexes                                                       */
+/* ========================================================================== */
+const countersTableInfo = db.prepare('PRAGMA table_info(counters)').all();
+const hasOwnerIdColumn = countersTableInfo.some((col) => col.name === 'owner_id');
+if (!hasOwnerIdColumn) {
+  db.exec('ALTER TABLE counters ADD COLUMN owner_id TEXT');
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_counters_owner ON counters(owner_id)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash)');
+
+/* ========================================================================== */
+/* Prepared statements                                                       */
+/* ========================================================================== */
+const baseSelectFields = 'id, label, theme, note, value, created_at, count_mode, owner_id';
 
 const listCountersStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters ORDER BY created_at DESC`);
+const listCountersByOwnerStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters WHERE owner_id = ? ORDER BY created_at DESC`);
 const getCounterStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters WHERE id = ?`);
 const getLastHitStmt = db.prepare('SELECT last_hit FROM hits WHERE counter_id = ? ORDER BY last_hit DESC LIMIT 1');
 const countHitsSinceStmt = db.prepare('SELECT COUNT(*) as total FROM hits WHERE counter_id = ? AND last_hit >= ?');
 const insertCounterStmt = db.prepare(
-  'INSERT INTO counters (id, label, theme, note, value, created_at, count_mode) VALUES (@id, @label, @theme, @note, @value, @created_at, @count_mode)'
+  'INSERT INTO counters (id, label, theme, note, value, created_at, count_mode, owner_id) VALUES (@id, @label, @theme, @note, @value, @created_at, @count_mode, @owner_id)'
 );
 const upsertCounterStmt = db.prepare(
-  'INSERT INTO counters (id, label, theme, note, value, created_at, count_mode) VALUES (@id, @label, @theme, @note, @value, @created_at, @count_mode) '
-    + 'ON CONFLICT(id) DO UPDATE SET label=excluded.label, theme=excluded.theme, note=excluded.note, value=excluded.value, created_at=excluded.created_at, count_mode=excluded.count_mode'
+  'INSERT INTO counters (id, label, theme, note, value, created_at, count_mode, owner_id) VALUES (@id, @label, @theme, @note, @value, @created_at, @count_mode, @owner_id) '
+    + 'ON CONFLICT(id) DO UPDATE SET label=excluded.label, theme=excluded.theme, note=excluded.note, value=excluded.value, created_at=excluded.created_at, count_mode=excluded.count_mode, owner_id=excluded.owner_id'
 );
 const incrementCounterStmt = db.prepare('UPDATE counters SET value = value + 1 WHERE id = ?');
 const getHitStmt = db.prepare('SELECT last_hit FROM hits WHERE counter_id = ? AND ip = ?');
@@ -110,18 +168,28 @@ const getDailyTrendStmt = db.prepare(`
   ORDER BY day DESC
   LIMIT ?
 `);
+/* -- counters: cleanup + delete ------------------------------------------- */
 const pruneHitsStmt = db.prepare('DELETE FROM hits WHERE last_hit < ?');
 const clearHitsStmt = db.prepare('DELETE FROM hits');
 const clearDailyStmt = db.prepare('DELETE FROM counter_daily');
 const deleteCounterStmt = db.prepare('DELETE FROM counters WHERE id = ?');
-const updateCounterValueStmt = db.prepare('UPDATE counters SET value = ? WHERE id = ?');
-const updateCounterMetaStmt = db.prepare('UPDATE counters SET label = @label, value = @value, note = @note WHERE id = @id');
-const countCountersStmt = db.prepare('SELECT COUNT(*) as total FROM counters');
 const deleteAllCountersStmt = db.prepare('DELETE FROM counters');
 const deleteCountersByModeStmt = {
   unique: db.prepare("DELETE FROM counters WHERE count_mode <> 'unlimited'"),
   unlimited: db.prepare("DELETE FROM counters WHERE count_mode = 'unlimited'")
 };
+const deleteCountersByOwnerStmt = db.prepare('DELETE FROM counters WHERE owner_id = ?');
+const deleteCountersByOwnerAndModeStmt = {
+  unique: db.prepare("DELETE FROM counters WHERE owner_id = ? AND count_mode <> 'unlimited'"),
+  unlimited: db.prepare("DELETE FROM counters WHERE owner_id = ? AND count_mode = 'unlimited'")
+};
+
+/* -- counters: updates + counts ------------------------------------------- */
+const updateCounterValueStmt = db.prepare('UPDATE counters SET value = ? WHERE id = ?');
+const updateCounterMetaStmt = db.prepare('UPDATE counters SET label = @label, value = @value, note = @note WHERE id = @id');
+const countCountersStmt = db.prepare('SELECT COUNT(*) as total FROM counters');
+
+/* -- api keys -------------------------------------------------------------- */
 const insertApiKeyStmt = db.prepare(`
   INSERT INTO api_keys (id, name, token_hash, scope, allowed_counters, created_at, last_used_at, disabled)
   VALUES (@id, @name, @token_hash, @scope, @allowed_counters, @created_at, NULL, 0)
@@ -130,11 +198,94 @@ const listApiKeysStmt = db.prepare('SELECT id, name, scope, allowed_counters, cr
 const deleteApiKeyStmt = db.prepare('DELETE FROM api_keys WHERE id = ?');
 const selectApiKeyByHashStmt = db.prepare('SELECT id, name, scope, allowed_counters, created_at, last_used_at, disabled FROM api_keys WHERE token_hash = ? AND disabled = 0');
 const updateApiKeyUsageStmt = db.prepare('UPDATE api_keys SET last_used_at = ? WHERE id = ?');
+
+/* -- tags --------------------------------------------------------------- */
 const insertCounterTagStmt = db.prepare('INSERT OR IGNORE INTO counter_tags (counter_id, tag_id) VALUES (?, ?)');
 const deleteCounterTagsStmt = db.prepare('DELETE FROM counter_tags WHERE counter_id = ?');
 const deleteTagsByTagStmt = db.prepare('DELETE FROM counter_tags WHERE tag_id = ?');
 
-function buildCounterQuery({ search, mode, tags, limit, offset, count = false, sort = 'newest', inactiveBefore = null }) {
+/* -- tag catalog ---------------------------------------------------------- */
+const listTagsByOwnerStmt = db.prepare('SELECT id, name, color FROM tags WHERE owner_id = ? ORDER BY name COLLATE NOCASE');
+const getTagByOwnerStmt = db.prepare('SELECT id, name, color FROM tags WHERE id = ? AND owner_id = ?');
+const getTagByIdAnyStmt = db.prepare('SELECT id FROM tags WHERE id = ? LIMIT 1');
+const insertTagStmt = db.prepare('INSERT INTO tags (id, owner_id, name, color) VALUES (@id, @owner_id, @name, @color)');
+const updateTagStmt = db.prepare('UPDATE tags SET name = @name, color = @color WHERE id = @id AND owner_id = @owner_id');
+const deleteTagStmt = db.prepare('DELETE FROM tags WHERE id = ? AND owner_id = ?');
+
+/* -------------------------------------------------------------------------- */
+/* Tag catalog migration (legacy config.json)                                 */
+/* -------------------------------------------------------------------------- */
+const legacyTags = listLegacyTagCatalog();
+if (legacyTags.length) {
+  const tagCount = db.prepare('SELECT COUNT(*) as total FROM tags').get();
+  const totalTags = typeof tagCount?.total === 'bigint' ? Number(tagCount.total) : Number(tagCount?.total || 0);
+  if (!totalTags) {
+    const ownerRow = db
+      .prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1")
+      .get();
+    const ownerId = ownerRow?.id || null;
+    if (ownerId) {
+      const insertLegacy = db.transaction((entries) => {
+        entries.forEach((tag) => {
+          if (!tag?.id) return;
+          if (getTagByIdAnyStmt.get(String(tag.id))) return;
+          insertTagStmt.run({
+            id: String(tag.id),
+            owner_id: ownerId,
+            name: String(tag.name || '').slice(0, 40),
+            color: sanitizeTagColor(tag.color)
+          });
+        });
+      });
+      insertLegacy(legacyTags);
+    }
+  }
+}
+
+/* -- users ---------------------------------------------------------------- */
+const listUsersStmt = db.prepare('SELECT id, username, role, display_name, avatar_url, created_at, updated_at, last_login_at FROM users ORDER BY created_at DESC');
+const getUserByIdStmt = db.prepare('SELECT id, username, role, display_name, avatar_url, created_at, updated_at, last_login_at FROM users WHERE id = ?');
+const getUserByUsernameStmt = db.prepare('SELECT id, username, role, display_name, avatar_url, password_hash, created_at, updated_at, last_login_at FROM users WHERE username = ?');
+const getOwnerUserStmt = db.prepare(
+  "SELECT id, username, role, display_name, avatar_url, created_at, updated_at, last_login_at FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1"
+);
+const insertUserStmt = db.prepare(`
+  INSERT INTO users (id, username, password_hash, role, display_name, avatar_url, created_at, updated_at, last_login_at)
+  VALUES (@id, @username, @password_hash, @role, @display_name, @avatar_url, @created_at, @updated_at, NULL)
+`);
+const updateUserStmt = db.prepare(`
+  UPDATE users
+  SET username = @username,
+      role = @role,
+      display_name = @display_name,
+      avatar_url = @avatar_url,
+      password_hash = COALESCE(@password_hash, password_hash),
+      updated_at = @updated_at
+  WHERE id = @id
+`);
+const updateUserLoginStmt = db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?');
+const deleteUserStmt = db.prepare('DELETE FROM users WHERE id = ?');
+const countUsersStmt = db.prepare('SELECT COUNT(*) as total FROM users');
+const countAdminsStmt = db.prepare("SELECT COUNT(*) as total FROM users WHERE role = 'admin'");
+
+/* -- sessions -------------------------------------------------------------- */
+const insertSessionStmt = db.prepare(`
+  INSERT INTO sessions (id, user_id, token_hash, created_at, expires_at)
+  VALUES (@id, @user_id, @token_hash, @created_at, @expires_at)
+`);
+const getSessionByHashStmt = db.prepare('SELECT id, user_id, token_hash, created_at, expires_at FROM sessions WHERE token_hash = ?');
+const deleteSessionByHashStmt = db.prepare('DELETE FROM sessions WHERE token_hash = ?');
+const deleteSessionsByUserStmt = db.prepare('DELETE FROM sessions WHERE user_id = ?');
+const clearUserCountersStmt = db.prepare('UPDATE counters SET owner_id = NULL WHERE owner_id = ?');
+
+/* ========================================================================== */
+/* Counters                                                                   */
+/* ========================================================================== */
+
+/* -------------------------------------------------------------------------- */
+/* Listing + filters                                                          */
+/* -------------------------------------------------------------------------- */
+function buildCounterQuery({ search, mode, tags, limit, offset, count = false, sort = 'newest', inactiveBefore = null, ownerId = null }) {
   let sql = count ? 'SELECT COUNT(*) as total FROM counters' : `SELECT ${baseSelectFields} FROM counters`;
   const conditions = [];
   const params = {};
@@ -170,6 +321,10 @@ function buildCounterQuery({ search, mode, tags, limit, offset, count = false, s
     );
     params.inactiveBefore = inactiveBefore;
   }
+  if (ownerId) {
+    conditions.push('owner_id = @ownerId');
+    params.ownerId = ownerId;
+  }
   if (conditions.length) {
     sql += ` WHERE ${conditions.join(' AND ')}`;
   }
@@ -191,6 +346,9 @@ function buildCounterQuery({ search, mode, tags, limit, offset, count = false, s
   return { sql, params };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Hits + daily activity                                                      */
+/* -------------------------------------------------------------------------- */
 const recordHitTx = db.transaction((counterId, ip, now) => {
   const counter = getCounterStmt.get(counterId);
   if (!counter) {
@@ -227,7 +385,10 @@ const recordHitTx = db.transaction((counterId, ip, now) => {
   return { counter: updated, incremented: shouldIncrement };
 });
 
-function createCounter({ label, theme = 'plain', startValue, mode, tags = [] }) {
+/* -------------------------------------------------------------------------- */
+/* Create + update                                                            */
+/* -------------------------------------------------------------------------- */
+function createCounter({ label, theme = 'plain', startValue, mode, tags = [], ownerId = null }) {
   let initialValue = 0n;
   if (typeof startValue === 'bigint') {
     initialValue = startValue >= 0n ? startValue : 0n;
@@ -245,10 +406,11 @@ function createCounter({ label, theme = 'plain', startValue, mode, tags = [] }) 
     note: null,
     value: initialValue,
     created_at: Date.now(),
-    count_mode: modeResult.mode
+    count_mode: modeResult.mode,
+    owner_id: ownerId || null
   };
   insertCounterStmt.run(counter);
-  const appliedTags = replaceCounterTags(counter.id, tags);
+  const appliedTags = replaceCounterTags(counter.id, tags, counter.owner_id);
   counter.tags = appliedTags;
   return counter;
 }
@@ -257,19 +419,22 @@ function listCounters() {
   return attachTagsToCounters(listCountersStmt.all());
 }
 
-function listCountersPage(limit, offset, search, mode, tags, sort, inactiveBefore) {
-  const { sql, params } = buildCounterQuery({ search, mode, tags, limit, offset, sort, inactiveBefore });
+function listCountersPage(limit, offset, search, mode, tags, sort, inactiveBefore, ownerId) {
+  const { sql, params } = buildCounterQuery({ search, mode, tags, limit, offset, sort, inactiveBefore, ownerId });
   const rows = db.prepare(sql).all(params);
   return attachTagsToCounters(rows);
 }
 
-function countCounters(search, mode, tags, inactiveBefore) {
-  const { sql, params } = buildCounterQuery({ search, mode, tags, count: true, inactiveBefore });
+function countCounters(search, mode, tags, inactiveBefore, ownerId) {
+  const { sql, params } = buildCounterQuery({ search, mode, tags, count: true, inactiveBefore, ownerId });
   const { total } = db.prepare(sql).get(params);
   const normalized = typeof total === 'bigint' ? Number(total) : total;
   return Number.isFinite(normalized) ? normalized : 0;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Search helpers                                                             */
+/* -------------------------------------------------------------------------- */
 function normalizeSearch(search) {
   if (!search && search !== 0) return null;
   const value = String(search).trim().toLowerCase();
@@ -293,7 +458,7 @@ function updateCounterValue(id, value) {
   return result.changes > 0;
 }
 
-function updateCounterMetadata(id, { label, value, note, tags }) {
+function updateCounterMetadata(id, { label, value, note, tags, ownerId = null }) {
   const payload = {
     id,
     label,
@@ -302,7 +467,7 @@ function updateCounterMetadata(id, { label, value, note, tags }) {
   };
   const result = updateCounterMetaStmt.run(payload);
   if (Array.isArray(tags)) {
-    replaceCounterTags(id, tags);
+    replaceCounterTags(id, tags, ownerId);
   }
   return result.changes > 0;
 }
@@ -342,6 +507,23 @@ function deleteCountersByMode(mode) {
   return result.changes || 0;
 }
 
+function deleteCountersByOwner(ownerId) {
+  if (!ownerId) return 0;
+  const result = deleteCountersByOwnerStmt.run(ownerId);
+  return result.changes || 0;
+}
+
+function deleteCountersByOwnerAndMode(ownerId, mode) {
+  if (!ownerId) return 0;
+  const statement = deleteCountersByOwnerAndModeStmt[mode];
+  if (!statement) return 0;
+  const result = statement.run(ownerId);
+  return result.changes || 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Hits + stats                                                               */
+/* -------------------------------------------------------------------------- */
 function getLastHitTimestamp(counterId) {
   const row = getLastHitStmt.get(counterId);
   if (!row) return null;
@@ -381,34 +563,78 @@ function getCounterDailyTrend(counterId, days = 7) {
   return trend;
 }
 
-function exportCounters() {
-  return listCounters();
+/* ========================================================================== */
+/* Export / import                                                            */
+/* ========================================================================== */
+function exportCounters(ownerId = null) {
+  if (!ownerId) return listCounters();
+  return attachTagsToCounters(listCountersByOwnerStmt.all(ownerId));
 }
 
-function exportCountersByIds(ids = []) {
+function exportCountersByIds(ids = [], ownerId = null) {
   const normalized = normalizeIdList(ids);
   if (!normalized.length) return [];
   const placeholders = normalized.map(() => '?').join(',');
-  const stmt = db.prepare(`SELECT ${baseSelectFields} FROM counters WHERE id IN (${placeholders}) ORDER BY created_at DESC`);
-  const rows = stmt.all(normalized);
+  let sql = `SELECT ${baseSelectFields} FROM counters WHERE id IN (${placeholders})`;
+  const params = [...normalized];
+  if (ownerId) {
+    sql += ' AND owner_id = ?';
+    params.push(ownerId);
+  }
+  sql += ' ORDER BY created_at DESC';
+  const stmt = db.prepare(sql);
+  const rows = stmt.all(params);
   return attachTagsToCounters(rows);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Import                                                                     */
+/* -------------------------------------------------------------------------- */
 function importCounters(data, options = {}) {
   if (!Array.isArray(data)) {
     throw new Error('invalid_backup_format');
   }
   const normalized = data
-    .map(normalizeImportedCounter)
+    .map((item) => normalizeImportedCounter(item, options.tagOwnerId || null))
     .filter(Boolean);
   if (!normalized.length) {
     throw new Error('no_valid_counters');
   }
-  importCountersTx(normalized, Boolean(options.replace));
+  importCountersTx(normalized, Boolean(options.replace), options.tagOwnerId || null);
   return normalized.length;
 }
 
-const importCountersTx = db.transaction((items, replaceExisting) => {
+function importCountersForOwner(data, options = {}, ownerId) {
+  if (!ownerId) {
+    throw new Error('owner_required');
+  }
+  if (!Array.isArray(data)) {
+    throw new Error('invalid_backup_format');
+  }
+  const normalizedRaw = data
+    .map((item) => normalizeImportedCounter(item, ownerId))
+    .filter(Boolean);
+  const hasForeignOwner = normalizedRaw.some((counter) => {
+    return counter.owner_id && counter.owner_id !== ownerId;
+  });
+  if (hasForeignOwner) {
+    throw new Error('backup_not_owned');
+  }
+  const normalized = normalizedRaw.map((counter) => ({ ...counter, owner_id: ownerId }));
+  if (!normalized.length) {
+    throw new Error('no_valid_counters');
+  }
+  normalized.forEach((counter) => {
+    const existing = getCounter(counter.id);
+    if (existing && existing.owner_id !== ownerId) {
+      throw new Error('counter_id_taken');
+    }
+  });
+  importCountersByOwnerTx(normalized, Boolean(options.replace), ownerId);
+  return normalized.length;
+}
+
+const importCountersTx = db.transaction((items, replaceExisting, tagOwnerId) => {
   if (replaceExisting) {
     deleteAllCountersStmt.run();
     clearHitsStmt.run();
@@ -416,11 +642,25 @@ const importCountersTx = db.transaction((items, replaceExisting) => {
   }
   items.forEach((item) => {
     upsertCounterStmt.run(item);
-    replaceCounterTags(item.id, item.tags);
+    const tagScope = item.owner_id || tagOwnerId || null;
+    replaceCounterTags(item.id, item.tags, tagScope);
   });
 });
 
-function normalizeImportedCounter(raw) {
+const importCountersByOwnerTx = db.transaction((items, replaceExisting, ownerId) => {
+  if (replaceExisting) {
+    deleteCountersByOwnerStmt.run(ownerId);
+  }
+  items.forEach((item) => {
+    upsertCounterStmt.run(item);
+    replaceCounterTags(item.id, item.tags, ownerId);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Import helpers                                                             */
+/* -------------------------------------------------------------------------- */
+function normalizeImportedCounter(raw, tagOwnerId = null) {
   if (!raw || typeof raw !== 'object') return null;
   const id = typeof raw.id === 'string' ? raw.id.trim() : '';
   if (!id) return null;
@@ -436,6 +676,8 @@ function normalizeImportedCounter(raw) {
   if (modeResult.error) {
     return null;
   }
+  const ownerId = typeof raw.owner_id === 'string' && raw.owner_id.trim() ? raw.owner_id.trim().slice(0, 64) : null;
+  const tagScope = ownerId || tagOwnerId || null;
   return {
     id: id.slice(0, 64),
     label,
@@ -444,7 +686,8 @@ function normalizeImportedCounter(raw) {
     value: normalizedValue,
     created_at,
     count_mode: modeResult.mode,
-    tags: filterTagIds(Array.isArray(raw.tags) ? raw.tags : [])
+    owner_id: ownerId,
+    tags: filterTagIds(Array.isArray(raw.tags) ? raw.tags : [], tagScope)
   };
 }
 
@@ -463,6 +706,9 @@ function extractIntegerDigits(value) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Daily activity                                                             */
+/* -------------------------------------------------------------------------- */
 function exportDailyActivity() {
   return listDailyStmt.all().map((row) => ({
     counter_id: row.counter_id,
@@ -497,6 +743,22 @@ function importDailyActivity(data) {
   return rows.length;
 }
 
+function importDailyActivityFor(ids = [], data = []) {
+  const normalizedIds = normalizeIdList(ids);
+  if (!normalizedIds.length || !Array.isArray(data) || !data.length) {
+    return 0;
+  }
+  const allowed = new Set(normalizedIds);
+  const rows = data
+    .map(normalizeDailyEntry)
+    .filter((row) => row && allowed.has(row.counter_id));
+  if (!rows.length) {
+    return 0;
+  }
+  importDailyActivityTx(rows);
+  return rows.length;
+}
+
 const importDailyActivityTx = db.transaction((rows) => {
   rows.forEach((row) => {
     upsertDailyImportStmt.run(row);
@@ -519,6 +781,9 @@ function normalizeDailyEntry(raw) {
   };
 }
 
+/* ========================================================================== */
+/* API keys                                                                   */
+/* ========================================================================== */
 function createApiKey({ name, scope = 'global', counters = [] }) {
   const trimmedName = String(name || '').trim().slice(0, 80);
   if (!trimmedName) {
@@ -577,9 +842,131 @@ function recordApiKeyUsage(id) {
   }
 }
 
-function replaceCounterTags(counterId, tags = []) {
+/* ========================================================================== */
+/* Tag catalog                                                                */
+/* ========================================================================== */
+function listTagCatalog(ownerId) {
+  if (!ownerId) return [];
+  return listTagsByOwnerStmt.all(ownerId).map((tag) => ({ ...tag }));
+}
+
+function addTagToCatalog({ name, color, ownerId }) {
+  const normalizedName = typeof name === 'string' ? name.trim() : '';
+  if (!ownerId) {
+    throw new Error('owner_required');
+  }
+  if (!normalizedName) {
+    throw new Error('name_required');
+  }
+  const existing = listTagsByOwnerStmt.all(ownerId);
+  if (existing.some((tag) => tag.name.toLowerCase() === normalizedName.toLowerCase())) {
+    throw new Error('tag_exists');
+  }
+  const id = createTagId();
+  const record = {
+    id,
+    owner_id: ownerId,
+    name: normalizedName.slice(0, 40),
+    color: sanitizeTagColor(color)
+  };
+  insertTagStmt.run(record);
+  return { id: record.id, name: record.name, color: record.color };
+}
+
+function updateTagInCatalog(tagId, { name, color } = {}, ownerId) {
+  if (!ownerId) {
+    throw new Error('owner_required');
+  }
+  const normalizedId = typeof tagId === 'string' ? tagId.trim() : '';
+  if (!normalizedId) {
+    throw new Error('tag_id_required');
+  }
+  const existing = getTagByOwnerStmt.get(normalizedId, ownerId);
+  if (!existing) return null;
+  const next = {
+    id: existing.id,
+    owner_id: ownerId,
+    name: existing.name,
+    color: existing.color
+  };
+  if (name !== undefined) {
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+    if (!normalizedName) {
+      throw new Error('name_required');
+    }
+    const collision = listTagsByOwnerStmt
+      .all(ownerId)
+      .some((tag) => tag.id !== normalizedId && tag.name.toLowerCase() === normalizedName.toLowerCase());
+    if (collision) {
+      throw new Error('tag_exists');
+    }
+    next.name = normalizedName.slice(0, 40);
+  }
+  if (color !== undefined) {
+    next.color = sanitizeTagColor(color);
+  }
+  updateTagStmt.run(next);
+  return { id: next.id, name: next.name, color: next.color };
+}
+
+function removeTagFromCatalog(tagId, ownerId) {
+  if (!ownerId) {
+    throw new Error('owner_required');
+  }
+  const normalized = typeof tagId === 'string' ? tagId.trim() : '';
+  if (!normalized) return null;
+  const existing = getTagByOwnerStmt.get(normalized, ownerId);
+  if (!existing) return null;
+  const result = deleteTagStmt.run(normalized, ownerId);
+  if (!result.changes) return null;
+  return { id: existing.id, name: existing.name, color: existing.color };
+}
+
+function mergeTagCatalog(entries = [], ownerId) {
+  if (!ownerId) return;
+  const incoming = sanitizeTagCatalog(entries);
+  if (!incoming.length) return;
+  const current = new Map(listTagsByOwnerStmt.all(ownerId).map((tag) => [tag.id, tag]));
+  incoming.forEach((tag) => {
+    if (!current.has(tag.id)) {
+      current.set(tag.id, { ...tag, owner_id: ownerId });
+    }
+  });
+  const insertMany = db.transaction((items) => {
+    items.forEach((tag) => {
+      if (!tag?.id || !tag?.name) return;
+      if (getTagByIdAnyStmt.get(tag.id)) return;
+      insertTagStmt.run({
+        id: tag.id,
+        owner_id: ownerId,
+        name: tag.name,
+        color: sanitizeTagColor(tag.color)
+      });
+    });
+  });
+  insertMany(Array.from(current.values()));
+}
+
+function filterTagIds(ids = [], ownerId, limit = 20) {
+  if (!Array.isArray(ids) || !ownerId) return [];
+  const catalog = listTagsByOwnerStmt.all(ownerId);
+  const valid = new Set(catalog.map((tag) => tag.id));
+  const normalized = [];
+  ids.forEach((value) => {
+    const id = typeof value === 'string' ? value.trim() : '';
+    if (id && valid.has(id) && !normalized.includes(id)) {
+      normalized.push(id);
+    }
+  });
+  return normalized.slice(0, limit);
+}
+
+/* ========================================================================== */
+/* Tags (counter assignments)                                                 */
+/* ========================================================================== */
+function replaceCounterTags(counterId, tags = [], ownerId) {
   if (!counterId) return [];
-  const filtered = filterTagIds(Array.isArray(tags) ? tags : []);
+  const filtered = filterTagIds(Array.isArray(tags) ? tags : [], ownerId);
   replaceCounterTagsTx(counterId, filtered);
   return filtered;
 }
@@ -620,6 +1007,9 @@ function fetchTagsForCounters(ids = []) {
   return stmt.all(ids);
 }
 
+/* ========================================================================== */
+/* Exports                                                                    */
+/* ========================================================================== */
 module.exports = {
   createCounter,
   listCounters,
@@ -629,6 +1019,8 @@ module.exports = {
   deleteCounter,
   deleteAllCounters,
   deleteCountersByMode,
+  deleteCountersByOwner,
+  deleteCountersByOwnerAndMode,
   deleteInactiveCountersOlderThan,
   countCounters,
   getLastHitTimestamp,
@@ -637,22 +1029,52 @@ module.exports = {
   exportDailyActivity,
   exportDailyActivityFor,
   importDailyActivity,
+  importDailyActivityFor,
   exportCounters,
   exportCountersByIds,
   importCounters,
+  importCountersForOwner,
   updateCounterValue,
   updateCounterMetadata,
   setUnlimitedThrottle,
   createApiKey,
   listApiKeys,
   deleteApiKey,
+  listTagCatalog,
+  addTagToCatalog,
+  updateTagInCatalog,
+  removeTagFromCatalog,
+  mergeTagCatalog,
+  filterTagIds,
   findApiKeyByToken,
   recordApiKeyUsage,
   describeModeLabel,
   parseRequestedMode,
-  removeTagAssignments
+  removeTagAssignments,
+  hashPassword,
+  verifyPassword,
+  listUsers,
+  getOwnerUser,
+  getUserById,
+  getUserByUsername,
+  createUser,
+  updateUser,
+  deleteUser,
+  countUsers,
+  countAdmins,
+  createSession,
+  findSession,
+  deleteSession,
+  recordUserLogin
 };
 
+/* ========================================================================== */
+/* Helpers                                                                    */
+/* ========================================================================== */
+
+/* -------------------------------------------------------------------------- */
+/* IDs + modes                                                                */
+/* -------------------------------------------------------------------------- */
 function normalizeIdList(ids, limit = 200) {
   if (!Array.isArray(ids)) return [];
   const normalized = [];
@@ -695,6 +1117,47 @@ function parseRequestedMode(input) {
   return { error: 'mode must be "unique" or "unlimited"' };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Tag helpers                                                                */
+/* -------------------------------------------------------------------------- */
+function createTagId() {
+  let id = '';
+  do {
+    id = crypto.randomBytes(6).toString('hex');
+  } while (getTagByIdAnyStmt.get(id));
+  return id;
+}
+
+function sanitizeTagCatalog(entries = []) {
+  if (!Array.isArray(entries)) return [];
+  const seen = new Set();
+  const sanitized = [];
+  entries.forEach((entry) => {
+    const id = typeof entry.id === 'string' ? entry.id.trim() : '';
+    const name = typeof entry.name === 'string' ? entry.name.trim() : '';
+    if (!id || !name || seen.has(id)) return;
+    sanitized.push({
+      id,
+      name: name.slice(0, 40),
+      color: sanitizeTagColor(entry.color)
+    });
+    seen.add(id);
+  });
+  return sanitized;
+}
+
+function sanitizeTagColor(value) {
+  if (typeof value !== 'string') return '#4c6ef5';
+  const normalized = value.trim().startsWith('#') ? value.trim() : `#${value.trim()}`;
+  if (/^#[0-9a-fA-F]{6}$/.test(normalized)) {
+    return normalized.toLowerCase();
+  }
+  return '#4c6ef5';
+}
+
+/* -------------------------------------------------------------------------- */
+/* Time helpers                                                               */
+/* -------------------------------------------------------------------------- */
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function getDayStartTimestamp(timestamp) {
@@ -711,6 +1174,9 @@ function recordDailyHit(counterId, now) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Throttling                                                                 */
+/* -------------------------------------------------------------------------- */
 function setUnlimitedThrottle(seconds) {
   const value = Number(seconds);
   if (!Number.isFinite(value) || value <= 0) {
@@ -720,6 +1186,9 @@ function setUnlimitedThrottle(seconds) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Tokens + hashing                                                           */
+/* -------------------------------------------------------------------------- */
 function generateApiKeyToken() {
   const random = crypto.randomBytes(10).toString('hex');
   return `voux_${random}`;
@@ -729,6 +1198,30 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
 
+function hashPassword(password, salt = null) {
+  const safePassword = String(password || '');
+  const saltBytes = salt ? Buffer.from(salt, 'hex') : crypto.randomBytes(16);
+  const iterations = 120000;
+  const hash = crypto.pbkdf2Sync(safePassword, saltBytes, iterations, 32, 'sha256');
+  return `pbkdf2$${iterations}$${saltBytes.toString('hex')}$${hash.toString('hex')}`;
+}
+
+function verifyPassword(storedHash, password) {
+  if (!storedHash || typeof storedHash !== 'string') return false;
+  const parts = storedHash.split('$');
+  if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false;
+  const iterations = Number(parts[1]);
+  const salt = parts[2];
+  const expected = parts[3];
+  if (!Number.isFinite(iterations) || !salt || !expected) return false;
+  const hash = crypto.pbkdf2Sync(String(password || ''), Buffer.from(salt, 'hex'), iterations, expected.length / 2, 'sha256');
+  const expectedBuf = Buffer.from(expected, 'hex');
+  return expectedBuf.length === hash.length && crypto.timingSafeEqual(expectedBuf, hash);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Normalization                                                              */
+/* -------------------------------------------------------------------------- */
 function normalizeApiKeyRow(row) {
   if (!row) return null;
   const normalizeTimestamp = (value) => {
@@ -757,6 +1250,167 @@ function normalizeApiKeyRow(row) {
     disabled: Boolean(row.disabled)
   };
 }
+
+function toSafeNumber(value) {
+  if (value == null) return 0;
+  if (typeof value === 'bigint') return Number(value);
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function normalizeUserRow(row) {
+  return {
+    id: row.id,
+    username: row.username,
+    role: row.role,
+    displayName: row.display_name || '',
+    avatarUrl: row.avatar_url || '',
+    createdAt: toSafeNumber(row.created_at),
+    updatedAt: toSafeNumber(row.updated_at),
+    lastLoginAt: toSafeNumber(row.last_login_at)
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Users                                                                      */
+/* -------------------------------------------------------------------------- */
+function listUsers() {
+  return listUsersStmt.all().map(normalizeUserRow);
+}
+
+function getOwnerUser() {
+  const row = getOwnerUserStmt.get();
+  return row ? normalizeUserRow(row) : null;
+}
+
+function getUserById(id) {
+  const row = getUserByIdStmt.get(id);
+  return row ? normalizeUserRow(row) : null;
+}
+
+function getUserByUsername(username) {
+  if (!username) return null;
+  const row = getUserByUsernameStmt.get(String(username).toLowerCase());
+  return row || null;
+}
+
+function createUser({ username, password, role = 'user', displayName = '', avatarUrl = '' }) {
+  const safeUsername = String(username || '').trim().toLowerCase();
+  if (!safeUsername) {
+    throw new Error('username_required');
+  }
+  if (getUserByUsername(safeUsername)) {
+    throw new Error('username_exists');
+  }
+  const passwordHash = hashPassword(password);
+  const now = Date.now();
+  const user = {
+    id: generateId(12),
+    username: safeUsername,
+    password_hash: passwordHash,
+    role: role === 'admin' ? 'admin' : 'user',
+    display_name: displayName ? String(displayName).trim().slice(0, 80) : null,
+    avatar_url: avatarUrl ? String(avatarUrl).trim().slice(0, 3000000) : null,
+    created_at: now,
+    updated_at: now
+  };
+  insertUserStmt.run(user);
+  return normalizeUserRow(user);
+}
+
+function updateUser(id, { role, displayName, avatarUrl, password, username }) {
+  const existing = getUserByIdStmt.get(id);
+  if (!existing) return null;
+  const nextUsername = username !== undefined ? String(username || '').trim().toLowerCase() : existing.username;
+  if (!nextUsername) {
+    throw new Error('username_required');
+  }
+  if (nextUsername !== existing.username) {
+    const taken = getUserByUsername(nextUsername);
+    if (taken && taken.id !== existing.id) {
+      throw new Error('username_exists');
+    }
+  }
+  const now = Date.now();
+  const payload = {
+    id,
+    username: nextUsername,
+    role: role !== undefined ? (role === 'admin' ? 'admin' : 'user') : existing.role,
+    display_name: displayName !== undefined ? String(displayName || '').trim().slice(0, 80) || null : existing.display_name,
+    avatar_url: avatarUrl !== undefined ? String(avatarUrl || '').trim().slice(0, 3000000) || null : existing.avatar_url,
+    password_hash: password ? hashPassword(password) : null,
+    updated_at: now
+  };
+  updateUserStmt.run(payload);
+  return getUserById(id);
+}
+
+function deleteUser(id) {
+  const result = deleteUserStmt.run(id);
+  if (result.changes > 0) {
+    clearUserCountersStmt.run(id);
+    deleteSessionsByUserStmt.run(id);
+    return true;
+  }
+  return false;
+}
+
+function countUsers() {
+  const { total } = countUsersStmt.get();
+  const normalized = typeof total === 'bigint' ? Number(total) : total;
+  return Number.isFinite(normalized) ? normalized : 0;
+}
+
+function countAdmins() {
+  const { total } = countAdminsStmt.get();
+  const normalized = typeof total === 'bigint' ? Number(total) : total;
+  return Number.isFinite(normalized) ? normalized : 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Sessions                                                                   */
+/* -------------------------------------------------------------------------- */
+function createSession(userId, ttlMs) {
+  const token = crypto.randomBytes(24).toString('hex');
+  const now = Date.now();
+  const session = {
+    id: generateId(16),
+    user_id: userId,
+    token_hash: hashToken(token),
+    created_at: now,
+    expires_at: now + Math.max(1, Number(ttlMs) || 0)
+  };
+  insertSessionStmt.run(session);
+  return { token, session };
+}
+
+function findSession(token) {
+  if (!token) return null;
+  const hash = hashToken(token);
+  const row = getSessionByHashStmt.get(hash);
+  if (!row) return null;
+  const expiresAt = typeof row.expires_at === 'bigint' ? Number(row.expires_at) : row.expires_at;
+  if (expiresAt && expiresAt < Date.now()) {
+    deleteSessionByHashStmt.run(hash);
+    return null;
+  }
+  return row;
+}
+
+function deleteSession(token) {
+  if (!token) return false;
+  const hash = hashToken(token);
+  const result = deleteSessionByHashStmt.run(hash);
+  return result.changes > 0;
+}
+
+function recordUserLogin(userId) {
+  updateUserLoginStmt.run(Date.now(), userId);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cleanup                                                                    */
+/* -------------------------------------------------------------------------- */
 function removeTagAssignments(tagId) {
   if (!tagId) return 0;
   const result = deleteTagsByTagStmt.run(tagId);
