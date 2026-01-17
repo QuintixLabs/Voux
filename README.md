@@ -64,8 +64,8 @@ cp .env.example .env
 ```
 
 Open `.env` and set your settings.
-This is where you configure your admin token, site URL, port, and other options.
-You must set `ADMIN_TOKEN` to something secret before running the server. For more settings check [Configuration](#-configuration)
+This is where you configure your admin login, site URL, port, and other options.
+You must set `ADMIN_USERNAME` + `ADMIN_PASSWORD` before running the server. For more settings check [Configuration](#-configuration)
 
 ### 4. Start Voux
 **Development (auto-reload) :**
@@ -90,7 +90,8 @@ Run Voux via Docker:
 docker run -d \
   --name voux \
   -p 8787:8787 \
-  -e ADMIN_TOKEN=your-secret \
+  -e ADMIN_USERNAME=admin \
+  -e ADMIN_PASSWORD=change-this-password \
   -v $(pwd)/data:/app/data \
   ghcr.io/quintixlabs/voux/voux:latest
 ```
@@ -101,7 +102,7 @@ Or use our [docker-compose.yml](https://github.com/QuintixLabs/Voux/blob/master/
 docker compose up -d
 ```
 
-- Change `ADMIN_TOKEN` to your own password (do not leave it as the example).
+- Change `ADMIN_USERNAME` + `ADMIN_PASSWORD` to your own login (do not leave it as the example).
 - Mount `./data` so counters survive restarts.
 - Add more `-e VAR=value` flags for <a href="#-configuration">more settings</a> if you need them.
 
@@ -115,9 +116,11 @@ Environment variables. You can tweak some of these options later from `/settings
 | ---- | -------- | ------------ |
 | `PORT` | `8787` | The web server port number. |
 | `PUBLIC_BASE_URL` | based on request | Lets you set a fixed site URL (like `https://counter.yourdomain.com`). |
-| `ADMIN_TOKEN` | `unset` | A secret key is needed to access admin tools and the `/dashboard` page. |
+| `ADMIN_USERNAME` | `unset` | Username for the first admin account. |
+| `ADMIN_PASSWORD` | `unset` | Password for the first admin account. |
 | `PRIVATE_MODE` | `false` | If `true`, only admins can create new counters. |
 | `ADMIN_PAGE_SIZE` | `5` | How many counters show on each page in the admin panel. |
+| `USERS_PAGE_SIZE` | `4` | How many users show on each page in the users list. |
 | `SHOW_PUBLIC_GUIDES` | `true` | Controls if public guide cards are shown on the main page. |
 | `DEFAULT_ALLOWED_MODES` | `unique,unlimited` | Comma-separated list of modes to allow (`unique`, `unlimited`) for counters. You can change it later in the dashboard. |
 | `COUNTER_CREATE_LIMIT` | `5` | How many counters a single IP can create before hitting the one-minute cooldown. |
@@ -133,14 +136,17 @@ SQLite lives in `data/counters.db`. Back it up occasionally if you care about th
 ## 🧩 API quick reference
 
 - `GET /api/config` – tells the UI what's enabled: `{ privateMode, showGuides, allowedModes, defaultMode, adminPageSize }`.
-- `POST /api/counters` – create a counter (admin token required when private mode is on). Body at minimum: `{ "label": "Blog Views", "startValue": 0, "mode": "unique" }`. Add `"tags": ["tag_id_here"]` to auto-assign colored tags.
-- `GET /api/counters?page=1&pageSize=20&mode=unique&tags=tagA&tags=tagB&sort=views` – paginated list of counters (admin only). Filter by counting mode and/or by one or more tag IDs.
+- `POST /api/login` – log in with `{ "username": "...", "password": "..." }`.
+- `GET /api/session` – returns the logged-in user (if any).
+- `POST /api/logout` – clear the current session.
+- `POST /api/counters` – create a counter (admin login required when private mode is on). Body at minimum: `{ "label": "Views:", "startValue": 0, "mode": "unique" }`. Add `"tags": ["tag_id_here"]` to auto-assign colored tags.
+- `GET /api/counters?page=1&pageSize=20&mode=unique&tags=tagA&tags=tagB&sort=views` – paginated list of counters (requires login). Filter by counting mode and/or by one or more tag IDs.
 - `GET /api/counters/:id` – fetch a single counter plus its embed snippet (public; notes are omitted).
 - `GET /embed/:id.js` – the script you drop into your site.
-- `DELETE /api/counters/:id` – delete a single counter (admin only).
+- `DELETE /api/counters/:id` – delete a single counter (requires login).
 - `DELETE /api/counters?mode=unique` – delete every counter that uses the given mode (admin only). Omit `mode` to delete everything.
-- `PATCH /api/counters/:id` – edit a counter's label, value, note, or tags (admin only).
-- `POST /api/counters/:id/value` – set a counter's value directly (admin only).
+- `PATCH /api/counters/:id` – edit a counter's label, value, note, or tags (requires login).
+- `POST /api/counters/:id/value` – set a counter's value directly (requires login).
 - `GET /api/settings` – fetch the current runtime config (admin only).
 - `POST /api/settings` – update runtime flags (private mode, guide cards, allowed modes, etc.).
 - `GET /api/counters/export` – download every counter plus its 30-day activity summary and the tag catalog as JSON (admin only).
