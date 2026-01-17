@@ -1,6 +1,7 @@
 services:
   voux:
     image: ghcr.io/quintixlabs/voux/voux:latest
+    container_name: voux # remove this if u wanna run more than 1 container
     ports:
       - "8787:8787"
     environment:
