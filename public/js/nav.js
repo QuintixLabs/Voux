@@ -48,6 +48,11 @@
   /* ------------------------------------------------------------------------ */
   menuButton.addEventListener('click', async (event) => {
     event.preventDefault();
+    if (sessionUser || cachedUser) {
+      toggleMenu();
+      checkSession();
+      return;
+    }
     await checkSession();
     if (!sessionUser) {
       window.location.href = '/dashboard';
@@ -66,6 +71,7 @@
   logoutBtn?.addEventListener('click', async () => {
     await fetch('/api/logout', { method: 'POST', credentials: 'include' });
     sessionUser = null;
+    writeCachedUser(null);
     closeMenu();
     window.location.href = '/dashboard';
   });
@@ -90,10 +96,11 @@
       try {
         const res = await fetch('/api/session', { credentials: 'include', cache: 'no-store' });
         if (!res.ok) {
-          sessionChecked = true;
-          sessionUser = null;
-          updateMenuState();
-          return sessionUser;
+        sessionChecked = true;
+        sessionUser = null;
+        updateMenuState();
+        writeCachedUser(null);
+        return sessionUser;
         }
         const data = await res.json();
         sessionUser = data?.user || null;
@@ -102,6 +109,9 @@
           window.VouxErrors.cacheNavUser(sessionUser);
         }
         updateMenuState();
+        if (!sessionUser && menu.classList.contains('account-menu--open')) {
+          closeMenu();
+        }
         return sessionUser;
       } catch (error) {
       if (error?.name !== 'AbortError') {
@@ -110,6 +120,10 @@
         sessionChecked = true;
         sessionUser = null;
         updateMenuState();
+        writeCachedUser(null);
+        if (menu.classList.contains('account-menu--open')) {
+          closeMenu();
+        }
         return sessionUser;
       } finally {
         sessionCheckInFlight = null;
@@ -167,6 +181,7 @@
     try {
       if (!user) {
         localStorage.removeItem('voux_nav_user');
+        localStorage.removeItem('voux_session_hint');
         return;
       }
       const payload = {
@@ -175,6 +190,7 @@
         avatarUrl: user.avatarUrl || ''
       };
       localStorage.setItem('voux_nav_user', JSON.stringify(payload));
+      localStorage.setItem('voux_session_hint', '1');
     } catch (_) {}
   }
 

@@ -759,6 +759,37 @@ function importDailyActivityFor(ids = [], data = []) {
   return rows.length;
 }
 
+// migration code for last_hits fixes backups from older versions
+function seedLastHitsFromDaily(data = [], options = {}) {
+  if (!Array.isArray(data) || !data.length) return 0;
+  const allowedIds = Array.isArray(options.ids) ? new Set(normalizeIdList(options.ids)) : null;
+  const latestByCounter = new Map();
+  data.forEach((raw) => {
+    const row = normalizeDailyEntry(raw);
+    if (!row) return;
+    if (allowedIds && !allowedIds.has(row.counter_id)) return;
+    const existing = latestByCounter.get(row.counter_id);
+    if (!existing || row.day > existing) {
+      latestByCounter.set(row.counter_id, row.day);
+    }
+  });
+  if (!latestByCounter.size) return 0;
+  let seeded = 0;
+  latestByCounter.forEach((day, counterId) => {
+    const lastHit = day + 24 * 60 * 60 * 1000 - 1;
+    const existingHit = getLastHitStmt.get(counterId);
+    const existingTs = existingHit
+      ? typeof existingHit.last_hit === 'bigint'
+        ? Number(existingHit.last_hit)
+        : existingHit.last_hit
+      : 0;
+    if (existingTs && existingTs >= lastHit) return;
+    upsertHitStmt.run(counterId, 'import', lastHit);
+    seeded += 1;
+  });
+  return seeded;
+}
+
 const importDailyActivityTx = db.transaction((rows) => {
   rows.forEach((row) => {
     upsertDailyImportStmt.run(row);
@@ -1030,6 +1061,7 @@ module.exports = {
   exportDailyActivityFor,
   importDailyActivity,
   importDailyActivityFor,
+  seedLastHitsFromDaily,
   exportCounters,
   exportCountersByIds,
   importCounters,

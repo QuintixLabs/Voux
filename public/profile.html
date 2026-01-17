@@ -18,7 +18,13 @@
     html.auth-pending body { opacity: 0; visibility: hidden; }
   </style>
   <script>
-    document.documentElement.classList.add('auth-pending');
+    try {
+      if (localStorage.getItem('voux_session_hint') !== '1') {
+        document.documentElement.classList.add('auth-pending');
+      }
+    } catch (_) {
+      document.documentElement.classList.add('auth-pending');
+    }
   </script>
 </head>
 

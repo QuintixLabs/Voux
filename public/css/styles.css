@@ -402,7 +402,7 @@ input[type=number] {
     }
 
     .password-field--no-icon input {
-      padding-left: 0.75rem;
+      padding-left: 1rem;
     }
 
     .password-toggle {
@@ -1741,6 +1741,10 @@ body.modal-open {
   pointer-events: none;
 }
 
+.toast-stack--interactive {
+  pointer-events: auto;
+}
+
 .toast {
   display: inline-flex;
   align-items: center;
@@ -1758,6 +1762,27 @@ body.modal-open {
   transform: translateY(8px);
   transition: opacity 0.2s ease, transform 0.2s ease;
   word-break: break-word;
+  pointer-events: auto;
+}
+
+.toast--action {
+  pointer-events: auto;
+}
+
+.toast__action {
+  border: 1px solid var(--border-primary);
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: 100px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.toast__action:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
 }
 
 .toast i {
@@ -2605,7 +2630,7 @@ body.modal-open {
   border: 1px solid var(--border-primary);
   background: transparent;
   color: var(--text-secondary);
-  border-radius: 999px;
+  border-radius: 20px;
   padding: 0.4rem 0.8rem;
   font-size: 0.84rem;
   display: inline-flex;
@@ -3398,7 +3423,7 @@ body.modal-open {
   min-width: 44px;
   min-height: 44px;
   padding: 0;
-  border-radius: 999px;
+  border-radius: 100px;
   line-height: 1;
 }
 
@@ -3411,7 +3436,7 @@ body.modal-open {
   padding: 0;
   width: 44px;
   height: 44px;
-  border-radius: 999px;
+  border-radius: 100px;
   overflow: hidden;
   display: inline-flex;
   align-items: center;

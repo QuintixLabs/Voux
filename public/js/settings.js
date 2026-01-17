@@ -720,13 +720,54 @@ function ensureToastSupport() {
     toast.innerHTML = `<i class="${variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}"></i>
       <span>${message}</span>`;
     container.appendChild(toast);
+    container.classList.add('toast-stack--interactive');
     requestAnimationFrame(() => {
       requestAnimationFrame(() => toast.classList.add('toast--visible'));
     });
-    setTimeout(() => {
+
+    let remaining = 2200;
+    let startedAt = Date.now();
+    let timeout = setTimeout(removeToast, remaining);
+
+    function removeToast() {
+      if (toast.dataset.removing) return;
+      toast.dataset.removing = 'true';
       toast.classList.remove('toast--visible');
       setTimeout(() => toast.remove(), 250);
-    }, 2200);
+      setTimeout(() => {
+        if (!container.querySelector('.toast')) {
+          container.classList.remove('toast-stack--interactive');
+        }
+      }, 260);
+    }
+
+    const pauseTimer = () => {
+      if (!timeout) return;
+      const elapsed = Date.now() - startedAt;
+      remaining = Math.max(0, remaining - elapsed);
+      clearTimeout(timeout);
+      timeout = null;
+    };
+
+    const resumeTimer = () => {
+      if (timeout || toast.dataset.removing) return;
+      startedAt = Date.now();
+      timeout = setTimeout(removeToast, remaining);
+    };
+
+    toast._pauseToast = pauseTimer;
+    toast._resumeToast = resumeTimer;
+
+    const pauseAll = () => {
+      container.querySelectorAll('.toast').forEach((node) => node._pauseToast?.());
+    };
+
+    const resumeAll = () => {
+      container.querySelectorAll('.toast').forEach((node) => node._resumeToast?.());
+    };
+
+    toast.addEventListener('mouseenter', pauseAll);
+    toast.addEventListener('mouseleave', resumeAll);
   };
   return window.showToast;
 }

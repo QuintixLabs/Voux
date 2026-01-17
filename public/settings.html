@@ -18,7 +18,13 @@
     html.auth-pending body { opacity: 0; visibility: hidden; }
   </style>
   <script>
-    document.documentElement.classList.add('auth-pending');
+    try {
+      if (localStorage.getItem('voux_session_hint') !== '1') {
+        document.documentElement.classList.add('auth-pending');
+      }
+    } catch (_) {
+      document.documentElement.classList.add('auth-pending');
+    }
   </script>
 </head>
 
@@ -280,7 +286,12 @@
         </div>
         <div class="field">
           <div class="field__label" id="userPasswordLabel">Password</div>
-          <input type="password" id="userPassword" aria-labelledby="userPasswordLabel" minlength="6" placeholder="Set a password" required />
+          <div class="password-field password-field--no-icon">
+            <input type="password" id="userPassword" aria-labelledby="userPasswordLabel" minlength="6" placeholder="Set a password" required />
+            <button type="button" class="password-toggle" aria-label="Show password">
+              <i class="ri-eye-off-line" aria-hidden="true"></i>
+            </button>
+          </div>
         </div>
         <button type="submit"><i class="ri-user-add-line"></i> Create user</button>
       </form>
@@ -302,7 +313,12 @@
       </div>
       <div class="modal__input-wrap">
         <div class="modal__input-label">New password</div>
-        <input class="modal__input" type="password" id="userEditPassword" minlength="6" placeholder="Leave blank to keep current" />
+        <div class="password-field password-field--no-icon">
+          <input class="modal__input" type="password" id="userEditPassword" minlength="6" placeholder="Leave blank to keep current" />
+          <button type="button" class="password-toggle" aria-label="Show password">
+            <i class="ri-eye-off-line" aria-hidden="true"></i>
+          </button>
+        </div>
         <small class="modal__input-hint">Leave blank to keep the current password.</small>
       </div>
       <div class="modal__actions">

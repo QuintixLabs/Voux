@@ -35,6 +35,7 @@ const {
   exportDailyActivityFor,
   importDailyActivity,
   importDailyActivityFor,
+  seedLastHitsFromDaily,
   exportCounters,
   exportCountersByIds,
   importCounters,
@@ -176,6 +177,7 @@ app.use((req, res, next) => {
     ].join('; ')
   );
   res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   if (shouldUseSecureCookie(req)) {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -600,6 +602,8 @@ app.post('/api/counters/import', requireAuth, (req, res) => {
   if (!auth) {
     return res.status(401).json({ error: 'unauthorized' });
   }
+  const ownerId = getOwnerId();
+  const requesterIsOwner = auth?.type === 'admin' && ownerId && auth.user.id === ownerId;
   const { replace = false } = req.body || {};
   let payload = null;
   let dailyPayload = [];
@@ -611,8 +615,10 @@ app.post('/api/counters/import', requireAuth, (req, res) => {
       dailyPayload = req.body.daily;
     }
   } else if (req.body && Array.isArray(req.body.tagCatalog)) {
-    if (auth?.type === 'admin' || auth?.type === 'user') {
+    if (auth?.type === 'user') {
       mergeTagCatalog(req.body.tagCatalog, auth.user.id);
+    } else if (auth?.type === 'admin' && requesterIsOwner) {
+      mergeTagCatalog(req.body.tagCatalog, ownerId);
     }
   }
   if (!payload) {
@@ -622,20 +628,22 @@ app.post('/api/counters/import', requireAuth, (req, res) => {
     if (auth.type === 'admin') {
       const imported = importCounters(payload, {
         replace: Boolean(replace),
-        tagOwnerId: auth.user.id
+        tagOwnerId: requesterIsOwner ? ownerId : null
       });
       let dailyImported = 0;
       if (dailyPayload.length) {
         dailyImported = importDailyActivity(dailyPayload);
+        seedLastHitsFromDaily(dailyPayload);
       }
       return res.json({ ok: true, imported, dailyImported });
     }
-    const ownerId = auth.user.id;
-    const imported = importCountersForOwner(payload, { replace: Boolean(replace) }, ownerId);
+    const userOwnerId = auth.user.id;
+    const imported = importCountersForOwner(payload, { replace: Boolean(replace) }, userOwnerId);
     let dailyImported = 0;
     if (dailyPayload.length) {
       const ids = payload.map((entry) => String(entry?.id || '').trim()).filter(Boolean);
       dailyImported = importDailyActivityFor(ids, dailyPayload);
+      seedLastHitsFromDaily(dailyPayload, { ids });
     }
     return res.json({ ok: true, imported, dailyImported });
   } catch (error) {
@@ -1241,7 +1249,7 @@ function bootstrapAdminUser() {
     return;
   }
   try {
-    createUser({ username, password, role: 'admin', displayName: 'Admin' });
+    createUser({ username, password, role: 'admin' });
     console.log('Created initial admin user.');
   } catch (error) {
     console.warn('Failed to bootstrap admin user:', error.message);

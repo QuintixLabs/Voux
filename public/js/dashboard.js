@@ -19,6 +19,7 @@ const selectionToolbar = document.querySelector('#selectionToolbar');
 const selectionCountEl = document.querySelector('#selectionCount');
 const selectAllBtn = document.querySelector('#selectAll');
 const downloadSelectedBtn = document.querySelector('#downloadSelected');
+const addTagsSelectedBtn = document.querySelector('#addTagsSelected');
 const deleteSelectedBtn = document.querySelector('#deleteSelected');
 const clearSelectionBtn = document.querySelector('#clearSelection');
 const adminControls = document.querySelector('#adminControls');
@@ -110,6 +111,7 @@ const state = {
   ownerOnly: false,
   latestCounters: [],
   selectedIds: new Set(),
+  counterCache: new Map(),
   tags: [],
   tagFilter: [],
   createTags: [],
@@ -180,15 +182,121 @@ function showToast(message, variant = 'success') {
   toast.innerHTML = `<i class="${variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}"></i>
     <span>${message}</span>`;
   toastContainer.appendChild(toast);
+  toastContainer.classList.add('toast-stack--interactive');
   requestAnimationFrame(() => {
     requestAnimationFrame(() => toast.classList.add('toast--visible'));
   });
-  setTimeout(() => {
+  let remaining = 2200;
+  let startedAt = Date.now();
+  let timeout = setTimeout(removeToast, remaining);
+
+  function removeToast() {
+    if (toast.dataset.removing) return;
+    toast.dataset.removing = 'true';
     toast.classList.remove('toast--visible');
     setTimeout(() => toast.remove(), 250);
-  }, 2200);
+    setTimeout(() => {
+      if (!toastContainer.querySelector('.toast')) {
+        toastContainer.classList.remove('toast-stack--interactive');
+      }
+    }, 260);
+  }
+
+  const pauseTimer = () => {
+    if (!timeout) return;
+    const elapsed = Date.now() - startedAt;
+    remaining = Math.max(0, remaining - elapsed);
+    clearTimeout(timeout);
+    timeout = null;
+  };
+
+  const resumeTimer = () => {
+    if (timeout || toast.dataset.removing) return;
+    startedAt = Date.now();
+    timeout = setTimeout(removeToast, remaining);
+  };
+
+  toast._pauseToast = pauseTimer;
+  toast._resumeToast = resumeTimer;
+
+  const pauseAll = () => {
+    toastContainer.querySelectorAll('.toast').forEach((node) => node._pauseToast?.());
+  };
+
+  const resumeAll = () => {
+    toastContainer.querySelectorAll('.toast').forEach((node) => node._resumeToast?.());
+  };
+
+  toast.addEventListener('mouseenter', pauseAll);
+  toast.addEventListener('mouseleave', resumeAll);
 }
 window.showToast = showToast;
+
+function showActionToast(message, actionLabel, onAction) {
+  if (!toastContainer) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast toast--action';
+  const icon = document.createElement('i');
+  icon.className = 'ri-checkbox-circle-line';
+  const text = document.createElement('span');
+  text.textContent = message;
+  const actionBtn = document.createElement('button');
+  actionBtn.type = 'button';
+  actionBtn.className = 'toast__action';
+  actionBtn.textContent = actionLabel;
+  toast.append(icon, text, actionBtn);
+  toastContainer.appendChild(toast);
+  toastContainer.classList.add('toast-stack--interactive');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => toast.classList.add('toast--visible'));
+  });
+
+  const removeToast = () => {
+    if (toast.dataset.removing) return;
+    toast.dataset.removing = 'true';
+    toast.classList.remove('toast--visible');
+    setTimeout(() => {
+      toast.remove();
+      if (!toastContainer.querySelector('.toast--action')) {
+        toastContainer.classList.remove('toast-stack--interactive');
+      }
+    }, 250);
+  };
+
+  let remaining = 6000;
+  let startedAt = Date.now();
+  let timeout = setTimeout(removeToast, remaining);
+
+  const pauseTimer = () => {
+    if (!timeout) return;
+    const elapsed = Date.now() - startedAt;
+    remaining = Math.max(0, remaining - elapsed);
+    clearTimeout(timeout);
+    timeout = null;
+  };
+
+  const resumeTimer = () => {
+    if (timeout || toast.dataset.removing) return;
+    startedAt = Date.now();
+    timeout = setTimeout(removeToast, remaining);
+  };
+
+  toast.addEventListener('mouseenter', pauseTimer);
+  toast.addEventListener('mouseleave', resumeTimer);
+  actionBtn.addEventListener('click', async () => {
+    if (actionBtn.disabled) return;
+    actionBtn.disabled = true;
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+    try {
+      await onAction?.();
+    } finally {
+      removeToast();
+    }
+  });
+}
 
 function authFetch(url, options = {}) {
   return fetch(url, {
@@ -268,6 +376,7 @@ function init() {
   window.addEventListener('keydown', handlePaginationHotkeys);
   selectAllBtn?.addEventListener('click', handleSelectAll);
   downloadSelectedBtn?.addEventListener('click', handleDownloadSelected);
+  addTagsSelectedBtn?.addEventListener('click', handleAddTagsSelected);
   deleteSelectedBtn?.addEventListener('click', handleDeleteSelected);
   clearSelectionBtn?.addEventListener('click', () => clearSelection());
   document.addEventListener('click', handleDocumentClick);
@@ -519,6 +628,7 @@ async function refreshCounters(page = 1, options = {}) {
       renderCounterList(counters);
     }
     state.latestCounters = counters;
+    updateCounterCache(counters);
     state.page = data.pagination?.page || 1;
     state.totalPages = data.pagination?.totalPages || 1;
     state.total = data.pagination?.total || (data.counters?.length ?? 0);
@@ -1313,6 +1423,101 @@ async function handleDownloadSelected() {
     await downloadCountersByIds(ids, 'selected-counters');
   } finally {
     if (downloadSelectedBtn) downloadSelectedBtn.disabled = false;
+  }
+}
+
+function updateCounterCache(counters = []) {
+  if (!state.counterCache) {
+    state.counterCache = new Map();
+  }
+  counters.forEach((counter) => {
+    if (counter?.id) {
+      state.counterCache.set(counter.id, counter);
+    }
+  });
+}
+
+async function handleAddTagsSelected() {
+  const ids = Array.from(state.selectedIds);
+  if (!ids.length) {
+    await showAlert('Select at least one counter.');
+    return;
+  }
+  if (!state.tags.length) {
+    await showAlert('Create a tag first.');
+    return;
+  }
+  const undoSnapshot = new Map();
+  ids.forEach((id) => {
+    const cached = state.counterCache?.get(id);
+    if (cached) {
+      undoSnapshot.set(id, extractTagIds(cached.tags));
+    }
+  });
+  if (addTagsSelectedBtn) addTagsSelectedBtn.disabled = true;
+  const selectedTags = await openBulkTagDialog(ids.length);
+  if (addTagsSelectedBtn) addTagsSelectedBtn.disabled = false;
+  if (!selectedTags) return;
+  if (!selectedTags.length) {
+    await showAlert('Pick at least one tag.');
+    return;
+  }
+  let updated = 0;
+  let skipped = 0;
+  let lastError = null;
+  const updatedIds = [];
+  const nextTagObjects = state.tags.filter((tag) => selectedTags.includes(tag.id));
+  for (const id of ids) {
+    try {
+      await updateCounterMetadataRequest(id, { tags: selectedTags });
+      updated += 1;
+      updatedIds.push(id);
+      const cached = state.counterCache?.get(id);
+      if (cached) {
+        cached.tags = nextTagObjects.slice();
+      }
+    } catch (error) {
+      if (error?.message === 'forbidden') {
+        skipped += 1;
+      } else {
+        lastError = error;
+      }
+    }
+  }
+  await refreshCounters(state.page);
+  if (updated) {
+    const message = `Updated tags for ${updated} counter${updated === 1 ? '' : 's'}` + (skipped ? ` · ${skipped} skipped` : '');
+    showActionToast(message, 'Undo', async () => {
+      let reverted = 0;
+      let failed = 0;
+      for (const id of updatedIds) {
+        const previous = undoSnapshot.get(id);
+        if (!previous) {
+          failed += 1;
+          continue;
+        }
+        try {
+          await updateCounterMetadataRequest(id, { tags: previous });
+          reverted += 1;
+          const cached = state.counterCache?.get(id);
+          if (cached) {
+            cached.tags = state.tags.filter((tag) => previous.includes(tag.id));
+          }
+        } catch (_) {
+          failed += 1;
+        }
+      }
+      await refreshCounters(state.page);
+      if (reverted) {
+        showToast(`Reverted tags for ${reverted} counter${reverted === 1 ? '' : 's'}`);
+      }
+      if (failed) {
+        showToast(`Could not revert ${failed} counter${failed === 1 ? '' : 's'}`, 'danger');
+      }
+    });
+  }
+  if (lastError) {
+    await showAlert(normalizeAuthMessage(lastError, 'Failed to update tags'));
   }
 }
 
@@ -2303,6 +2508,86 @@ function openTagDialog(existingCount = 0, counterTotal = 0, defaults = {}) {
     cancelBtn.addEventListener('click', () => cleanup(null));
     saveBtn.addEventListener('click', submit);
     document.addEventListener('keydown', onKeyDown);
+  });
+}
+
+function openBulkTagDialog(selectedCount = 0) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.classList.add('modal-overlay', 'modal-overlay--open', 'tag-dialog-overlay');
+    const dialog = document.createElement('div');
+    dialog.className = 'tag-dialog';
+    dialog.tabIndex = -1;
+
+    const title = document.createElement('h3');
+    title.className = 'tag-dialog__title';
+    title.textContent = 'Add tags';
+
+    const hint = document.createElement('p');
+    hint.className = 'tag-dialog__hint';
+    hint.textContent = `Apply tags to ${selectedCount} selected counters (replaces existing tags).`;
+
+    const tagsField = document.createElement('div');
+    tagsField.className = 'tag-dialog__field';
+    const tagsLabel = document.createElement('label');
+    tagsLabel.textContent = 'Tags';
+    const tagsPicker = document.createElement('div');
+    tagsPicker.className = 'tag-picker';
+    tagsField.append(tagsLabel, tagsPicker);
+
+    let selectedTags = [];
+    const selectorEntry = registerTagSelector(tagsPicker, {
+      getSelected: () => selectedTags.slice(),
+      setSelected: (next) => {
+        selectedTags = next;
+      },
+      emptyMessage: 'No tags yet. Use "New tag" to create one.'
+    });
+    renderTagSelectorEntry(selectorEntry);
+
+    const actions = document.createElement('div');
+    actions.className = 'tag-dialog__actions';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'ghost';
+    cancelBtn.textContent = 'Cancel';
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'savebtn';
+    saveBtn.textContent = 'Apply tags';
+    actions.append(cancelBtn, saveBtn);
+
+    const closeDialog = () => {
+      document.body.classList.remove('modal-open');
+      overlay.remove();
+      resolve(null);
+    };
+
+    cancelBtn.addEventListener('click', closeDialog);
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) closeDialog();
+    });
+    saveBtn.addEventListener('click', () => {
+      document.body.classList.remove('modal-open');
+      overlay.remove();
+      resolve(selectedTags.slice());
+    });
+    dialog.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDialog();
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveBtn.click();
+      }
+    });
+
+    dialog.append(title, hint, tagsField, actions);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    document.body.classList.add('modal-open');
+    dialog.focus();
   });
 }
 
