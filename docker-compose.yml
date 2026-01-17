@@ -4,6 +4,7 @@ services:
     ports:
       - "8787:8787"
     environment:
-      - ADMIN_TOKEN=your-secret
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=change-this-password
     volumes:
       - ./data:/app/data
