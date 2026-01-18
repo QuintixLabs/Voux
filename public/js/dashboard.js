@@ -707,8 +707,7 @@ async function handleDeleteAll() {
   const targetLabel = state.isAdmin ? 'every counter' : 'your counters';
   const confirmed = await showConfirm({
     title: 'Really delete everything?',
-    message: `This will permanently remove ${targetLabel} and their data on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
-    allowHtml: true,
+    message: `This will permanently remove ${targetLabel} and their data on: ${siteUrl}. You'll confirm by typing DELETE next.`,
     confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
     variant: 'danger'
@@ -1321,8 +1320,7 @@ async function handleDeleteFiltered() {
   const scopeLabel = state.isAdmin ? `all ${label}` : `your ${label}`;
   const confirmed = await showConfirm({
     title: 'Delete filtered counters?',
-    message: `This will permanently remove ${scopeLabel} on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
-    allowHtml: true,
+    message: `This will permanently remove ${scopeLabel} on: ${siteUrl}. You'll confirm by typing DELETE next.`,
     confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
     variant: 'danger'

@@ -24,6 +24,9 @@
   function apply(theme) {
     const safe = sanitize(theme);
     document.documentElement.setAttribute('data-theme', safe);
+    try {
+      localStorage.setItem('voux_theme', safe);
+    } catch (_) {}
     return safe;
   }
 

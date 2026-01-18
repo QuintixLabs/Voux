@@ -1317,7 +1317,6 @@ body.modal-open {
   display: inline-flex;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 0.35rem;
   border: 1px solid var(--tag-color, var(--border-primary));
   color: var(--tag-text-color, var(--text-primary));
   border-radius: 15px;
@@ -1326,6 +1325,7 @@ body.modal-open {
   background: rgba(255, 255, 255, 0.04);
   margin-bottom: 0;
   gap: 0.25rem;
+  margin-bottom: 3px;
 }
 
 .tag-chip__label {
@@ -2491,7 +2491,7 @@ body.modal-open {
 
     .footer__update-tooltip {
       position: absolute;
-      bottom: calc(100% + 8px);
+      bottom: calc(100% + 15px);
       left: 50%;
       transform: translate(-50%, 4px);
       background: var(--bg-secondary);
@@ -2503,7 +2503,7 @@ body.modal-open {
       white-space: nowrap;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.15s ease, transform 0.15s ease;
+      will-change: opacity;
       z-index: 2;
       text-decoration: none;
     }
@@ -2523,8 +2523,32 @@ body.modal-open {
 
     .footer__update-wrap.is-open .footer__update-tooltip {
       opacity: 1;
-      transform: translate(-50%, 0);
       pointer-events: auto;
+      animation: footer-tooltip-in 0.18s ease;
+    }
+
+    .footer__update-wrap.is-closing .footer__update-tooltip {
+      opacity: 0;
+      pointer-events: none;
+      animation: footer-tooltip-out 0.18s ease;
+    }
+
+    @keyframes footer-tooltip-in {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes footer-tooltip-out {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0;
+      }
     }
 
     .footer__bottom a {

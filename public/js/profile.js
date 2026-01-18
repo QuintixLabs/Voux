@@ -176,6 +176,28 @@ function setAvatarPreview(url, username) {
   }
 }
 
+function readCachedUser() {
+  try {
+    const raw = localStorage.getItem('voux_nav_user');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || (!parsed.username && !parsed.displayName)) return null;
+    return parsed;
+  } catch (_) {
+    return null;
+  }
+}
+
+function applyCachedProfile(user) {
+  if (!user) return;
+  if (profileUsernameText) profileUsernameText.textContent = user.username || '';
+  if (profileDisplayText) {
+    profileDisplayText.textContent = user.displayName || 'No display name';
+    profileDisplayText.classList.toggle('hint', !user.displayName);
+  }
+  setAvatarPreview(user.avatarUrl || '', user.displayName || user.username);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Profile load                                                               */
 /* -------------------------------------------------------------------------- */
@@ -183,6 +205,10 @@ async function loadProfile() {
   const revealPage = () => {
     document.documentElement.classList.remove('auth-pending');
   };
+  const cachedUser = readCachedUser();
+  if (cachedUser) {
+    applyCachedProfile(cachedUser);
+  }
   const attempt = async () => {
     const res = await authFetch('/api/profile', { cache: 'no-store' });
     if (res.status === 401 || res.status === 403) {

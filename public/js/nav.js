@@ -146,20 +146,32 @@
     if (!menuButton) return;
     if (!user) {
       menuButton.classList.remove('nav-account__button--avatar');
-      menuButton.innerHTML = '<i class="ri-account-circle-fill"></i>';
+      menuButton.textContent = '';
+      const icon = document.createElement('i');
+      icon.className = 'ri-account-circle-fill';
+      menuButton.appendChild(icon);
       return;
     }
     const display = user.displayName || user.username || '?';
     if (user.avatarUrl) {
       menuButton.classList.add('nav-account__button--avatar');
-      menuButton.innerHTML = `<img class="nav-account__avatar" src="${user.avatarUrl}" alt="${display}" />`;
+      menuButton.textContent = '';
+      const img = document.createElement('img');
+      img.className = 'nav-account__avatar';
+      img.src = user.avatarUrl;
+      img.alt = display;
+      menuButton.appendChild(img);
       return;
     }
     const displayName = (user.displayName || '').trim();
     const fallbackName = (user.username || '?').trim();
     const letter = (displayName || fallbackName || '?').charAt(0).toUpperCase();
     menuButton.classList.add('nav-account__button--avatar');
-    menuButton.innerHTML = `<span class="nav-account__avatar nav-account__avatar--fallback">${letter}</span>`;
+    menuButton.textContent = '';
+    const fallback = document.createElement('span');
+    fallback.className = 'nav-account__avatar nav-account__avatar--fallback';
+    fallback.textContent = letter;
+    menuButton.appendChild(fallback);
   }
 
   /* ------------------------------------------------------------------------ */

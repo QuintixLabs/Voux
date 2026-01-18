@@ -405,9 +405,12 @@ function renderUsers(users, query = '') {
   if (!usersList) return;
   usersList.innerHTML = '';
   if (!users.length) {
-    usersList.innerHTML = query
-      ? `<p class="hint">No users found for "${query}".</p>`
-      : '<p class="hint">No users yet.</p>';
+    const hint = document.createElement('p');
+    hint.className = 'hint';
+    hint.textContent = query
+      ? `No users found for "${query}".`
+      : 'No users yet.';
+    usersList.appendChild(hint);
     return;
   }
   users.forEach((user) => {
@@ -967,11 +970,10 @@ async function handlePurgeInactive() {
   const siteUrl = window.location?.origin || window.location?.href || 'this site';
   const confirmedFinal = await modalConfirm({
     title: 'Really remove inactive counters?',
-    message: `This will permanently remove every counter that has no hits for 30 days on: <strong style="color:#fff;">${siteUrl}</strong>. You'll confirm by typing DELETE next.`,
+    message: `This will permanently remove every counter that has no hits for 30 days on: ${siteUrl}. You'll confirm by typing DELETE next.`,
     confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
-    variant: 'danger',
-    allowHtml: true
+    variant: 'danger'
   });
   if (!confirmedFinal) return;
   const confirmedInput = await modalConfirmWithInput({

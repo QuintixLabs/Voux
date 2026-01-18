@@ -135,6 +135,7 @@ const listCountersStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters OR
 const listCountersByOwnerStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters WHERE owner_id = ? ORDER BY created_at DESC`);
 const getCounterStmt = db.prepare(`SELECT ${baseSelectFields} FROM counters WHERE id = ?`);
 const getLastHitStmt = db.prepare('SELECT last_hit FROM hits WHERE counter_id = ? ORDER BY last_hit DESC LIMIT 1');
+const clampFutureHitsStmt = db.prepare('UPDATE hits SET last_hit = ? WHERE counter_id = ? AND last_hit > ?');
 const countHitsSinceStmt = db.prepare('SELECT COUNT(*) as total FROM hits WHERE counter_id = ? AND last_hit >= ?');
 const insertCounterStmt = db.prepare(
   'INSERT INTO counters (id, label, theme, note, value, created_at, count_mode, owner_id) VALUES (@id, @label, @theme, @note, @value, @created_at, @count_mode, @owner_id)'
@@ -676,7 +677,10 @@ function normalizeImportedCounter(raw, tagOwnerId = null) {
   if (modeResult.error) {
     return null;
   }
-  const ownerId = typeof raw.owner_id === 'string' && raw.owner_id.trim() ? raw.owner_id.trim().slice(0, 64) : null;
+  let ownerId = typeof raw.owner_id === 'string' && raw.owner_id.trim() ? raw.owner_id.trim().slice(0, 64) : null;
+  if (!ownerId && tagOwnerId) {
+    ownerId = tagOwnerId;
+  }
   const tagScope = ownerId || tagOwnerId || null;
   return {
     id: id.slice(0, 64),
@@ -763,6 +767,7 @@ function importDailyActivityFor(ids = [], data = []) {
 function seedLastHitsFromDaily(data = [], options = {}) {
   if (!Array.isArray(data) || !data.length) return 0;
   const allowedIds = Array.isArray(options.ids) ? new Set(normalizeIdList(options.ids)) : null;
+  const now = Date.now();
   const latestByCounter = new Map();
   data.forEach((raw) => {
     const row = normalizeDailyEntry(raw);
@@ -776,13 +781,17 @@ function seedLastHitsFromDaily(data = [], options = {}) {
   if (!latestByCounter.size) return 0;
   let seeded = 0;
   latestByCounter.forEach((day, counterId) => {
-    const lastHit = day + 24 * 60 * 60 * 1000 - 1;
+    const lastHit = Math.min(day + 24 * 60 * 60 * 1000 - 1, now);
     const existingHit = getLastHitStmt.get(counterId);
-    const existingTs = existingHit
+    let existingTs = existingHit
       ? typeof existingHit.last_hit === 'bigint'
         ? Number(existingHit.last_hit)
         : existingHit.last_hit
       : 0;
+    if (existingTs > now) {
+      clampFutureHitsStmt.run(now, counterId, now);
+      existingTs = now;
+    }
     if (existingTs && existingTs >= lastHit) return;
     upsertHitStmt.run(counterId, 'import', lastHit);
     seeded += 1;

@@ -119,6 +119,37 @@
     }
   }
 
+  function setModalMessage(message, allowHtml) {
+    if (!messageEl) return;
+    if (!allowHtml) {
+      messageEl.textContent = message || '';
+      return;
+    }
+    const template = document.createElement('template');
+    template.innerHTML = message || '';
+    const allowed = new Set(['STRONG', 'EM', 'BR']);
+    const walker = document.createTreeWalker(
+      template.content,
+      NodeFilter.SHOW_ELEMENT,
+      null
+    );
+    const toStrip = [];
+    while (walker.nextNode()) {
+      const el = walker.currentNode;
+      if (!allowed.has(el.tagName)) {
+        toStrip.push(el);
+        continue;
+      }
+      [...el.attributes].forEach((attr) => el.removeAttribute(attr.name));
+    }
+    toStrip.forEach((el) => {
+      const text = document.createTextNode(el.textContent || '');
+      el.replaceWith(text);
+    });
+    messageEl.textContent = '';
+    messageEl.appendChild(template.content);
+  }
+
   /* ------------------------------------------------------------------------ */
   /* Modal open/close                                                         */
   /* ------------------------------------------------------------------------ */
@@ -132,11 +163,7 @@
     overlay.dataset.modalAllowEnter = 'true';
     overlay.dataset.modalAllowEscape = dismissible ? 'true' : 'false';
     titleEl.textContent = title || '';
-    if (allowHtml) {
-      messageEl.innerHTML = message || '';
-    } else {
-      messageEl.textContent = message || '';
-    }
+    setModalMessage(message, false);
     clearInput();
     actionsEl.innerHTML = '';
     let confirmButton = null;

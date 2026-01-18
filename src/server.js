@@ -607,6 +607,7 @@ app.post('/api/counters/import', requireAuth, (req, res) => {
   const { replace = false } = req.body || {};
   let payload = null;
   let dailyPayload = [];
+  const incomingTags = Array.isArray(req.body?.tagCatalog) ? req.body.tagCatalog : null;
   if (Array.isArray(req.body)) {
     payload = req.body;
   } else if (req.body && Array.isArray(req.body.counters)) {
@@ -614,15 +615,16 @@ app.post('/api/counters/import', requireAuth, (req, res) => {
     if (Array.isArray(req.body.daily)) {
       dailyPayload = req.body.daily;
     }
-  } else if (req.body && Array.isArray(req.body.tagCatalog)) {
-    if (auth?.type === 'user') {
-      mergeTagCatalog(req.body.tagCatalog, auth.user.id);
-    } else if (auth?.type === 'admin' && requesterIsOwner) {
-      mergeTagCatalog(req.body.tagCatalog, ownerId);
-    }
   }
   if (!payload) {
     return res.status(400).json({ error: 'invalid_backup_format' });
+  }
+  if (incomingTags) {
+    if (auth?.type === 'user') {
+      mergeTagCatalog(incomingTags, auth.user.id);
+    } else if (auth?.type === 'admin' && requesterIsOwner) {
+      mergeTagCatalog(incomingTags, ownerId);
+    }
   }
   try {
     if (auth.type === 'admin') {
@@ -825,6 +827,9 @@ app.post('/api/settings', requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'no_valid_settings' });
   }
   const updated = updateConfig(patch);
+  if (patch.theme) {
+    htmlCache.clear();
+  }
   setUnlimitedThrottle((updated.unlimitedThrottleSeconds || 0) * 1000);
   res.json({ config: updated, version: getVersion() });
 });
@@ -1359,6 +1364,15 @@ function injectVersion(html) {
   return html.replace(/\?v=%APP_VERSION%/g, versionToken);
 }
 
+function injectTheme(html) {
+  if (!html) return html;
+  const theme = String(getConfig()?.theme || 'default').trim().toLowerCase() || 'default';
+  return html.replace(/<html\b([^>]*)>/i, (match, attrs) => {
+    if (/data-theme=/.test(attrs)) return match;
+    return `<html${attrs} data-theme="${theme}">`;
+  });
+}
+
 // Reads and caches HTML templates with version tokens applied
 function loadHtmlTemplate(filename) {
   if (!IS_DEV && htmlCache.has(filename)) {
@@ -1367,7 +1381,7 @@ function loadHtmlTemplate(filename) {
   try {
     const filePath = path.join(staticDir, filename);
     const raw = fs.readFileSync(filePath, 'utf8');
-    const compiled = injectVersion(raw);
+    const compiled = injectTheme(injectVersion(raw));
     if (!IS_DEV) {
       htmlCache.set(filename, compiled);
     }

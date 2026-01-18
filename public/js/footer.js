@@ -120,13 +120,32 @@ function setupUpdateTooltip(updateEl) {
   tooltip.rel = 'noopener';
   tooltip.textContent = updateEl.dataset.tooltip || 'New version available';
 
+  // minimal js animation for footer__update-tooltip
+  //
+  // footer__update-tooltip: close flow
+  const closeTooltip = () => {
+    if (!updateEl.classList.contains('is-open')) return;
+    updateEl.classList.remove('is-open');
+    updateEl.classList.add('is-closing');
+    window.setTimeout(() => {
+      updateEl.classList.remove('is-closing');
+    }, 200);
+  };
+
   trigger?.addEventListener('click', (event) => {
     event.stopPropagation();
-    updateEl.classList.toggle('is-open');
+    // footer__update-tooltip: toggle open/close
+    if (updateEl.classList.contains('is-open')) {
+      closeTooltip();
+      return;
+    }
+    updateEl.classList.remove('is-closing');
+    updateEl.classList.add('is-open');
   });
 
   document.addEventListener('click', () => {
-    updateEl.classList.remove('is-open');
+    // footer__update-tooltip: close on outside click
+    closeTooltip();
   });
 }
 
