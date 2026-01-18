@@ -75,6 +75,10 @@ if (!toastContainer) {
 let tagFilterMenuOpen = false;
 const tagSelectorRegistry = new Set();
 let pickrReadyPromise = null;
+let sessionRetryCount = 0;
+let sessionRevealTimer = null;
+let sessionUnauthorizedCount = 0;
+let sessionRevealDeadline = 0;
 
 /* -------------------------------------------------------------------------- */
 /* Constants                                                                  */
@@ -308,6 +312,34 @@ function authFetch(url, options = {}) {
   });
 }
 
+function buildUnauthorizedError() {
+  const error = new Error('unauthorized');
+  error.code = 'unauthorized';
+  return error;
+}
+
+async function ensureSessionForAction() {
+  if (!state.user) {
+    await showAlert('Session expired. Please log in again.');
+    await setUserSession(null);
+    return false;
+  }
+  const res = await authFetch('/api/session', { cache: 'no-store' });
+  if (!res.ok) {
+    await setUserSession(null);
+    await showAlert(normalizeAuthMessage(buildUnauthorizedError(), 'Session expired. Please log in again.'));
+    return false;
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!data?.user) {
+    await setUserSession(null);
+    await showAlert(normalizeAuthMessage(buildUnauthorizedError(), 'Session expired. Please log in again.'));
+    return false;
+  }
+  await setUserSession(data.user);
+  return true;
+}
+
 function limitStartValueInput(input) {
   if (!input) return;
   const enforceDigits = () => {
@@ -406,8 +438,13 @@ function init() {
   // no extra change handler needed for simple dropdown
   fetchConfig()
     .then(() => {
-      showStatusHint('Checking your session...');
-      checkSession();
+      const hinted = localStorage.getItem('voux_session_hint') === '1';
+      if (hinted) {
+        showStatusHint('Checking your session...');
+        checkSession();
+      } else {
+        revealLoginCard();
+      }
     })
     .catch((err) => {
       console.warn('Admin init failed', err);
@@ -465,9 +502,37 @@ async function fetchConfig() {
 async function checkSession() {
   setLoginPending(true, 'Checking your session...');
   setLoginLoading(true);
+  if (sessionRevealTimer) {
+    clearTimeout(sessionRevealTimer);
+    sessionRevealTimer = null;
+  }
   try {
     const res = await fetch('/api/session', { credentials: 'include' });
     if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        sessionUnauthorizedCount += 1;
+        if (sessionRevealDeadline === 0) {
+          sessionRevealDeadline = Date.now() + 1500;
+        }
+        if (Date.now() < sessionRevealDeadline) {
+          setTimeout(() => {
+            checkSession();
+          }, 500);
+          return;
+        }
+        sessionRevealDeadline = 0;
+        sessionRevealTimer = setTimeout(() => {
+          revealLoginCard();
+        }, 200);
+        return;
+      }
+      if (sessionRetryCount < 1) {
+        sessionRetryCount += 1;
+        setTimeout(() => {
+          checkSession();
+        }, 350);
+        return;
+      }
       revealLoginCard();
       return;
     }
@@ -475,8 +540,17 @@ async function checkSession() {
     setUserSession(data?.user || null);
     showDashboard();
   } catch (error) {
+    if (sessionRetryCount < 1) {
+      sessionRetryCount += 1;
+      setTimeout(() => {
+        checkSession();
+      }, 350);
+      return;
+    }
     console.warn('Session check failed', error);
-    revealLoginCard();
+    sessionRevealTimer = setTimeout(() => {
+      revealLoginCard();
+    }, 500);
   } finally {
     setLoginLoading(false);
   }
@@ -680,9 +754,7 @@ async function fetchCounters(page) {
   const res = await authFetch(url);
   if (res.status === 401 || res.status === 403) {
     const err = await res.json().catch(() => ({}));
-    const unauthorized = new Error(err?.message || 'Unauthorized.');
-    unauthorized.code = 'unauthorized';
-    throw unauthorized;
+    throw buildUnauthorizedError();
   }
   if (res.status === 429) {
     const err = await res.json().catch(() => ({}));
@@ -730,7 +802,7 @@ async function handleDeleteAll() {
     const res = await authFetch('/api/counters', {
       method: 'DELETE'
     });
-    if (res.status === 401) throw new Error('Unauthorized.');
+    if (res.status === 401) throw buildUnauthorizedError();
     if (!res.ok) throw new Error('Failed to delete counters');
     const payload = await res.json().catch(() => ({}));
     await refreshCounters(1);
@@ -745,8 +817,7 @@ async function handleDeleteAll() {
 
 async function handleCreateCounter(event) {
   event.preventDefault();
-  if (!state.user) {
-    await showAlert('Log in first.');
+  if (!(await ensureSessionForAction())) {
     return;
   }
   const noteValue = createNoteInput?.value?.trim() || '';
@@ -771,7 +842,7 @@ async function handleCreateCounter(event) {
       },
       body: JSON.stringify(payload)
     });
-    if (res.status === 401) throw new Error('Unauthorized.');
+    if (res.status === 401) throw buildUnauthorizedError();
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       if (err && typeof err.message === 'string' && err.message.trim()) {
@@ -1144,7 +1215,7 @@ async function removeCounter(id) {
     const res = await authFetch(`/api/counters/${id}`, {
       method: 'DELETE'
     });
-    if (res.status === 401) throw new Error('Unauthorized.');
+    if (res.status === 401) throw buildUnauthorizedError();
     if (!res.ok) throw new Error('Failed to delete counter');
     state.selectedIds.delete(id);
     const nextPage = state.page > 1 && counterListEl.children.length === 1 ? state.page - 1 : state.page;
@@ -1250,9 +1321,18 @@ function setLoginLoading(loading) {
 /* Session state                                                              */
 /* -------------------------------------------------------------------------- */
 async function setUserSession(user) {
+  sessionRetryCount = 0;
+  sessionUnauthorizedCount = 0;
+  sessionRevealDeadline = 0;
+  if (sessionRevealTimer) {
+    clearTimeout(sessionRevealTimer);
+    sessionRevealTimer = null;
+  }
   state.user = user || null;
   state.isAdmin = Boolean(user?.isAdmin || user?.role === 'admin');
   if (!state.user) {
+    window.VouxErrors?.cacheNavUser?.(null);
+    document.dispatchEvent(new CustomEvent('voux:session-updated', { detail: { user: null } }));
     state.ownerOnly = false;
     syncOwnerFilterToggle();
     hideDashboard();
@@ -1540,7 +1620,7 @@ async function downloadCountersByIds(ids, filenamePrefix) {
       body: JSON.stringify({ ids })
     });
     if (res.status === 401) {
-      throw new Error('Unauthorized.');
+      throw buildUnauthorizedError();
     }
     if (res.status === 404) {
       throw new Error('Counters not found.');
@@ -1601,7 +1681,7 @@ async function handleDeleteSelected() {
       },
       body: JSON.stringify({ ids })
     });
-    if (res.status === 401) throw new Error('Unauthorized.');
+    if (res.status === 401) throw buildUnauthorizedError();
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to delete counters');
@@ -1767,7 +1847,7 @@ async function updateCounterMetadataRequest(id, payload) {
     },
     body: JSON.stringify(payload)
   });
-  if (res.status === 401) throw new Error('Unauthorized.');
+  if (res.status === 401) throw buildUnauthorizedError();
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Failed to update counter');
@@ -1899,7 +1979,7 @@ async function fetchTags() {
   try {
     const res = await authFetch('/api/tags');
     if (res.status === 401) {
-      throw new Error('Unauthorized.');
+      throw buildUnauthorizedError();
     }
     if (!res.ok) {
       throw new Error('Failed to load tags');
@@ -2164,7 +2244,7 @@ async function deleteTagRequest(tagId, name) {
     const res = await authFetch(`/api/tags/${encodeURIComponent(tagId)}`, {
       method: 'DELETE'
     });
-    if (res.status === 401) throw new Error('Unauthorized.');
+    if (res.status === 401) throw buildUnauthorizedError();
     if (res.status === 404) throw new Error('Tag not found.');
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

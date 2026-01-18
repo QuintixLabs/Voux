@@ -23,6 +23,8 @@
       try {
         if (!user) {
           localStorage.removeItem('voux_nav_user');
+          localStorage.removeItem('voux_session_checked_at');
+          localStorage.removeItem('voux_session_hint');
           return;
         }
         const payload = {
@@ -31,6 +33,8 @@
           avatarUrl: user.avatarUrl || ''
         };
         localStorage.setItem('voux_nav_user', JSON.stringify(payload));
+        localStorage.setItem('voux_session_checked_at', String(Date.now()));
+        localStorage.setItem('voux_session_hint', '1');
       } catch (_) {}
     }
   };

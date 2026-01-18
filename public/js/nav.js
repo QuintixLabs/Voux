@@ -48,16 +48,15 @@
   /* ------------------------------------------------------------------------ */
   menuButton.addEventListener('click', async (event) => {
     event.preventDefault();
-    if (sessionUser || cachedUser) {
-      toggleMenu();
-      checkSession();
-      return;
-    }
+    setMenuPending(true);
     await checkSession();
     if (!sessionUser) {
+      closeMenu();
+      setMenuPending(false);
       window.location.href = '/dashboard';
       return;
     }
+    setMenuPending(false);
     toggleMenu();
   });
 
@@ -87,6 +86,10 @@
     menu.classList.remove('account-menu--open');
   }
 
+  function setMenuPending(isPending) {
+    menu.classList.toggle('account-menu--pending', isPending);
+  }
+
   /* ------------------------------------------------------------------------ */
   /* Session checks                                                           */
   /* ------------------------------------------------------------------------ */
@@ -95,28 +98,28 @@
     sessionCheckInFlight = (async () => {
       try {
         const res = await fetch('/api/session', { credentials: 'include', cache: 'no-store' });
-        if (!res.ok) {
+    if (!res.ok) {
         sessionChecked = true;
         sessionUser = null;
         updateMenuState();
         writeCachedUser(null);
         return sessionUser;
-        }
-        const data = await res.json();
-        sessionUser = data?.user || null;
-        sessionChecked = true;
-        if (window.VouxErrors?.cacheNavUser) {
-          window.VouxErrors.cacheNavUser(sessionUser);
-        }
+    }
+    const data = await res.json();
+    sessionUser = data?.user || null;
+    sessionChecked = true;
+    if (window.VouxErrors?.cacheNavUser) {
+      window.VouxErrors.cacheNavUser(sessionUser);
+    }
         updateMenuState();
         if (!sessionUser && menu.classList.contains('account-menu--open')) {
           closeMenu();
         }
         return sessionUser;
       } catch (error) {
-      if (error?.name !== 'AbortError') {
-        console.warn('Failed to check session', error);
-      }
+        if (error?.name !== 'AbortError') {
+          console.warn('Failed to check session', error);
+        }
         sessionChecked = true;
         sessionUser = null;
         updateMenuState();
@@ -140,6 +143,7 @@
       settingsLink.classList.toggle('hidden', !sessionUser);
     }
     updateAccountButton(sessionUser);
+    setMenuPending(!sessionUser);
   }
 
   function updateAccountButton(user) {
@@ -177,8 +181,26 @@
   /* ------------------------------------------------------------------------ */
   /* Cached user handling                                                     */
   /* ------------------------------------------------------------------------ */
+  const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+
+  function clearCachedUser() {
+    localStorage.removeItem('voux_nav_user');
+    localStorage.removeItem('voux_session_checked_at');
+    localStorage.removeItem('voux_session_hint');
+  }
+
+  function hasFreshSessionHint() {
+    const checkedAt = Number(localStorage.getItem('voux_session_checked_at')) || 0;
+    if (!checkedAt) return false;
+    return Date.now() - checkedAt < SESSION_TTL_MS;
+  }
+
   function readCachedUser() {
     try {
+      if (!hasFreshSessionHint()) {
+        clearCachedUser();
+        return null;
+      }
       const raw = localStorage.getItem('voux_nav_user');
       if (!raw) return null;
       const parsed = JSON.parse(raw);
@@ -192,8 +214,7 @@
   function writeCachedUser(user) {
     try {
       if (!user) {
-        localStorage.removeItem('voux_nav_user');
-        localStorage.removeItem('voux_session_hint');
+        clearCachedUser();
         return;
       }
       const payload = {
@@ -202,6 +223,7 @@
         avatarUrl: user.avatarUrl || ''
       };
       localStorage.setItem('voux_nav_user', JSON.stringify(payload));
+      localStorage.setItem('voux_session_checked_at', String(Date.now()));
       localStorage.setItem('voux_session_hint', '1');
     } catch (_) {}
   }

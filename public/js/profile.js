@@ -34,6 +34,7 @@ const profileUsernameSave = document.getElementById('profileUsernameSave');
 const profileUsernameCancel = document.getElementById('profileUsernameCancel');
 const profileDisplayModal = document.getElementById('profileDisplayModal');
 const profileDisplayNew = document.getElementById('profileDisplayNew');
+const profileDisplayError = document.getElementById('profileDisplayError');
 const profileDisplaySave = document.getElementById('profileDisplaySave');
 const profileDisplayCancel = document.getElementById('profileDisplayCancel');
 
@@ -227,6 +228,8 @@ async function loadProfile() {
     }
     if (!result.ok) {
       if (result.unauthorized) {
+        window.VouxErrors?.cacheNavUser?.(null);
+        document.dispatchEvent(new CustomEvent('voux:session-updated', { detail: { user: null } }));
         window.location.href = '/dashboard';
         return;
       }
@@ -500,6 +503,7 @@ async function saveAvatarChange(avatarUrl) {
 /* -------------------------------------------------------------------------- */
 function openDisplayModal() {
   if (!profileDisplayModal) return;
+  setInlineError(profileDisplayError, '');
   if (profileDisplayNew) {
     const current = profileDisplayText?.textContent || '';
     profileDisplayNew.value = current === 'No display name' ? '' : current;
@@ -515,6 +519,7 @@ function closeDisplayModal() {
   profileDisplayModal.classList.remove('modal-overlay--open');
   profileDisplayModal.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('modal-open');
+  setInlineError(profileDisplayError, '');
 }
 
 async function saveDisplayName() {
@@ -535,7 +540,10 @@ async function saveDisplayName() {
     syncProfile(updated);
     closeDisplayModal();
   } catch (error) {
-    showToast(normalizeProfileError(error, 'Failed to update display name.'), 'danger');
+    setInlineError(
+      profileDisplayError,
+      normalizeProfileError(error, 'Failed to update display name.')
+    );
   }
 }
 

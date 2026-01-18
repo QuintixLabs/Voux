@@ -151,6 +151,8 @@ async function checkSession() {
     }
     if (!result.ok) {
       if (result.unauthorized) {
+        window.VouxErrors?.cacheNavUser?.(null);
+        document.dispatchEvent(new CustomEvent('voux:session-updated', { detail: { user: null } }));
         window.location.href = '/dashboard';
         return;
       }
@@ -507,6 +509,7 @@ async function handleUserCreate(event) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, role, displayName })
     });
+    assertSession(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to create user');
@@ -518,7 +521,7 @@ async function handleUserCreate(event) {
     const message = error.message === 'username_exists'
       ? 'That username is already taken.'
       : error.message || 'Failed to create user.';
-    showToast(message, 'danger');
+    await showAlert(normalizeAuthMessage(error, message));
   }
 }
 
@@ -533,6 +536,7 @@ async function handleUserRoleChange(user, roleSelect) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: nextRole })
     });
+    assertSession(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to update role');
@@ -634,6 +638,7 @@ async function handleUserDelete(user) {
   if (!confirmed) return;
   try {
     const res = await authFetch(`/api/users/${user.id}`, { method: 'DELETE' });
+    assertSession(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to delete user');
@@ -665,12 +670,13 @@ async function handleToggleChange(patch, successMessage = 'Updated', control) {
       },
       body: JSON.stringify(patch)
     });
+    assertSession(res);
     if (!res.ok) throw new Error('Failed to save');
     await res.json().catch(() => ({}));
     setStatus('');
     showToast(successMessage);
   } catch (error) {
-    setStatus('Error saving settings');
+    // setStatus('Error saving settings');
     await showAlert(normalizeAuthMessage(error, 'Failed to save settings'));
     resetStatusAfterDelay();
   } finally {
@@ -795,6 +801,14 @@ function normalizeAuthMessage(error, fallback) {
   return error?.message || fallback;
 }
 
+function assertSession(res) {
+  if (res?.status === 401 || res?.status === 403) {
+    const error = new Error('unauthorized');
+    error.code = 'unauthorized';
+    throw error;
+  }
+}
+
 function modalConfirm(options) {
   if (modalApi()?.confirm) {
     return modalApi().confirm(options);
@@ -824,6 +838,7 @@ async function handleBackupDownload() {
     if (downloadBackupBtn) downloadBackupBtn.disabled = true;
     setBackupStatus('');
     const res = await authFetch('/api/counters/export');
+    assertSession(res);
     if (!res.ok) throw new Error('Failed to download backup');
     const data = await res.json();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -840,7 +855,6 @@ async function handleBackupDownload() {
     showToast('Backup downloaded');
   } catch (error) {
     setBackupStatus('');
-    showToast('Backup download failed', 'danger');
     await showAlert(normalizeAuthMessage(error, 'Failed to download backup'));
   } finally {
     backupBusy = false;
@@ -897,6 +911,7 @@ async function handleBackupRestore(event) {
       },
       body: JSON.stringify(body)
     });
+    assertSession(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to restore backup');
@@ -909,7 +924,6 @@ async function handleBackupRestore(event) {
     showToast(message);
   } catch (error) {
     setBackupStatus('');
-    showToast('Restore failed', 'danger');
     const message = error.message === 'counter_id_taken'
       ? 'One or more counter IDs already exist. Remove them or edit the backup file.'
       : error.message === 'backup_not_owned'
@@ -945,6 +959,7 @@ async function handleThrottleChange() {
       },
       body: JSON.stringify({ unlimitedThrottleSeconds: value })
     });
+    assertSession(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to update throttle');
@@ -997,6 +1012,7 @@ async function handlePurgeInactive() {
       },
       body: JSON.stringify({ days: 30 })
     });
+    assertSession(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to delete inactive counters');

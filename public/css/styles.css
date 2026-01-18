@@ -3549,6 +3549,14 @@ body.modal-open {
   text-align: left;
 }
 
+.account-menu.account-menu--pending .account-menu__link {
+  visibility: hidden;
+}
+
+.account-menu.account-menu--pending .account-menu__logout {
+  visibility: hidden;
+}
+
 .account-menu__danger {
   color: #f87171;
 }

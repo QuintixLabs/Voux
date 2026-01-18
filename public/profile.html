@@ -124,7 +124,7 @@
         <div class="field">
           <div class="profile-role-inline">
             <span class="profile-role-inline__label">Role:</span>
-            <span id="profileRoleText" class="profile-role-inline__value">Member</span>
+            <span id="profileRoleText" class="profile-role-inline__value"></span>
           </div>
         </div>
         <div class="field">
@@ -198,6 +198,7 @@
       <div class="modal__input-wrap">
         <div class="modal__input-label">Display name</div>
         <input class="modal__input" type="text" id="profileDisplayNew" maxlength="80" placeholder="Display name" />
+        <small class="modal__input-error is-hidden" id="profileDisplayError"></small>
       </div>
       <div class="modal__actions">
         <button type="button" class="modal__button modal__button--primary" id="profileDisplaySave">Save name</button>
