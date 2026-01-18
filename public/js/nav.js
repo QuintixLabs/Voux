@@ -48,15 +48,15 @@
   /* ------------------------------------------------------------------------ */
   menuButton.addEventListener('click', async (event) => {
     event.preventDefault();
-    setMenuPending(true);
+    if (sessionUser) {
+      toggleMenu();
+      return;
+    }
     await checkSession();
     if (!sessionUser) {
-      closeMenu();
-      setMenuPending(false);
       window.location.href = '/dashboard';
       return;
     }
-    setMenuPending(false);
     toggleMenu();
   });
 
@@ -70,6 +70,7 @@
   logoutBtn?.addEventListener('click', async () => {
     await fetch('/api/logout', { method: 'POST', credentials: 'include' });
     sessionUser = null;
+    cachedUser = null;
     writeCachedUser(null);
     closeMenu();
     window.location.href = '/dashboard';
@@ -86,10 +87,6 @@
     menu.classList.remove('account-menu--open');
   }
 
-  function setMenuPending(isPending) {
-    menu.classList.toggle('account-menu--pending', isPending);
-  }
-
   /* ------------------------------------------------------------------------ */
   /* Session checks                                                           */
   /* ------------------------------------------------------------------------ */
@@ -98,19 +95,20 @@
     sessionCheckInFlight = (async () => {
       try {
         const res = await fetch('/api/session', { credentials: 'include', cache: 'no-store' });
-    if (!res.ok) {
+        if (!res.ok) {
+          sessionChecked = true;
+          sessionUser = null;
+          cachedUser = null;
+          updateMenuState();
+          writeCachedUser(null);
+          return sessionUser;
+        }
+        const data = await res.json();
+        sessionUser = data?.user || null;
         sessionChecked = true;
-        sessionUser = null;
-        updateMenuState();
-        writeCachedUser(null);
-        return sessionUser;
-    }
-    const data = await res.json();
-    sessionUser = data?.user || null;
-    sessionChecked = true;
-    if (window.VouxErrors?.cacheNavUser) {
-      window.VouxErrors.cacheNavUser(sessionUser);
-    }
+        if (window.VouxErrors?.cacheNavUser) {
+          window.VouxErrors.cacheNavUser(sessionUser);
+        }
         updateMenuState();
         if (!sessionUser && menu.classList.contains('account-menu--open')) {
           closeMenu();
@@ -122,6 +120,7 @@
         }
         sessionChecked = true;
         sessionUser = null;
+        cachedUser = null;
         updateMenuState();
         writeCachedUser(null);
         if (menu.classList.contains('account-menu--open')) {
@@ -143,7 +142,6 @@
       settingsLink.classList.toggle('hidden', !sessionUser);
     }
     updateAccountButton(sessionUser);
-    setMenuPending(!sessionUser);
   }
 
   function updateAccountButton(user) {
@@ -181,26 +179,8 @@
   /* ------------------------------------------------------------------------ */
   /* Cached user handling                                                     */
   /* ------------------------------------------------------------------------ */
-  const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
-
-  function clearCachedUser() {
-    localStorage.removeItem('voux_nav_user');
-    localStorage.removeItem('voux_session_checked_at');
-    localStorage.removeItem('voux_session_hint');
-  }
-
-  function hasFreshSessionHint() {
-    const checkedAt = Number(localStorage.getItem('voux_session_checked_at')) || 0;
-    if (!checkedAt) return false;
-    return Date.now() - checkedAt < SESSION_TTL_MS;
-  }
-
   function readCachedUser() {
     try {
-      if (!hasFreshSessionHint()) {
-        clearCachedUser();
-        return null;
-      }
       const raw = localStorage.getItem('voux_nav_user');
       if (!raw) return null;
       const parsed = JSON.parse(raw);
@@ -214,7 +194,8 @@
   function writeCachedUser(user) {
     try {
       if (!user) {
-        clearCachedUser();
+        localStorage.removeItem('voux_nav_user');
+        localStorage.removeItem('voux_session_hint');
         return;
       }
       const payload = {
@@ -223,7 +204,6 @@
         avatarUrl: user.avatarUrl || ''
       };
       localStorage.setItem('voux_nav_user', JSON.stringify(payload));
-      localStorage.setItem('voux_session_checked_at', String(Date.now()));
       localStorage.setItem('voux_session_hint', '1');
     } catch (_) {}
   }
@@ -259,6 +239,7 @@
   document.addEventListener('voux:session-updated', (event) => {
     sessionUser = event.detail?.user || null;
     sessionChecked = true;
+    cachedUser = sessionUser;
     writeCachedUser(sessionUser);
     updateMenuState();
   });

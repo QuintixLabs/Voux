@@ -228,8 +228,6 @@ async function loadProfile() {
     }
     if (!result.ok) {
       if (result.unauthorized) {
-        window.VouxErrors?.cacheNavUser?.(null);
-        document.dispatchEvent(new CustomEvent('voux:session-updated', { detail: { user: null } }));
         window.location.href = '/dashboard';
         return;
       }

@@ -9,7 +9,6 @@ async function injectFooter() {
   if (!roots.length) return;
 
   try {
-    const sessionHint = localStorage.getItem('voux_session_hint') === '1';
     const [footerMarkup, config, session] = await Promise.all([
       fetch('/footer.html').then((res) => {
         if (!res.ok) throw new Error('footer_load_failed');
@@ -18,11 +17,9 @@ async function injectFooter() {
       fetch('/api/config')
         .then((res) => (res.ok ? res.json() : null))
         .catch(() => null),
-      sessionHint
-        ? fetch('/api/session', { credentials: 'include', cache: 'no-store' })
-            .then((res) => (res.ok ? res.json() : null))
-            .catch(() => null)
-        : Promise.resolve(null)
+      fetch('/api/session', { credentials: 'include', cache: 'no-store' })
+        .then((res) => (res.ok ? res.json() : null))
+        .catch(() => null)
     ]);
 
     roots.forEach((root) => {

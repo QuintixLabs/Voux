@@ -151,8 +151,6 @@ async function checkSession() {
     }
     if (!result.ok) {
       if (result.unauthorized) {
-        window.VouxErrors?.cacheNavUser?.(null);
-        document.dispatchEvent(new CustomEvent('voux:session-updated', { detail: { user: null } }));
         window.location.href = '/dashboard';
         return;
       }
@@ -676,7 +674,7 @@ async function handleToggleChange(patch, successMessage = 'Updated', control) {
     setStatus('');
     showToast(successMessage);
   } catch (error) {
-    // setStatus('Error saving settings');
+    setStatus('Error saving settings');
     await showAlert(normalizeAuthMessage(error, 'Failed to save settings'));
     resetStatusAfterDelay();
   } finally {
@@ -1147,6 +1145,7 @@ async function handleApiKeyCreate(event) {
       },
       body: JSON.stringify({ name, scope, counters: allowed })
     });
+    assertSession(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to create key');
@@ -1182,6 +1181,7 @@ async function handleApiKeyDelete(id) {
     const res = await authFetch(`/api/api-keys/${id}`, {
       method: 'DELETE'
     });
+    assertSession(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to delete API key');
@@ -1232,6 +1232,7 @@ async function handleBrandingSubmit(event) {
       },
       body: JSON.stringify(payload)
     });
+    assertSession(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to update branding');

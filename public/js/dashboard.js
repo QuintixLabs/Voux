@@ -75,10 +75,6 @@ if (!toastContainer) {
 let tagFilterMenuOpen = false;
 const tagSelectorRegistry = new Set();
 let pickrReadyPromise = null;
-let sessionRetryCount = 0;
-let sessionRevealTimer = null;
-let sessionUnauthorizedCount = 0;
-let sessionRevealDeadline = 0;
 
 /* -------------------------------------------------------------------------- */
 /* Constants                                                                  */
@@ -162,6 +158,27 @@ function normalizeAuthMessage(error, fallback) {
     return window.VouxErrors.normalizeAuthError(error, fallback);
   }
   return error?.message || fallback;
+}
+
+function buildUnauthorizedError(message = 'unauthorized') {
+  const error = new Error(message);
+  error.code = 'unauthorized';
+  return error;
+}
+
+async function ensureSessionForAction() {
+  const res = await authFetch('/api/session', { cache: 'no-store' });
+  if (res.status === 401 || res.status === 403) {
+    await setUserSession(null);
+    throw buildUnauthorizedError();
+  }
+}
+
+function assertAuthorizedResponse(res) {
+  if (res.status === 401 || res.status === 403) {
+    setUserSession(null);
+    throw buildUnauthorizedError();
+  }
 }
 
 async function showConfirm(options) {
@@ -312,34 +329,6 @@ function authFetch(url, options = {}) {
   });
 }
 
-function buildUnauthorizedError() {
-  const error = new Error('unauthorized');
-  error.code = 'unauthorized';
-  return error;
-}
-
-async function ensureSessionForAction() {
-  if (!state.user) {
-    await showAlert('Session expired. Please log in again.');
-    await setUserSession(null);
-    return false;
-  }
-  const res = await authFetch('/api/session', { cache: 'no-store' });
-  if (!res.ok) {
-    await setUserSession(null);
-    await showAlert(normalizeAuthMessage(buildUnauthorizedError(), 'Session expired. Please log in again.'));
-    return false;
-  }
-  const data = await res.json().catch(() => ({}));
-  if (!data?.user) {
-    await setUserSession(null);
-    await showAlert(normalizeAuthMessage(buildUnauthorizedError(), 'Session expired. Please log in again.'));
-    return false;
-  }
-  await setUserSession(data.user);
-  return true;
-}
-
 function limitStartValueInput(input) {
   if (!input) return;
   const enforceDigits = () => {
@@ -438,13 +427,8 @@ function init() {
   // no extra change handler needed for simple dropdown
   fetchConfig()
     .then(() => {
-      const hinted = localStorage.getItem('voux_session_hint') === '1';
-      if (hinted) {
-        showStatusHint('Checking your session...');
-        checkSession();
-      } else {
-        revealLoginCard();
-      }
+      showStatusHint('Checking your session...');
+      checkSession();
     })
     .catch((err) => {
       console.warn('Admin init failed', err);
@@ -502,37 +486,9 @@ async function fetchConfig() {
 async function checkSession() {
   setLoginPending(true, 'Checking your session...');
   setLoginLoading(true);
-  if (sessionRevealTimer) {
-    clearTimeout(sessionRevealTimer);
-    sessionRevealTimer = null;
-  }
   try {
     const res = await fetch('/api/session', { credentials: 'include' });
     if (!res.ok) {
-      if (res.status === 401 || res.status === 403) {
-        sessionUnauthorizedCount += 1;
-        if (sessionRevealDeadline === 0) {
-          sessionRevealDeadline = Date.now() + 1500;
-        }
-        if (Date.now() < sessionRevealDeadline) {
-          setTimeout(() => {
-            checkSession();
-          }, 500);
-          return;
-        }
-        sessionRevealDeadline = 0;
-        sessionRevealTimer = setTimeout(() => {
-          revealLoginCard();
-        }, 200);
-        return;
-      }
-      if (sessionRetryCount < 1) {
-        sessionRetryCount += 1;
-        setTimeout(() => {
-          checkSession();
-        }, 350);
-        return;
-      }
       revealLoginCard();
       return;
     }
@@ -540,17 +496,8 @@ async function checkSession() {
     setUserSession(data?.user || null);
     showDashboard();
   } catch (error) {
-    if (sessionRetryCount < 1) {
-      sessionRetryCount += 1;
-      setTimeout(() => {
-        checkSession();
-      }, 350);
-      return;
-    }
     console.warn('Session check failed', error);
-    sessionRevealTimer = setTimeout(() => {
-      revealLoginCard();
-    }, 500);
+    revealLoginCard();
   } finally {
     setLoginLoading(false);
   }
@@ -754,7 +701,7 @@ async function fetchCounters(page) {
   const res = await authFetch(url);
   if (res.status === 401 || res.status === 403) {
     const err = await res.json().catch(() => ({}));
-    throw buildUnauthorizedError();
+    throw buildUnauthorizedError(err?.message || 'unauthorized');
   }
   if (res.status === 429) {
     const err = await res.json().catch(() => ({}));
@@ -802,7 +749,7 @@ async function handleDeleteAll() {
     const res = await authFetch('/api/counters', {
       method: 'DELETE'
     });
-    if (res.status === 401) throw buildUnauthorizedError();
+    assertAuthorizedResponse(res);
     if (!res.ok) throw new Error('Failed to delete counters');
     const payload = await res.json().catch(() => ({}));
     await refreshCounters(1);
@@ -817,7 +764,14 @@ async function handleDeleteAll() {
 
 async function handleCreateCounter(event) {
   event.preventDefault();
-  if (!(await ensureSessionForAction())) {
+  if (!state.user) {
+    await showAlert('Log in first.');
+    return;
+  }
+  try {
+    await ensureSessionForAction();
+  } catch (error) {
+    await showAlert(normalizeAuthMessage(error, 'Session expired. Please log in again.'));
     return;
   }
   const noteValue = createNoteInput?.value?.trim() || '';
@@ -842,7 +796,7 @@ async function handleCreateCounter(event) {
       },
       body: JSON.stringify(payload)
     });
-    if (res.status === 401) throw buildUnauthorizedError();
+    assertAuthorizedResponse(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       if (err && typeof err.message === 'string' && err.message.trim()) {
@@ -1215,7 +1169,7 @@ async function removeCounter(id) {
     const res = await authFetch(`/api/counters/${id}`, {
       method: 'DELETE'
     });
-    if (res.status === 401) throw buildUnauthorizedError();
+    assertAuthorizedResponse(res);
     if (!res.ok) throw new Error('Failed to delete counter');
     state.selectedIds.delete(id);
     const nextPage = state.page > 1 && counterListEl.children.length === 1 ? state.page - 1 : state.page;
@@ -1321,17 +1275,12 @@ function setLoginLoading(loading) {
 /* Session state                                                              */
 /* -------------------------------------------------------------------------- */
 async function setUserSession(user) {
-  sessionRetryCount = 0;
-  sessionUnauthorizedCount = 0;
-  sessionRevealDeadline = 0;
-  if (sessionRevealTimer) {
-    clearTimeout(sessionRevealTimer);
-    sessionRevealTimer = null;
-  }
   state.user = user || null;
   state.isAdmin = Boolean(user?.isAdmin || user?.role === 'admin');
   if (!state.user) {
-    window.VouxErrors?.cacheNavUser?.(null);
+    if (window.VouxErrors?.cacheNavUser) {
+      window.VouxErrors.cacheNavUser(null);
+    }
     document.dispatchEvent(new CustomEvent('voux:session-updated', { detail: { user: null } }));
     state.ownerOnly = false;
     syncOwnerFilterToggle();
@@ -1423,7 +1372,7 @@ async function handleDeleteFiltered() {
     const res = await authFetch(`/api/counters?mode=${state.modeFilter}`, {
       method: 'DELETE'
     });
-    if (res.status === 401) throw new Error('Unauthorized.');
+    assertAuthorizedResponse(res);
     if (!res.ok) throw new Error('Failed to delete counters');
     await refreshCounters(1);
     clearSelection();
@@ -1619,9 +1568,7 @@ async function downloadCountersByIds(ids, filenamePrefix) {
       },
       body: JSON.stringify({ ids })
     });
-    if (res.status === 401) {
-      throw buildUnauthorizedError();
-    }
+    assertAuthorizedResponse(res);
     if (res.status === 404) {
       throw new Error('Counters not found.');
     }
@@ -1681,7 +1628,7 @@ async function handleDeleteSelected() {
       },
       body: JSON.stringify({ ids })
     });
-    if (res.status === 401) throw buildUnauthorizedError();
+    assertAuthorizedResponse(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to delete counters');
@@ -1847,7 +1794,7 @@ async function updateCounterMetadataRequest(id, payload) {
     },
     body: JSON.stringify(payload)
   });
-  if (res.status === 401) throw buildUnauthorizedError();
+  assertAuthorizedResponse(res);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Failed to update counter');
@@ -1978,9 +1925,7 @@ async function fetchTags() {
   if (!state.user) return;
   try {
     const res = await authFetch('/api/tags');
-    if (res.status === 401) {
-      throw buildUnauthorizedError();
-    }
+    assertAuthorizedResponse(res);
     if (!res.ok) {
       throw new Error('Failed to load tags');
     }
@@ -2170,9 +2115,7 @@ async function handleTagCreate(context) {
       body: JSON.stringify(result)
     });
     const payload = await res.json().catch(() => ({}));
-    if (res.status === 401) {
-      throw new Error('Unauthorized.');
-    }
+    assertAuthorizedResponse(res);
     if (!res.ok) {
       throw new Error(payload.error || 'Failed to create tag');
     }
@@ -2244,7 +2187,7 @@ async function deleteTagRequest(tagId, name) {
     const res = await authFetch(`/api/tags/${encodeURIComponent(tagId)}`, {
       method: 'DELETE'
     });
-    if (res.status === 401) throw buildUnauthorizedError();
+    assertAuthorizedResponse(res);
     if (res.status === 404) throw new Error('Tag not found.');
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
