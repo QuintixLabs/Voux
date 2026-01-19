@@ -1081,9 +1081,9 @@ function renderCounterList(counters = state.latestCounters) {
         toggleEdit(false);
         return;
       }
-      labelInput.value = counter.label || '';
-      valueInput.value = counter.value;
-      noteInput.value = counter.note || '';
+      labelInput.value = row.dataset.counterLabel || counter.label || '';
+      valueInput.value = row.dataset.counterValue ?? counter.value;
+      noteInput.value = row.dataset.counterNote || counter.note || '';
       editTags = extractTagIds(counter.tags);
       refreshTagSelectorEntry(editTagSelectorEntry);
       updateTagEditState(counter.canEditTags !== false);
@@ -2913,6 +2913,9 @@ function patchCounterRows(counters = []) {
 function updateCounterRow(row, counter) {
   const meta = row.querySelector('.counter-meta');
   if (!meta) return;
+  row.dataset.counterValue = counter.value;
+  row.dataset.counterLabel = counter.label || '';
+  row.dataset.counterNote = counter.note || '';
   const labelEl = row.querySelector('.counter-meta__label');
   if (labelEl) {
     labelEl.textContent = counter.label || '';
@@ -3049,13 +3052,13 @@ function updateEditDefaults(row, counter) {
   const valueInput = editPanel.querySelector('input[name="counterValue"]');
   const noteInput = editPanel.querySelector('textarea');
   if (labelInput) {
-    labelInput.value = counter.label || '';
+    labelInput.value = row.dataset.counterLabel || counter.label || '';
   }
   if (valueInput) {
-    valueInput.value = counter.value;
+    valueInput.value = row.dataset.counterValue ?? counter.value;
   }
   if (noteInput) {
-    noteInput.value = counter.note || '';
+    noteInput.value = row.dataset.counterNote || counter.note || '';
   }
 }
 
