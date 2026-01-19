@@ -1,6 +1,6 @@
 {
   "name": "voux",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "A self hosted view counter for blogs and websites with a built in dashboard.",
   "main": "src/server.js",
   "scripts": {
