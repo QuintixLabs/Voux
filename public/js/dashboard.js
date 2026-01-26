@@ -120,10 +120,23 @@ const state = {
 
 let searchDebounce = null;
 const OWNER_FILTER_STORAGE_KEY = 'voux_owner_only';
+let sessionRetryCount = 0;
+let sessionGraceUntil = 0;
 
 function loadOwnerFilterPreference() {
   try {
     return window.localStorage.getItem(OWNER_FILTER_STORAGE_KEY) === 'true';
+  } catch (_) {
+    return false;
+  }
+}
+
+function hasSessionHint() {
+  try {
+    return (
+      window.localStorage.getItem('voux_session_hint') === '1' &&
+      Boolean(window.localStorage.getItem('voux_nav_user'))
+    );
   } catch (_) {
     return false;
   }
@@ -202,6 +215,9 @@ function showToast(message, variant = 'success') {
   toast.className = `toast toast--${variant}`;
   toast.innerHTML = `<i class="${variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}"></i>
     <span>${message}</span>`;
+  const timer = document.createElement('span');
+  timer.className = 'toast__timer';
+  toast.appendChild(timer);
   toastContainer.appendChild(toast);
   toastContainer.classList.add('toast-stack--interactive');
   requestAnimationFrame(() => {
@@ -209,6 +225,7 @@ function showToast(message, variant = 'success') {
   });
   let remaining = 2200;
   let startedAt = Date.now();
+  toast.style.setProperty('--toast-duration', `${remaining}ms`);
   let timeout = setTimeout(removeToast, remaining);
 
   function removeToast() {
@@ -229,12 +246,14 @@ function showToast(message, variant = 'success') {
     remaining = Math.max(0, remaining - elapsed);
     clearTimeout(timeout);
     timeout = null;
+    toast.classList.add('toast--paused');
   };
 
   const resumeTimer = () => {
     if (timeout || toast.dataset.removing) return;
     startedAt = Date.now();
     timeout = setTimeout(removeToast, remaining);
+    toast.classList.remove('toast--paused');
   };
 
   toast._pauseToast = pauseTimer;
@@ -265,7 +284,9 @@ function showActionToast(message, actionLabel, onAction) {
   actionBtn.type = 'button';
   actionBtn.className = 'toast__action';
   actionBtn.textContent = actionLabel;
-  toast.append(icon, text, actionBtn);
+  const actionTimer = document.createElement('span');
+  actionTimer.className = 'toast__timer';
+  toast.append(icon, text, actionBtn, actionTimer);
   toastContainer.appendChild(toast);
   toastContainer.classList.add('toast-stack--interactive');
   requestAnimationFrame(() => {
@@ -286,6 +307,7 @@ function showActionToast(message, actionLabel, onAction) {
 
   let remaining = 6000;
   let startedAt = Date.now();
+  toast.style.setProperty('--toast-duration', `${remaining}ms`);
   let timeout = setTimeout(removeToast, remaining);
 
   const pauseTimer = () => {
@@ -294,12 +316,14 @@ function showActionToast(message, actionLabel, onAction) {
     remaining = Math.max(0, remaining - elapsed);
     clearTimeout(timeout);
     timeout = null;
+    toast.classList.add('toast--paused');
   };
 
   const resumeTimer = () => {
     if (timeout || toast.dataset.removing) return;
     startedAt = Date.now();
     timeout = setTimeout(removeToast, remaining);
+    toast.classList.remove('toast--paused');
   };
 
   toast.addEventListener('mouseenter', pauseTimer);
@@ -362,7 +386,9 @@ document.addEventListener('DOMContentLoaded', init);
 
 window.addEventListener('pageshow', (event) => {
   if (event.persisted) {
-    checkSession();
+    if (hasSessionHint()) {
+      checkSession();
+    }
   }
 });
 
@@ -425,9 +451,18 @@ function init() {
   toggleSearchClear();
   limitStartValueInput(createStartInput);
   // no extra change handler needed for simple dropdown
+  if (hasSessionHint()) {
+    setLoginPending(true, 'Checking your session...');
+  } else {
+    revealLoginCard();
+  }
+  setTimeout(() => {
+    if (!state.user && !hasSessionHint() && loginCard?.classList.contains('hidden')) {
+      revealLoginCard();
+    }
+  }, 150);
   fetchConfig()
     .then(() => {
-      showStatusHint('Checking your session...');
       checkSession();
     })
     .catch((err) => {
@@ -455,9 +490,10 @@ function ensurePickrLoaded() {
 /* -------------------------------------------------------------------------- */
 async function fetchConfig() {
   try {
-    const res = await fetch('/api/config');
-    if (!res.ok) return;
-    const data = await res.json();
+    const getConfig = window.VouxState?.getConfig
+      ? window.VouxState.getConfig()
+      : fetch('/api/config').then((res) => (res.ok ? res.json() : null));
+    const data = await getConfig;
     if (!data) return;
     if (data.adminPageSize) {
       state.pageSize = Number(data.adminPageSize) || state.pageSize;
@@ -484,19 +520,39 @@ async function fetchConfig() {
 }
 
 async function checkSession() {
-  setLoginPending(true, 'Checking your session...');
   setLoginLoading(true);
+  setLoginPending(false);
   try {
-    const res = await fetch('/api/session', { credentials: 'include' });
-    if (!res.ok) {
+    const getSession = window.VouxState?.getSession
+      ? window.VouxState.getSession({ force: true })
+      : fetch('/api/session', { credentials: 'include' })
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null);
+    const data = await getSession;
+    if (!data || !data.user) {
+      if (hasSessionHint()) {
+        if (!sessionGraceUntil) {
+          sessionGraceUntil = Date.now() + 1000;
+        }
+        if (sessionRetryCount < 2 && Date.now() < sessionGraceUntil) {
+          sessionRetryCount += 1;
+          setTimeout(() => checkSession(), 250);
+          return;
+        }
+      }
+      sessionRetryCount = 0;
+      sessionGraceUntil = 0;
       revealLoginCard();
       return;
     }
-    const data = await res.json();
+    sessionRetryCount = 0;
+    sessionGraceUntil = 0;
     setUserSession(data?.user || null);
     showDashboard();
   } catch (error) {
     console.warn('Session check failed', error);
+    sessionRetryCount = 0;
+    sessionGraceUntil = 0;
     revealLoginCard();
   } finally {
     setLoginLoading(false);
@@ -666,7 +722,9 @@ async function refreshCounters(page = 1, options = {}) {
     }
   } catch (error) {
     if (silent) {
-      console.warn('Auto refresh failed', error);
+      if (error?.code !== 'unauthorized') {
+        console.warn('Auto refresh failed', error);
+      }
       return;
     }
     throw error;
@@ -746,7 +804,9 @@ async function handleDeleteAll() {
   if (!confirmedFinal) return;
   try {
     deleteAllBtn.disabled = true;
-    const res = await authFetch('/api/counters', {
+    const ownerParam = state.ownerOnly ? 'owner=me' : '';
+    const url = ownerParam ? `/api/counters?${ownerParam}` : '/api/counters';
+    const res = await authFetch(url, {
       method: 'DELETE'
     });
     assertAuthorizedResponse(res);
@@ -1369,7 +1429,8 @@ async function handleDeleteFiltered() {
   if (!confirmedFinal) return;
   try {
     deleteFilteredBtn.disabled = true;
-    const res = await authFetch(`/api/counters?mode=${state.modeFilter}`, {
+    const ownerParam = state.ownerOnly ? '&owner=me' : '';
+    const res = await authFetch(`/api/counters?mode=${state.modeFilter}${ownerParam}`, {
       method: 'DELETE'
     });
     assertAuthorizedResponse(res);
@@ -1768,7 +1829,7 @@ function ensurePaginationInView() {
 /* -------------------------------------------------------------------------- */
 function truncateQuery(query) {
   if (!query) return '';
-  return query.length > 32 ? `${query.slice(0, 32)}…` : query;
+  return query.length > 32 ? `${query.slice(0, 32)}...` : query;
 }
 
 function extractTagIds(tags) {
@@ -1875,6 +1936,7 @@ function handleAdminEmbedCopy() {
 /* Admin UI state                                                             */
 /* -------------------------------------------------------------------------- */
 function updateDeleteFilteredState() {
+  updateDeleteButtonLabels();
   if (modeFilterSelect) {
     modeFilterSelect.value = state.modeFilter;
   }
@@ -1889,6 +1951,20 @@ function updateDeleteFilteredState() {
   if (deleteAllBtn) {
     deleteAllBtn.classList.toggle('hidden', !isGlobal);
     deleteAllBtn.disabled = !isGlobal;
+  }
+}
+
+function updateDeleteButtonLabels() {
+  const myOnly = Boolean(state.ownerOnly);
+  if (deleteAllBtn) {
+    deleteAllBtn.innerHTML = `<i class="ri-indeterminate-circle-line"></i> ${
+      myOnly ? 'Delete all of my counters' : 'Delete all counters'
+    }`;
+  }
+  if (deleteFilteredBtn) {
+    deleteFilteredBtn.innerHTML = `<i class="ri-delete-bin-line"></i> ${
+      myOnly ? 'Delete my filtered' : 'Delete filtered'
+    }`;
   }
 }
 
@@ -3098,6 +3174,11 @@ function scheduleAutoRefresh(delay = 5000) {
   cancelAutoRefresh();
   state.autoRefreshTimer = setTimeout(async () => {
     if (!state.user) return;
+    // send get requests ONLY IF VOUX TAB IS VISIBLE
+    if (document.visibilityState !== 'visible') {
+      scheduleAutoRefresh(delay);
+      return;
+    }
     if (state.editPanelsOpen > 0) {
       scheduleAutoRefresh(delay);
       return;

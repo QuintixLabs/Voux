@@ -69,6 +69,9 @@ function showToast(message, variant = 'success') {
   toast.className = `toast toast--${variant}`;
   toast.innerHTML = `<i class="${variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}"></i>
     <span>${message}</span>`;
+  const timer = document.createElement('span');
+  timer.className = 'toast__timer';
+  toast.appendChild(timer);
   toastContainer.appendChild(toast);
   toastContainer.classList.add('toast-stack--interactive');
   requestAnimationFrame(() => {
@@ -76,6 +79,7 @@ function showToast(message, variant = 'success') {
   });
   let remaining = 2200;
   let startedAt = Date.now();
+  toast.style.setProperty('--toast-duration', `${remaining}ms`);
   let timeout = setTimeout(removeToast, remaining);
 
   function removeToast() {
@@ -96,12 +100,14 @@ function showToast(message, variant = 'success') {
     remaining = Math.max(0, remaining - elapsed);
     clearTimeout(timeout);
     timeout = null;
+    toast.classList.add('toast--paused');
   };
 
   const resumeTimer = () => {
     if (timeout || toast.dataset.removing) return;
     startedAt = Date.now();
     timeout = setTimeout(removeToast, remaining);
+    toast.classList.remove('toast--paused');
   };
 
   toast._pauseToast = pauseTimer;

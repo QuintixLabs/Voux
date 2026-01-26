@@ -7,8 +7,10 @@
 (() => {
   const themeHelper = window.VouxTheme;
   if (!window.fetch) return;
-  fetch('/api/config')
-    .then((res) => (res.ok ? res.json() : null))
+  const getConfig = window.VouxState?.getConfig
+    ? window.VouxState.getConfig()
+    : fetch('/api/config').then((res) => (res.ok ? res.json() : null));
+  Promise.resolve(getConfig)
     .then((data) => {
       if (!data) return;
       window.__VOUX_CONFIG = data;

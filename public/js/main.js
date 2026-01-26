@@ -295,11 +295,11 @@ initConfig();
 
 async function initConfig() {
   try {
-    const response = await fetch('/api/config');
-    if (!response.ok) {
-      return;
-    }
-    const data = await response.json();
+    const getConfig = window.VouxState?.getConfig
+      ? window.VouxState.getConfig()
+      : fetch('/api/config').then((res) => (res.ok ? res.json() : null));
+    const data = await getConfig;
+    if (!data) return;
     isPrivateMode = Boolean(data.privateMode);
     showGuides = data.showGuides !== undefined ? Boolean(data.showGuides) : true;
     allowedModes = normalizeAllowedModes(data.allowedModes);
@@ -358,6 +358,12 @@ function getSelectedCooldown(selectEl) {
 /* Error messaging                                                            */
 /* -------------------------------------------------------------------------- */
 function buildCreateCounterErrorMessage(error, status) {
+  if (status === 401 || status === 403) {
+    return 'This instance is private. Log in to create counters.';
+  }
+  if (error && error.error === 'unauthorized') {
+    return 'This instance is private. Log in to create counters.';
+  }
   if (error && typeof error.message === 'string' && error.message.trim()) {
     return error.message.trim();
   }

@@ -975,7 +975,9 @@ app.delete('/api/counters', requireAuth, (req, res) => {
   if (req.query.mode !== undefined && !modeFilter) {
     return res.status(400).json({ error: 'invalid_mode' });
   }
-  if (auth?.type === 'user') {
+  const ownerOnly =
+    auth?.type === 'admin' && String(req.query.owner || '').toLowerCase() === 'me';
+  if (auth?.type === 'user' || ownerOnly) {
     const ownerId = auth.user.id;
     if (modeFilter) {
       const deletedFiltered = deleteCountersByOwnerAndMode(ownerId, modeFilter);

@@ -134,15 +134,16 @@ async function checkSession() {
     document.documentElement.classList.remove('auth-pending');
   };
   const attempt = async () => {
-    const res = await fetch('/api/session', { credentials: 'include', cache: 'no-store' });
-    if (res.status === 401 || res.status === 403) {
+    const getSession = window.VouxState?.getSession
+      ? window.VouxState.getSession({ force: true })
+      : fetch('/api/session', { credentials: 'include', cache: 'no-store' })
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null);
+    const data = await getSession;
+    if (!data || !data.user) {
       return { ok: false, unauthorized: true };
     }
-    if (!res.ok) {
-      return { ok: false, unauthorized: false };
-    }
-    const data = await res.json();
-    return { ok: Boolean(data?.user), data };
+    return { ok: true, data };
   };
   try {
     let result = await attempt();
@@ -654,6 +655,15 @@ function setUserStatus(message) {
   }
 }
 
+function applyConfigUpdate(payload) {
+  const config = payload?.config;
+  if (config && window.VouxState?.setConfig) {
+    window.VouxState.setConfig(config);
+  } else if (window.VouxState?.clearConfig) {
+    window.VouxState.clearConfig();
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Toggles + allowed modes                                                    */
 /* -------------------------------------------------------------------------- */
@@ -670,11 +680,12 @@ async function handleToggleChange(patch, successMessage = 'Updated', control) {
     });
     assertSession(res);
     if (!res.ok) throw new Error('Failed to save');
-    await res.json().catch(() => ({}));
+    const payload = await res.json().catch(() => ({}));
+    applyConfigUpdate(payload);
     setStatus('');
     showToast(successMessage);
   } catch (error) {
-    setStatus('Error saving settings');
+    // setStatus('Error saving settings');
     await showAlert(normalizeAuthMessage(error, 'Failed to save settings'));
     resetStatusAfterDelay();
   } finally {
@@ -726,6 +737,9 @@ function ensureToastSupport() {
     toast.className = `toast toast--${variant}`;
     toast.innerHTML = `<i class="${variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}"></i>
       <span>${message}</span>`;
+    const timer = document.createElement('span');
+    timer.className = 'toast__timer';
+    toast.appendChild(timer);
     container.appendChild(toast);
     container.classList.add('toast-stack--interactive');
     requestAnimationFrame(() => {
@@ -734,6 +748,7 @@ function ensureToastSupport() {
 
     let remaining = 2200;
     let startedAt = Date.now();
+    toast.style.setProperty('--toast-duration', `${remaining}ms`);
     let timeout = setTimeout(removeToast, remaining);
 
     function removeToast() {
@@ -754,12 +769,14 @@ function ensureToastSupport() {
       remaining = Math.max(0, remaining - elapsed);
       clearTimeout(timeout);
       timeout = null;
+      toast.classList.add('toast--paused');
     };
 
     const resumeTimer = () => {
       if (timeout || toast.dataset.removing) return;
       startedAt = Date.now();
       timeout = setTimeout(removeToast, remaining);
+      toast.classList.remove('toast--paused');
     };
 
     toast._pauseToast = pauseTimer;
@@ -962,7 +979,8 @@ async function handleThrottleChange() {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to update throttle');
     }
-    await res.json().catch(() => ({}));
+    const payload = await res.json().catch(() => ({}));
+    applyConfigUpdate(payload);
     setStatus('');
     showToast(
       value
@@ -1237,7 +1255,8 @@ async function handleBrandingSubmit(event) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to update branding');
     }
-    await res.json().catch(() => ({}));
+    const updated = await res.json().catch(() => ({}));
+    applyConfigUpdate(updated);
     setBrandingStatus('');
     applyThemeClass(payload.theme);
     showToast('Branding updated');
@@ -1335,7 +1354,8 @@ async function handleBrandingReset() {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to reset branding');
     }
-    await res.json().catch(() => ({}));
+    const updated = await res.json().catch(() => ({}));
+    applyConfigUpdate(updated);
     initialBranding = { ...defaults };
     setBrandingDirty(false);
     showToast('Branding reset to defaults');

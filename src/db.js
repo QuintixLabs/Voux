@@ -279,10 +279,6 @@ const deleteSessionByHashStmt = db.prepare('DELETE FROM sessions WHERE token_has
 const deleteSessionsByUserStmt = db.prepare('DELETE FROM sessions WHERE user_id = ?');
 const clearUserCountersStmt = db.prepare('UPDATE counters SET owner_id = NULL WHERE owner_id = ?');
 
-/* ========================================================================== */
-/* Counters                                                                   */
-/* ========================================================================== */
-
 /* -------------------------------------------------------------------------- */
 /* Listing + filters                                                          */
 /* -------------------------------------------------------------------------- */

@@ -1746,16 +1746,18 @@ body.modal-open {
 }
 
 .toast {
+  position: relative;
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.45rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   width: fit-content;
   max-width: min(360px, 90vw);
-  padding: 0.55rem 0.9rem;
+  padding: 0.55rem 0.9rem 0.75rem;
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid rgba(16, 185, 129, 0.6);
   border-radius: 8px;
+  overflow: hidden;
   font-size: 0.85rem;
   color: #d1fae5;
   opacity: 0;
@@ -1763,6 +1765,11 @@ body.modal-open {
   transition: opacity 0.2s ease, transform 0.2s ease;
   word-break: break-word;
   pointer-events: auto;
+}
+
+.toast span {
+  min-width: 0;
+  margin-top: 0.13rem;
 }
 
 .toast--action {
@@ -1789,6 +1796,32 @@ body.modal-open {
   font-size: 1rem;
 }
 
+.toast__timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.toast__timer::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  background: currentColor;
+  opacity: 0.6;
+  transform-origin: left;
+  animation: toast-timer var(--toast-duration, 2200ms) linear forwards;
+}
+
+.toast--paused .toast__timer::after {
+  animation-play-state: paused;
+}
+
 .toast--visible {
   opacity: 1;
   transform: translateY(0);
@@ -1798,6 +1831,15 @@ body.modal-open {
   background: rgba(248, 113, 113, 0.12);
   border-color: rgba(248, 113, 113, 0.6);
   color: #fee2e2;
+}
+
+@keyframes toast-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }
 
 .selection-toolbar {

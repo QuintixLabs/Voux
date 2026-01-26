@@ -4,17 +4,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow">
   <title data-page-title="Dashboard">Voux · Dashboard</title>
+
+  <!-- External libraries -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
     rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.8.0/fonts/remixicon.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css"/> <!-- 'monolith' theme -->
+
+  <!-- Icons -->
   <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
   <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
+
+  <!-- Local styles -->
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css"/> <!-- 'monolith' theme -->
   <link rel="stylesheet" href="/css/styles.css?v=%APP_VERSION%" />
+
 </head>
 
 <body data-page="dashboard" class="dashboard-footer-hidden">
@@ -281,14 +289,18 @@
 
   <div data-footer-root></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js" defer></script>
+  <!-- Local scripts -->
   <script src="/js/modal.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/state.js?v=%APP_VERSION%" defer></script>
   <script src="/js/errors.js?v=%APP_VERSION%" defer></script>
   <script src="/js/theme.js?v=%APP_VERSION%" defer></script>
   <script src="/js/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/footer.js?v=%APP_VERSION%" defer></script>
   <script src="/js/dashboard.js?v=%APP_VERSION%" type="module"></script>
   <script src="/js/brand.js?v=%APP_VERSION%" defer></script>
+
+  <!-- External libraries (scripts) -->
+  <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js" defer></script>
 </body>
 
 </html>

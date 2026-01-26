@@ -42,6 +42,10 @@
   let sessionChecked = false;
   let sessionCheckInFlight = null;
   let cachedUser = null;
+  let sessionRetryCount = 0;
+  let sessionGraceUntil = 0;
+  cachedUser = readCachedUser();
+  updateAccountButton(cachedUser);
 
   /* ------------------------------------------------------------------------ */
   /* Menu events                                                              */
@@ -94,17 +98,37 @@
     if (sessionCheckInFlight) return sessionCheckInFlight;
     sessionCheckInFlight = (async () => {
       try {
-        const res = await fetch('/api/session', { credentials: 'include', cache: 'no-store' });
-        if (!res.ok) {
+        const getSession = window.VouxState?.getSession
+          ? window.VouxState.getSession({ force: true })
+          : fetch('/api/session', { credentials: 'include', cache: 'no-store' })
+              .then((res) => (res.ok ? res.json() : null))
+              .catch(() => null);
+        const data = await getSession;
+        sessionUser = data?.user || null;
+        if (!sessionUser) {
+          if (data?.unauthorized) {
+            cachedUser = null;
+            writeCachedUser(null);
+          }
+          const hasHint = localStorage.getItem('voux_session_hint') === '1';
+          if (hasHint) {
+            if (!sessionGraceUntil) {
+              sessionGraceUntil = Date.now() + 1000;
+            }
+            if (sessionRetryCount < 2 && Date.now() < sessionGraceUntil) {
+              sessionRetryCount += 1;
+              sessionCheckInFlight = null;
+              return checkSession();
+            }
+          }
+          sessionRetryCount = 0;
+          sessionGraceUntil = 0;
           sessionChecked = true;
-          sessionUser = null;
-          cachedUser = null;
           updateMenuState();
-          writeCachedUser(null);
           return sessionUser;
         }
-        const data = await res.json();
-        sessionUser = data?.user || null;
+        sessionRetryCount = 0;
+        sessionGraceUntil = 0;
         sessionChecked = true;
         if (window.VouxErrors?.cacheNavUser) {
           window.VouxErrors.cacheNavUser(sessionUser);
@@ -118,14 +142,12 @@
         if (error?.name !== 'AbortError') {
           console.warn('Failed to check session', error);
         }
-        sessionChecked = true;
-        sessionUser = null;
-        cachedUser = null;
-        updateMenuState();
-        writeCachedUser(null);
-        if (menu.classList.contains('account-menu--open')) {
-          closeMenu();
-        }
+      sessionChecked = true;
+      sessionUser = null;
+      updateMenuState();
+      if (menu.classList.contains('account-menu--open')) {
+        closeMenu();
+      }
         return sessionUser;
       } finally {
         sessionCheckInFlight = null;
@@ -141,7 +163,10 @@
     if (settingsLink) {
       settingsLink.classList.toggle('hidden', !sessionUser);
     }
-    updateAccountButton(sessionUser);
+    if (!sessionUser && !cachedUser) {
+      cachedUser = readCachedUser();
+    }
+    updateAccountButton(sessionUser || cachedUser);
   }
 
   function updateAccountButton(user) {
@@ -209,6 +234,9 @@
   }
 
   function applyCachedAccountButton() {
+    if (!cachedUser) {
+      cachedUser = readCachedUser();
+    }
     if (!cachedUser) return;
     updateAccountButton(cachedUser);
   }
@@ -220,17 +248,21 @@
     cachedUser = readCachedUser();
     applyCachedAccountButton();
     if (!sessionChecked) {
-      checkSession();
+      if (localStorage.getItem('voux_session_hint') === '1') {
+        checkSession();
+      }
     }
   });
 
   window.addEventListener('pageshow', () => {
+    if (localStorage.getItem('voux_session_hint') !== '1') return;
     sessionChecked = false;
     setTimeout(() => checkSession(), 0);
   });
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
+      if (localStorage.getItem('voux_session_hint') !== '1') return;
       sessionChecked = false;
       checkSession();
     }
@@ -245,6 +277,8 @@
   });
 
   window.addEventListener('beforeunload', () => {
-    writeCachedUser(sessionUser);
+    if (sessionUser || cachedUser) {
+      writeCachedUser(sessionUser || cachedUser);
+    }
   });
 })();
