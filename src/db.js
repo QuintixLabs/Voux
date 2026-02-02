@@ -170,7 +170,6 @@ const getDailyTrendStmt = db.prepare(`
   LIMIT ?
 `);
 /* -- counters: cleanup + delete ------------------------------------------- */
-const pruneHitsStmt = db.prepare('DELETE FROM hits WHERE last_hit < ?');
 const clearHitsStmt = db.prepare('DELETE FROM hits');
 const clearDailyStmt = db.prepare('DELETE FROM counter_daily');
 const deleteCounterStmt = db.prepare('DELETE FROM counters WHERE id = ?');
@@ -298,7 +297,10 @@ function buildCounterQuery({ search, mode, tags, limit, offset, count = false, s
   }
   const tagFilters = Array.isArray(tags) ? tags.filter(Boolean) : [];
   if (tagFilters.length) {
-    const placeholders = tagFilters.map((_, idx) => `@tag${idx}`);
+    const placeholders = tagFilters.map((value, idx) => {
+      void value;
+      return `@tag${idx}`;
+    });
     conditions.push(
       `id IN (
         SELECT counter_id
@@ -701,7 +703,7 @@ function extractIntegerDigits(value) {
   }
   try {
     return BigInt(digits);
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -1273,7 +1275,7 @@ function normalizeApiKeyRow(row) {
       if (Array.isArray(parsed)) {
         allowed = parsed.map((item) => String(item)).filter(Boolean);
       }
-    } catch (_) {
+    } catch {
       allowed = [];
     }
   }

@@ -15,7 +15,7 @@ async function injectFooter() {
     const hasSessionHint = (() => {
       try {
         return localStorage.getItem('voux_session_hint') === '1';
-      } catch (_) {
+      } catch {
         return false;
       }
     })();
@@ -114,7 +114,7 @@ async function checkForUpdates(updateEl, currentVersion) {
       updateEl.classList.remove('hidden');
       setupUpdateTooltip(updateEl);
     }
-  } catch (_) {}
+  } catch {}
 }
 
 function setupUpdateTooltip(updateEl) {

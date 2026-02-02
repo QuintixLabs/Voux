@@ -7,7 +7,6 @@
 /* -------------------------------------------------------------------------- */
 /* DOM references                                                             */
 /* -------------------------------------------------------------------------- */
-const settingsPanel = document.getElementById('settingsPanel');
 const togglePrivate = document.getElementById('togglePrivateMode');
 const toggleGuides = document.getElementById('toggleShowGuides');
 const statusLabel = document.getElementById('settingsStatus');
@@ -32,6 +31,7 @@ const brandingStatusLabel = document.getElementById('brandingStatus');
 const resetBrandingBtn = document.getElementById('resetBranding');
 const throttleSelect = document.getElementById('throttleSelect');
 const purgeInactiveButton = document.getElementById('purgeInactiveButton');
+const inactiveHint = document.getElementById('inactiveHint');
 const apiKeysPagination = document.getElementById('apiKeysPagination');
 const apiKeysPrevBtn = document.getElementById('apiKeysPrev');
 const apiKeysNextBtn = document.getElementById('apiKeysNext');
@@ -40,6 +40,7 @@ const usersCard = document.getElementById('usersCard');
 const usersList = document.getElementById('usersList');
 const usersFilterSelect = document.getElementById('usersFilter');
 const usersSearchInput = document.getElementById('usersSearch');
+const userCreateOpen = document.getElementById('userCreateOpen');
 const usersPagination = document.getElementById('usersPagination');
 const usersPrevBtn = document.getElementById('usersPrev');
 const usersNextBtn = document.getElementById('usersNext');
@@ -53,6 +54,9 @@ const userDisplayInput = document.getElementById('userDisplay');
 const userRoleSelect = document.getElementById('userRole');
 const userPasswordInput = document.getElementById('userPassword');
 const userStatusLabel = document.getElementById('userStatus');
+const userNameError = document.getElementById('userNameError');
+const userCreateModal = document.getElementById('userCreateModal');
+const userCreateCancel = document.getElementById('userCreateCancel');
 const userEditModal = document.getElementById('userEditModal');
 const userEditMessage = document.getElementById('userEditMessage');
 const userEditUsername = document.getElementById('userEditUsername');
@@ -61,6 +65,14 @@ const userEditPassword = document.getElementById('userEditPassword');
 const userEditSave = document.getElementById('userEditSave');
 const userEditCancel = document.getElementById('userEditCancel');
 let activeUserEditor = null;
+const adminDefaultsOpen = document.getElementById('adminDefaultsOpen');
+const adminPermModal = document.getElementById('adminPermModal');
+const adminPermTitle = document.getElementById('adminPermTitle');
+const adminPermMessage = document.getElementById('adminPermMessage');
+const adminPermGrid = document.getElementById('adminPermGrid');
+const adminPermSave = document.getElementById('adminPermSave');
+const adminPermCancel = document.getElementById('adminPermCancel');
+const adminPermReset = document.getElementById('adminPermReset');
 
 
 /* -------------------------------------------------------------------------- */
@@ -72,7 +84,6 @@ const usersPager = {
   pageSize: 4,
   filter: 'all'
 };
-const brandingCard = document.getElementById('brandingCard');
 const backupCard = document.getElementById('backupCard');
 const backupDesc = backupCard?.querySelector('.settings-desc');
 
@@ -82,11 +93,19 @@ const backupDesc = backupCard?.querySelector('.settings-desc');
 const DEFAULT_BRAND_NAME = 'Voux';
 const DEFAULT_HOME_TITLE = 'Voux · Simple Free & Open Source Hit Counter for Blogs and Websites';
 const DEFAULT_THROTTLE_SECONDS = 0;
+let inactiveDaysThreshold = 30;
 let initialBranding = {
   brandName: null,
   homeTitle: null,
   theme: null
 };
+let adminPermissionsDefaults = null;
+let adminPermissionsOverrides = null;
+let adminPermMode = null;
+let adminDefaultsSaving = false;
+let adminDefaultsPending = false;
+let effectiveAdminPermissions = null;
+let activeAdminPermUser = null;
 
 /* -------------------------------------------------------------------------- */
 /* State                                                                      */
@@ -102,6 +121,14 @@ const themeHelper = window.VouxTheme;
 const ALLOWED_THEMES = (themeHelper?.THEMES && themeHelper.THEMES.length ? themeHelper.THEMES : ['default']);
 
 let statusTimeout = null;
+
+const ADMIN_PERMISSION_ITEMS = [
+  { key: 'runtime', label: 'Runtime settings', hint: 'Settings that affect how things run.' },
+  { key: 'branding', label: 'Branding', hint: 'Customize names and visuals.' },
+  { key: 'apiKeys', label: 'API keys', hint: 'Create and manage access keys.' },
+  { key: 'users', label: 'Users', hint: 'Manage user accounts.' },
+  { key: 'danger', label: 'Danger actions', hint: 'Gives admins full control over all counters.' }
+];
 
 /* -------------------------------------------------------------------------- */
 /* Theme helpers                                                              */
@@ -170,7 +197,7 @@ async function checkSession() {
       initMember();
     }
     revealPage();
-  } catch (_) {
+  } catch {
     revealPage();
     showToast('Unable to load settings right now.', 'danger');
   }
@@ -183,12 +210,17 @@ checkSession();
 
 function initAdmin() {
   fetchSettings()
-    .then(({ config, usersPageSize }) => {
+    .then(({ config, usersPageSize, inactiveDaysThreshold: inactiveDays, adminPermissions }) => {
       populateForm(config);
+      if (Number.isFinite(inactiveDays) && inactiveDays > 0) {
+        inactiveDaysThreshold = Math.max(1, Math.round(inactiveDays));
+      }
+      updateInactiveButtonLabel();
       if (Number.isFinite(usersPageSize) && usersPageSize > 0) {
         usersPager.pageSize = usersPageSize;
       }
-      initSettingsTabs(['settingsPanel', 'brandingCard', 'backupCard', 'apiKeysCard', 'usersCard']);
+      effectiveAdminPermissions = adminPermissions?.effective || null;
+      applyAdminPermissionsUI(effectiveAdminPermissions, Boolean(activeUser?.isOwner));
       setStatus('');
       togglePrivate?.addEventListener('change', () =>
         handleToggleChange({ privateMode: togglePrivate.checked }, togglePrivate.checked ? 'Private instance enabled' : 'Private instance disabled', togglePrivate)
@@ -205,6 +237,9 @@ function initAdmin() {
       throttleSelect?.addEventListener('change', () => handleThrottleChange());
       purgeInactiveButton?.addEventListener('click', () => handlePurgeInactive());
       document.body.classList.remove('settings-footer-hidden');
+      if (activeUser?.isOwner) {
+        loadAdminPermissions();
+      }
     })
     .catch(() => {
       showToast('Unable to load settings right now.', 'danger');
@@ -230,9 +265,223 @@ async function fetchSettings() {
   const data = await res.json();
   return {
     config: data.config || {},
-    usersPageSize: Number(data.usersPageSize)
+    usersPageSize: Number(data.usersPageSize),
+    inactiveDaysThreshold: Number(data.inactiveDaysThreshold),
+    adminPermissions: data.adminPermissions || null
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Admin permissions                                                         */
+/* -------------------------------------------------------------------------- */
+function getAllowedSettingsCards(perms) {
+  if (!perms) {
+    return ['settingsPanel', 'brandingCard', 'backupCard', 'apiKeysCard', 'usersCard'];
+  }
+  const allowed = [];
+  if (perms.runtime) allowed.push('settingsPanel');
+  if (perms.branding) allowed.push('brandingCard');
+  allowed.push('backupCard');
+  if (perms.apiKeys) allowed.push('apiKeysCard');
+  if (perms.users) allowed.push('usersCard');
+  return allowed;
+}
+
+function applyAdminPermissionsUI(perms, isOwner) {
+  if (adminDefaultsOpen) {
+    adminDefaultsOpen.classList.toggle('hidden', !isOwner);
+  }
+  const allowedIds = isOwner ? getAllowedSettingsCards(null) : getAllowedSettingsCards(perms);
+  initSettingsTabs(allowedIds);
+  if (purgeInactiveButton) {
+    const canDanger = isOwner || (perms && perms.danger);
+    purgeInactiveButton.disabled = !canDanger;
+    purgeInactiveButton.classList.toggle('disabled', !canDanger);
+  }
+}
+
+function renderPermissionsGrid(container, values, onToggle) {
+  if (!container) return;
+  container.innerHTML = '';
+  ADMIN_PERMISSION_ITEMS.forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'admin-permission';
+    const labelWrap = document.createElement('div');
+    labelWrap.className = 'admin-permission__label';
+    const label = document.createElement('span');
+    label.textContent = item.label;
+    const hint = document.createElement('small');
+    hint.textContent = item.hint;
+    labelWrap.append(label, hint);
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'admin-toggle';
+    toggle.dataset.perm = item.key;
+    toggle.setAttribute('aria-pressed', values[item.key] ? 'true' : 'false');
+    toggle.innerHTML = '<span class="admin-toggle__track"><span class="admin-toggle__thumb"></span></span>';
+    toggle.addEventListener('click', () => {
+      const next = toggle.getAttribute('aria-pressed') !== 'true';
+      toggle.setAttribute('aria-pressed', next ? 'true' : 'false');
+      values[item.key] = next;
+      if (onToggle) onToggle(item.key, next);
+    });
+    row.append(labelWrap, toggle);
+    container.appendChild(row);
+  });
+}
+
+
+async function loadAdminPermissions() {
+  if (!activeUser?.isOwner) return;
+  try {
+    const res = await authFetch('/api/admin-permissions');
+    if (!res.ok) throw new Error('Unable to load permissions');
+    const data = await res.json();
+    adminPermissionsDefaults = data.defaults || {};
+    adminPermissionsOverrides = data.overrides || {};
+  } catch (error) {
+    console.warn(error);
+  }
+}
+
+async function saveAdminDefaults(values) {
+  if (!adminPermissionsDefaults) return;
+  if (values && typeof values === 'object') {
+    adminPermissionsDefaults = { ...adminPermissionsDefaults, ...values };
+  }
+  if (adminDefaultsSaving) {
+    adminDefaultsPending = true;
+    return;
+  }
+  adminDefaultsSaving = true;
+  const res = await authFetch('/api/admin-permissions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ defaults: adminPermissionsDefaults })
+  });
+  if (!res.ok) {
+    adminDefaultsSaving = false;
+    if (adminDefaultsPending) {
+      adminDefaultsPending = false;
+      saveAdminDefaults();
+    }
+    await showAlert(normalizeAuthMessage(null, 'Failed to update admin permissions.'));
+    return;
+  }
+  await res.json().catch(() => ({}));
+  adminDefaultsSaving = false;
+  if (adminDefaultsPending) {
+    adminDefaultsPending = false;
+    saveAdminDefaults();
+    return;
+  }
+  showToast('Admin permissions updated.');
+}
+
+async function openAdminDefaults() {
+  if (!adminPermModal || !adminPermGrid || !activeUser?.isOwner) return;
+  if (!adminPermissionsDefaults) {
+    await loadAdminPermissions();
+  }
+  adminPermMode = 'defaults';
+  activeAdminPermUser = null;
+  if (adminPermTitle) adminPermTitle.textContent = 'Admin defaults';
+  if (adminPermMessage) adminPermMessage.textContent = 'Default permissions for all admins.';
+  if (adminPermReset) adminPermReset.classList.add('hidden');
+  const defaults = adminPermissionsDefaults || {};
+  renderPermissionsGrid(adminPermGrid, { ...defaults });
+  adminPermModal.classList.add('modal-overlay--open');
+  adminPermModal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+}
+
+function openAdminPermissions(user) {
+  if (!adminPermModal || !adminPermGrid) return;
+  adminPermMode = 'user';
+  activeAdminPermUser = user;
+  const label = user.displayName ? `${user.displayName} (${user.username})` : user.username;
+  if (adminPermTitle) adminPermTitle.textContent = 'Admin permissions';
+  if (adminPermMessage) adminPermMessage.textContent = `Permissions for ${label}.`;
+  if (adminPermReset) adminPermReset.classList.remove('hidden');
+  const defaults = adminPermissionsDefaults || {};
+  const override = (adminPermissionsOverrides && adminPermissionsOverrides[user.id]) || null;
+  const current = { ...defaults, ...(override || {}) };
+  renderPermissionsGrid(adminPermGrid, current);
+  adminPermModal.classList.add('modal-overlay--open');
+  adminPermModal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+}
+
+function closeAdminPermissions() {
+  if (!adminPermModal) return;
+  adminPermModal.classList.remove('modal-overlay--open');
+  adminPermModal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+  adminPermMode = null;
+  activeAdminPermUser = null;
+}
+
+adminPermCancel?.addEventListener('click', closeAdminPermissions);
+adminPermModal?.addEventListener('click', (event) => {
+  if (event.target === adminPermModal) closeAdminPermissions();
+});
+
+adminPermReset?.addEventListener('click', async () => {
+  if (!activeAdminPermUser) return;
+  const res = await authFetch(`/api/admin-permissions/${activeAdminPermUser.id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ override: {} })
+  });
+  if (!res.ok) {
+    await showAlert(normalizeAuthMessage(null, 'Failed to reset permissions.'));
+    return;
+  }
+  adminPermissionsOverrides = (await res.json()).overrides || {};
+  try {
+    const data = await fetchSettings();
+    if (data?.adminPermissions?.defaults) {
+      adminPermissionsDefaults = data.adminPermissions.defaults;
+    }
+  } catch {
+    // ignore: keep current defaults if refresh fails
+  }
+  const label = activeAdminPermUser.displayName || activeAdminPermUser.username || 'user';
+  closeAdminPermissions();
+  loadUsers(true);
+  showToast(`Permissions reset for ${label}`);
+});
+
+adminPermSave?.addEventListener('click', async () => {
+  if (!adminPermGrid) return;
+  const values = {};
+  adminPermGrid.querySelectorAll('.admin-permission').forEach((row) => {
+    const toggle = row.querySelector('.admin-toggle');
+    const key = toggle?.dataset?.perm;
+    if (toggle && key) {
+      values[key] = toggle.getAttribute('aria-pressed') === 'true';
+    }
+  });
+  if (adminPermMode === 'defaults') {
+    await saveAdminDefaults(values);
+    closeAdminPermissions();
+    return;
+  }
+  if (!activeAdminPermUser) return;
+  const res = await authFetch(`/api/admin-permissions/${activeAdminPermUser.id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ override: values })
+  });
+  if (!res.ok) {
+    await showAlert(normalizeAuthMessage(null, 'Failed to update permissions.'));
+    return;
+  }
+  adminPermissionsOverrides = (await res.json()).overrides || {};
+  closeAdminPermissions();
+  loadUsers(true);
+  showToast('Permissions updated.');
+});
 
 /* -------------------------------------------------------------------------- */
 /* Settings form                                                              */
@@ -278,6 +527,17 @@ function populateForm(config) {
   setBrandingDirty(false);
 }
 
+// update inactive counters button and hint in settings
+function updateInactiveButtonLabel() {
+  if (!purgeInactiveButton) return;
+  const days = Number.isFinite(inactiveDaysThreshold) ? inactiveDaysThreshold : 30;
+  const label = days === 1 ? '1 day' : `${days} days`;
+  purgeInactiveButton.innerHTML = `<i class="ri-delete-bin-line"></i> Delete counters inactive for ${label}`;
+  if (inactiveHint) {
+    inactiveHint.textContent = `Counters with no hits for ${label} will be permanently removed.`;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Setup helpers                                                              */
 /* -------------------------------------------------------------------------- */
@@ -309,6 +569,15 @@ function setupUsers() {
   if (!usersCard) return;
   loadUsers();
   userForm?.addEventListener('submit', handleUserCreate);
+  adminDefaultsOpen?.addEventListener('click', () => {
+    openAdminDefaults();
+  });
+  userCreateOpen?.addEventListener('click', openUserCreateModal);
+  userCreateCancel?.addEventListener('click', closeUserCreateModal);
+  userCreateModal?.addEventListener('click', (event) => {
+    if (event.target === userCreateModal) closeUserCreateModal();
+  });
+  userNameInput?.addEventListener('input', () => setUserNameError(''));
   usersFilterSelect?.addEventListener('change', () => {
     usersPager.filter = usersFilterSelect.value || 'all';
     usersPager.page = 1;
@@ -360,6 +629,10 @@ function getFilteredUsers() {
   const query = (usersSearchInput?.value || '').trim().toLowerCase();
   const baseList = usersPager.list;
   let filtered = baseList;
+  const sortByName = () => {
+    const normalize = (user) => (user.displayName || user.username || '').trim().toLowerCase();
+    return (a, b) => normalize(a).localeCompare(normalize(b));
+  };
   if (usersPager.filter === 'owner') {
     filtered = filtered.filter((user) => user.isOwner);
   }
@@ -374,6 +647,9 @@ function getFilteredUsers() {
       const name = `${user.displayName || ''} ${user.username || ''}`.toLowerCase();
       return name.includes(query);
     });
+  }
+  if (usersPager.filter === 'az') {
+    filtered = [...filtered].sort(sortByName());
   }
   return filtered;
 }
@@ -460,6 +736,15 @@ function renderUsers(users, query = '') {
       actions.appendChild(roleSelect);
     }
 
+    if (requesterIsOwner && user.role === 'admin' && !user.isOwner) {
+      const permsBtn = document.createElement('button');
+      permsBtn.type = 'button';
+      permsBtn.className = 'ghost';
+      permsBtn.innerHTML = '<i class="ri-shield-keyhole-line"></i>';
+      permsBtn.addEventListener('click', () => openAdminPermissions(user));
+      actions.appendChild(permsBtn);
+    }
+
     if ((user.role !== 'admin' || requesterIsOwner) && activeUser?.id !== user.id) {
       const editBtn = document.createElement('button');
       editBtn.type = 'button';
@@ -481,6 +766,24 @@ function renderUsers(users, query = '') {
     row.append(meta, actions);
     usersList.appendChild(row);
   });
+}
+
+function openUserCreateModal() {
+  if (!userCreateModal || !userForm) return;
+  userForm.reset();
+  setUserStatus('');
+  setUserNameError('');
+  userCreateModal.classList.add('modal-overlay--open');
+  userCreateModal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+  userNameInput?.focus();
+}
+
+function closeUserCreateModal() {
+  if (!userCreateModal) return;
+  userCreateModal.classList.remove('modal-overlay--open');
+  userCreateModal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
 }
 
 /* -------------------------------------------------------------------------- */
@@ -514,14 +817,30 @@ async function handleUserCreate(event) {
       throw new Error(err.error || 'Failed to create user');
     }
     userForm.reset();
-    showToast('User created');
+    showToast(`User created: ${displayName || username}`);
     loadUsers(true);
+    closeUserCreateModal();
   } catch (error) {
     const message = error.message === 'username_exists'
       ? 'That username is already taken.'
       : error.message || 'Failed to create user.';
+    if (error.message === 'username_exists') {
+      setUserNameError(message);
+      return;
+    }
     await showAlert(normalizeAuthMessage(error, message));
   }
+}
+
+function setUserNameError(message) {
+  if (!userNameError) return;
+  const next = message || '';
+  const isHidden = userNameError.classList.contains('is-hidden');
+  if (userNameError.textContent === next && !isHidden) {
+    return;
+  }
+  userNameError.textContent = next;
+  userNameError.classList.toggle('is-hidden', !next);
 }
 
 async function handleUserRoleChange(user, roleSelect) {
@@ -611,7 +930,8 @@ userEditSave?.addEventListener('click', async () => {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to update user');
     }
-    showToast('User updated');
+    const targetName = displayName || username || activeUserEditor.displayName || activeUserEditor.username || 'user';
+    showToast(`User updated: ${targetName}`);
     closeUserEditor();
     loadUsers(true);
   } catch (error) {
@@ -642,7 +962,7 @@ async function handleUserDelete(user) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to delete user');
     }
-    showToast('User deleted');
+    showToast(`User deleted: ${user.displayName || user.username || 'user'}`);
     loadUsers(true);
   } catch (error) {
     await showAlert(normalizeAuthMessage(error, 'Failed to delete user'));
@@ -998,10 +1318,12 @@ async function handlePurgeInactive() {
     await showAlert('Log in again to manage counters.');
     return;
   }
+  const days = Number.isFinite(inactiveDaysThreshold) ? inactiveDaysThreshold : 30;
+  const daysLabel = days === 1 ? '1 day' : `${days} days`;
   const siteUrl = window.location?.origin || window.location?.href || 'this site';
   const confirmedFinal = await modalConfirm({
     title: 'Really remove inactive counters?',
-    message: `This will permanently remove every counter that has no hits for 30 days on: ${siteUrl}. You'll confirm by typing DELETE next.`,
+    message: `This will permanently remove every counter that has no hits for ${daysLabel} on: ${siteUrl}. You'll confirm by typing DELETE next.`,
     confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
     variant: 'danger'
@@ -1009,11 +1331,11 @@ async function handlePurgeInactive() {
   if (!confirmedFinal) return;
   const confirmedInput = await modalConfirmWithInput({
     title: 'Delete inactive counters?',
-    message: 'Type DELETE to permanently remove inactive counters (30 days).',
+    message: `Type DELETE to permanently remove inactive counters (${daysLabel}).`,
     inputPlaceholder: 'DELETE',
     inputMatch: 'DELETE',
     inputHint: 'This cannot be undone.',
-    promptMessage: 'Type DELETE to permanently remove inactive counters (30 days).', // fallback if modal is not available
+    promptMessage: `Type DELETE to permanently remove inactive counters (${daysLabel}).`, // fallback if modal is not available
     confirmLabel: 'Delete inactive',
     cancelLabel: 'Cancel',
     variant: 'danger'
@@ -1026,7 +1348,7 @@ async function handlePurgeInactive() {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ days: 30 })
+      body: JSON.stringify({ days })
     });
     assertSession(res);
     if (!res.ok) {
@@ -1052,7 +1374,7 @@ function formatTimestamp(value) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'never';
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  } catch (_) {
+  } catch {
     return 'never';
   }
 }
@@ -1382,6 +1704,7 @@ function initSettingsTabs(allowedIds = []) {
     showSettingsCards();
     return;
   }
+  settingsTabs.style.display = '';
   const allowedSet = new Set(allowedIds);
   settingsTabButtons.forEach((button) => {
     const targetId = button.dataset.target;

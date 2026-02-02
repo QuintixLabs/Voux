@@ -162,13 +162,21 @@ function setInlineError(el, message) {
 /* -------------------------------------------------------------------------- */
 /* Avatar state                                                               */
 /* -------------------------------------------------------------------------- */
-let currentAvatarUrl = '';
-let pendingAvatarUrl = '';
+
+if (profileAvatarPreview) {
+  profileAvatarPreview.addEventListener('error', () => {
+    profileAvatarPreview.classList.add('hidden');
+    if (profileAvatarFallback) {
+      profileAvatarFallback.classList.remove('hidden');
+    }
+    if (profileAvatarRemove) {
+      profileAvatarRemove.disabled = true;
+    }
+  });
+}
 
 function setAvatarPreview(url, username) {
   const safeUrl = url || '';
-  currentAvatarUrl = safeUrl;
-  pendingAvatarUrl = '';
   if (profileAvatarRemove) {
     profileAvatarRemove.disabled = !safeUrl;
   }
@@ -190,7 +198,7 @@ function readCachedUser() {
     const parsed = JSON.parse(raw);
     if (!parsed || (!parsed.username && !parsed.displayName)) return null;
     return parsed;
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -253,7 +261,7 @@ async function loadProfile() {
       profileDisplayText.classList.toggle('hint', !user.displayName);
     }
     setAvatarPreview(user.avatarUrl || '', user.displayName || user.username);
-  } catch (_) {
+  } catch {
     revealPage();
     showToast('Unable to load profile right now.', 'danger');
   }
@@ -285,15 +293,12 @@ profileAvatarFile?.addEventListener('change', () => {
   reader.onload = () => {
     const result = typeof reader.result === 'string' ? reader.result : '';
     if (!result) return;
-    pendingAvatarUrl = result;
     saveAvatarChange(result);
   };
   reader.readAsDataURL(file);
 });
 
 profileAvatarRemove?.addEventListener('click', () => {
-  pendingAvatarUrl = '';
-  currentAvatarUrl = '';
   if (profileAvatarFile) profileAvatarFile.value = '';
   saveAvatarChange('');
 });

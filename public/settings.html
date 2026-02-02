@@ -31,7 +31,7 @@
       if (localStorage.getItem('voux_session_hint') !== '1') {
         document.documentElement.classList.add('auth-pending');
       }
-    } catch (_) {
+    } catch {
       document.documentElement.classList.add('auth-pending');
     }
   </script>
@@ -95,7 +95,7 @@
       <p>Manage your instance options and behavior. Only logged-in admins can make changes.</p>
     </header>
 
-    <div class="settings-tabs" id="settingsTabs">
+    <div class="settings-tabs" id="settingsTabs" style="display:none">
       <button type="button" class="settings-tab settings-tab--active" data-target="all"><i class="ri-grid-fill" aria-hidden="true"></i> All</button>
       <button type="button" class="settings-tab" data-target="settingsPanel"><i class="ri-settings-4-line" aria-hidden="true"></i> Runtime</button>
       <button type="button" class="settings-tab" data-target="brandingCard"><i class="ri-brush-line" aria-hidden="true"></i> Branding</button>
@@ -158,8 +158,8 @@
         </div>
         <div class="field">
           <div class="field__label">Inactive counters</div>
-          <button type="button" id="purgeInactiveButton" class="danger ghost inactive-counters"><i class="ri-delete-bin-line"></i> Delete counters inactive for 30 days</button>
-          <small class="hint">Counters with no hits for 30 days will be permanently removed.</small>
+          <button type="button" id="purgeInactiveButton" class="danger ghost inactive-counters"><i class="ri-delete-bin-line"></i> Delete inactive counters</button>
+          <small class="hint" id="inactiveHint">Counters with no hits for 30 days will be permanently removed.</small>
         </div>
       </div>
       <p class="hint" id="settingsStatus">Loading...</p>
@@ -265,11 +265,20 @@
             <input type="search" id="usersSearch" placeholder="Search users" />
           </div>
           <select id="usersFilter">
+            <option value="" disabled>— Filters —</option>
             <option value="all">All users</option>
+            <option value="az">A–Z</option>
+            <option value="" disabled>— Role filters —</option>
             <option value="owner">Show owner</option>
             <option value="admins">Show admins</option>
             <option value="members">Show members</option>
           </select>
+          <button type="button" class="ghost users-create-btn hidden" id="adminDefaultsOpen" aria-label="Admin defaults">
+            <i class="ri-user-settings-line" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="ghost users-create-btn" id="userCreateOpen" aria-label="Create user">
+            <i class="ri-user-add-line" aria-hidden="true"></i>
+          </button>
         </div>
       </div>
       <div id="usersList" class="users-list" aria-live="polite"></div>
@@ -278,18 +287,26 @@
         <span id="usersPageInfo" class="pagination-info">Page 1</span>
         <button type="button" id="usersNext" class="ghost"><i class="ri-arrow-right-line"></i></button>
       </div>
-      <form id="userForm" class="api-key-form" action="javascript:void(0);">
+    </section>
+  </main>
+
+  <div class="modal-overlay" id="userCreateModal" aria-hidden="true" data-modal-enter="#userCreateSave" data-modal-escape="#userCreateCancel">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="userCreateTitle">
+      <h2 class="modal__title" id="userCreateTitle">Create user</h2>
+      <p class="modal__message" id="userCreateMessage">Add a new account for this instance.</p>
+      <form id="userForm" class="modal__form" action="javascript:void(0);">
         <div class="field">
           <div class="field__label" id="userNameLabel">Username</div>
-          <input type="text" id="userName" aria-labelledby="userNameLabel" maxlength="40" placeholder="Username" required />
+          <input class="modal__input" type="text" id="userName" aria-labelledby="userNameLabel" maxlength="40" placeholder="Username" required />
+          <p class="modal__input-error is-hidden" id="userNameError"></p>
         </div>
         <div class="field">
           <div class="field__label" id="userDisplayLabel">Display name <span class="optional-tag">Optional</span></div>
-          <input type="text" id="userDisplay" aria-labelledby="userDisplayLabel" maxlength="80" placeholder="Display name" />
+          <input class="modal__input" type="text" id="userDisplay" aria-labelledby="userDisplayLabel" maxlength="80" placeholder="Display name" />
         </div>
         <div class="field">
           <div class="field__label" id="userRoleLabel">Role</div>
-          <select id="userRole" aria-labelledby="userRoleLabel">
+          <select class="modal__input" id="userRole" aria-labelledby="userRoleLabel">
             <option value="user">Member</option>
             <option value="admin">Admin</option>
           </select>
@@ -297,17 +314,20 @@
         <div class="field">
           <div class="field__label" id="userPasswordLabel">Password</div>
           <div class="password-field password-field--no-icon">
-            <input type="password" id="userPassword" aria-labelledby="userPasswordLabel" minlength="6" placeholder="Set a password" required />
+            <input class="modal__input" type="password" id="userPassword" aria-labelledby="userPasswordLabel" minlength="6" placeholder="Set a password" required />
             <button type="button" class="password-toggle" aria-label="Show password">
               <i class="ri-eye-off-line" aria-hidden="true"></i>
             </button>
           </div>
         </div>
-        <button type="submit"><i class="ri-user-add-line"></i> Create user</button>
+        <div class="modal__actions">
+          <button type="submit" class="modal__button modal__button--primary" id="userCreateSave">Create user</button>
+          <button type="button" class="modal__button modal__button--ghost" id="userCreateCancel">Cancel</button>
+        </div>
+        <p class="hint" id="userStatus"></p>
       </form>
-      <p class="hint" id="userStatus"></p>
-    </section>
-  </main>
+    </div>
+  </div>
 
   <div class="modal-overlay" id="userEditModal" aria-hidden="true" data-modal-enter="#userEditSave" data-modal-escape="#userEditCancel">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="userEditTitle">
@@ -334,6 +354,19 @@
       <div class="modal__actions">
         <button type="button" class="modal__button modal__button--primary" id="userEditSave">Save changes</button>
         <button type="button" class="modal__button modal__button--ghost" id="userEditCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="adminPermModal" aria-hidden="true" data-modal-enter="#adminPermSave" data-modal-escape="#adminPermCancel">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminPermTitle">
+      <h2 class="modal__title" id="adminPermTitle">Admin permissions</h2>
+      <p class="modal__message" id="adminPermMessage"></p>
+      <div class="admin-permissions__grid admin-permissions__grid--modal" id="adminPermGrid"></div>
+      <div class="modal__actions">
+        <button type="button" class="modal__button modal__button--ghost" id="adminPermReset">Use defaults</button>
+        <button type="button" class="modal__button modal__button--primary" id="adminPermSave">Save</button>
+        <button type="button" class="modal__button modal__button--ghost" id="adminPermCancel">Cancel</button>
       </div>
     </div>
   </div>

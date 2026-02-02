@@ -26,7 +26,7 @@
       if (!parsed.ts || !parsed.data) return null;
       if (Date.now() - parsed.ts > CONFIG_TTL_MS) return null;
       return parsed;
-    } catch (_) {
+    } catch {
       return null;
     }
   }
@@ -34,7 +34,7 @@
   function storeConfig(data) {
     try {
       localStorage.setItem(CONFIG_KEY, JSON.stringify({ ts: Date.now(), data }));
-    } catch (_) {}
+    } catch {}
   }
 
   function clearConfig() {
@@ -42,7 +42,7 @@
     configCacheTs = 0;
     try {
       localStorage.removeItem(CONFIG_KEY);
-    } catch (_) {}
+    } catch {}
   }
 
   function setConfig(data) {

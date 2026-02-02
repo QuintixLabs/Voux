@@ -40,6 +40,11 @@ const createStartInput = document.querySelector('#adminStartValue');
 const adminEmbedBlock = document.querySelector('#adminEmbedBlock');
 const adminEmbedCopy = document.querySelector('#adminEmbedCopy');
 const adminEmbedSnippet = document.querySelector('#adminEmbedSnippet');
+const adminEmbedSvgCopy = document.querySelector('#adminEmbedSvgCopy');
+const adminEmbedSvgSnippet = document.querySelector('#adminEmbedSvgSnippet');
+const embedToggles = Array.from(document.querySelectorAll('.embed-toggle'));
+const embedPanels = Array.from(document.querySelectorAll('[data-embed-panel]'));
+const embedDescs = Array.from(document.querySelectorAll('[data-embed-desc]'));
 const createCard = document.querySelector('#createCard');
 const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
 const adminPreview = document.querySelector('#adminPreview');
@@ -74,7 +79,6 @@ if (!toastContainer) {
 }
 let tagFilterMenuOpen = false;
 const tagSelectorRegistry = new Set();
-let pickrReadyPromise = null;
 
 /* -------------------------------------------------------------------------- */
 /* Constants                                                                  */
@@ -109,6 +113,7 @@ const state = {
   editPanelsOpen: 0,
   activityRange: '7d',
   ownerOnly: false,
+  ownerOnlyForced: false,
   latestCounters: [],
   selectedIds: new Set(),
   counterCache: new Map(),
@@ -126,7 +131,7 @@ let sessionGraceUntil = 0;
 function loadOwnerFilterPreference() {
   try {
     return window.localStorage.getItem(OWNER_FILTER_STORAGE_KEY) === 'true';
-  } catch (_) {
+  } catch {
     return false;
   }
 }
@@ -137,7 +142,7 @@ function hasSessionHint() {
       window.localStorage.getItem('voux_session_hint') === '1' &&
       Boolean(window.localStorage.getItem('voux_nav_user'))
     );
-  } catch (_) {
+  } catch {
     return false;
   }
 }
@@ -145,7 +150,7 @@ function hasSessionHint() {
 function saveOwnerFilterPreference(value) {
   try {
     window.localStorage.setItem(OWNER_FILTER_STORAGE_KEY, value ? 'true' : 'false');
-  } catch (_) {
+  } catch {
     // ignore
   }
 }
@@ -179,18 +184,30 @@ function buildUnauthorizedError(message = 'unauthorized') {
   return error;
 }
 
+function buildForbiddenError(message = 'forbidden') {
+  const error = new Error(message);
+  error.code = 'forbidden';
+  return error;
+}
+
 async function ensureSessionForAction() {
   const res = await authFetch('/api/session', { cache: 'no-store' });
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     await setUserSession(null);
     throw buildUnauthorizedError();
+  }
+  if (res.status === 403) {
+    throw buildForbiddenError();
   }
 }
 
 function assertAuthorizedResponse(res) {
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     setUserSession(null);
     throw buildUnauthorizedError();
+  }
+  if (res.status === 403) {
+    throw buildForbiddenError();
   }
 }
 
@@ -366,6 +383,12 @@ function limitStartValueInput(input) {
   input.addEventListener('input', enforceDigits);
 }
 
+function canDangerOnCounter(counter) {
+  if (!state.isAdmin) return true;
+  if (state.user?.adminPermissions?.danger === true) return true;
+  return Boolean(counter?.ownerId && counter.ownerId === state.user?.id);
+}
+
 function readStartValue(input) {
   if (!input) return '0';
   const digits = (input.value || '').replace(/[^\d]/g, '').slice(0, START_VALUE_DIGIT_LIMIT);
@@ -377,9 +400,22 @@ function appendPreviewParam(url) {
     const parsed = new URL(url, window.location.origin);
     parsed.searchParams.set('preview', '1');
     return parsed.toString();
-  } catch (_) {
+  } catch {
     return url.includes('?') ? `${url}&preview=1` : `${url}?preview=1`;
   }
+}
+
+function setEmbedMode(mode) {
+  const target = mode === 'svg' ? 'svg' : 'script';
+  embedToggles.forEach((toggle) => {
+    toggle.classList.toggle('is-active', toggle.dataset.embed === target);
+  });
+  embedPanels.forEach((panel) => {
+    panel.classList.toggle('hidden', panel.dataset.embedPanel !== target);
+  });
+  embedDescs.forEach((desc) => {
+    desc.classList.toggle('hidden', desc.dataset.embedDesc !== target);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -390,6 +426,12 @@ window.addEventListener('pageshow', (event) => {
       checkSession();
     }
   }
+});
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.counter-copy__menu.is-open').forEach((menu) => {
+    menu.classList.remove('is-open');
+  });
 });
 
 /* -------------------------------------------------------------------------- */
@@ -412,6 +454,7 @@ function init() {
   deleteFilteredBtn?.addEventListener('click', handleDeleteFiltered);
   createForm?.addEventListener('submit', handleCreateCounter);
   adminEmbedCopy?.addEventListener('click', handleAdminEmbedCopy);
+  adminEmbedSvgCopy?.addEventListener('click', handleAdminEmbedSvgCopy);
   modeFilterSelect?.addEventListener('change', handleModeFilterChange);
   sortFilterSelect?.addEventListener('change', handleSortChange);
   ownerFilterToggle?.addEventListener('click', handleOwnerFilterToggle);
@@ -425,6 +468,9 @@ function init() {
   downloadSelectedBtn?.addEventListener('click', handleDownloadSelected);
   addTagsSelectedBtn?.addEventListener('click', handleAddTagsSelected);
   deleteSelectedBtn?.addEventListener('click', handleDeleteSelected);
+  embedToggles.forEach((toggle) => {
+    toggle.addEventListener('click', () => setEmbedMode(toggle.dataset.embed || 'script'));
+  });
   clearSelectionBtn?.addEventListener('click', () => clearSelection());
   document.addEventListener('click', handleDocumentClick);
   document.addEventListener('keydown', handleGlobalKeydown);
@@ -547,7 +593,7 @@ async function checkSession() {
     }
     sessionRetryCount = 0;
     sessionGraceUntil = 0;
-    setUserSession(data?.user || null);
+    setUserSession(data?.user || null, data?.adminPermissions || null);
     showDashboard();
   } catch (error) {
     console.warn('Session check failed', error);
@@ -668,7 +714,7 @@ async function attemptLogin(username, password) {
       throw Object.assign(new Error(error?.message || 'Login failed. Check your details.'), { code: code || 'unauthorized' });
     }
     const data = await res.json();
-    setUserSession(data?.user || null);
+    setUserSession(data?.user || null, data?.adminPermissions || null);
     if (window.VouxErrors?.cacheNavUser) {
       window.VouxErrors.cacheNavUser(data?.user || null);
     }
@@ -804,8 +850,13 @@ async function handleDeleteAll() {
   if (!confirmedFinal) return;
   try {
     deleteAllBtn.disabled = true;
+    const dangerAllowed = !state.isAdmin || state.user?.adminPermissions?.danger === true;
     const ownerParam = state.ownerOnly ? 'owner=me' : '';
-    const url = ownerParam ? `/api/counters?${ownerParam}` : '/api/counters';
+    const url = state.ownerOnly && !dangerAllowed
+      ? '/api/counters?owner=me'
+      : ownerParam
+      ? `/api/counters?${ownerParam}`
+      : '/api/counters';
     const res = await authFetch(url, {
       method: 'DELETE'
     });
@@ -873,13 +924,17 @@ async function handleCreateCounter(event) {
       throw new Error(err.error || 'Failed to create counter');
     }
     const data = await res.json();
-    if (adminEmbedSnippet) {
-      adminEmbedSnippet.value = data.embedCode;
-      adminEmbedBlock?.classList.remove('hidden');
-    }
-    if (data.embedUrl) {
-      renderAdminPreview(data.embedUrl);
-    }
+  if (adminEmbedSnippet) {
+    adminEmbedSnippet.value = data.embedCode;
+    adminEmbedBlock?.classList.remove('hidden');
+    setEmbedMode('script');
+  }
+  if (adminEmbedSvgSnippet) {
+    adminEmbedSvgSnippet.value = data.embedSvgCode || '';
+  }
+  if (data.embedUrl) {
+    renderAdminPreview(data.embedUrl);
+  }
     if (noteValue) {
       try {
         await updateCounterMetadataRequest(data.counter.id, { note: noteValue });
@@ -936,6 +991,10 @@ function renderCounterList(counters = state.latestCounters) {
     row.className = 'counter-row';
     row.dataset.counterId = counter.id;
     const isSelected = state.selectedIds.has(counter.id);
+    const canSelect = canDangerOnCounter(counter);
+    if (!canSelect && isSelected) {
+      state.selectedIds.delete(counter.id);
+    }
     if (isSelected) {
       row.classList.add('counter-row--selected');
     }
@@ -947,6 +1006,11 @@ function renderCounterList(counters = state.latestCounters) {
     selectInput.checked = isSelected;
     selectInput.addEventListener('change', (event) => toggleSelection(counter.id, event.target.checked, row));
     selectWrapper.appendChild(selectInput);
+    if (!canSelect) {
+      selectWrapper.classList.add('hidden');
+      selectInput.disabled = true;
+      selectInput.checked = false;
+    }
 
     const meta = document.createElement('div');
     meta.className = 'counter-meta';
@@ -959,13 +1023,40 @@ function renderCounterList(counters = state.latestCounters) {
     id.className = 'counter-meta__id';
     const idValue = document.createElement('span');
     idValue.textContent = counter.id;
+    const copyWrap = document.createElement('div');
+    copyWrap.className = 'counter-copy';
     const copyBtn = document.createElement('button');
     copyBtn.type = 'button';
     copyBtn.className = 'counter-copy-button';
     copyBtn.innerHTML = '<i class="ri-file-copy-line"></i>';
-    copyBtn.title = 'Copy embed snippet';
-    copyBtn.addEventListener('click', () => copyEmbedSnippet(counter.id, copyBtn));
-    id.append(idValue, copyBtn);
+    const copyMenu = document.createElement('div');
+    copyMenu.className = 'counter-copy__menu';
+    const copyScript = document.createElement('button');
+    copyScript.type = 'button';
+    copyScript.innerHTML = '<i class="ri-code-line" aria-hidden="true"></i> · Copy script';
+    const copySvg = document.createElement('button');
+    copySvg.type = 'button';
+    copySvg.innerHTML = '<i class="ri-image-line" aria-hidden="true"></i> · Copy SVG';
+    copyMenu.append(copyScript, copySvg);
+    copyBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      document.querySelectorAll('.counter-copy__menu.is-open').forEach((menu) => {
+        if (menu !== copyMenu) menu.classList.remove('is-open');
+      });
+      copyMenu.classList.toggle('is-open');
+    });
+    copyScript.addEventListener('click', (event) => {
+      event.stopPropagation();
+      copyMenu.classList.remove('is-open');
+      copyEmbedSnippet(counter.id, copyBtn, 'script');
+    });
+    copySvg.addEventListener('click', (event) => {
+      event.stopPropagation();
+      copyMenu.classList.remove('is-open');
+      copyEmbedSnippet(counter.id, copyBtn, 'svg');
+    });
+    copyWrap.append(copyBtn, copyMenu);
+    id.append(idValue, copyWrap);
 
     const value = document.createElement('div');
     value.className = 'counter-meta__value';
@@ -1168,21 +1259,31 @@ function renderCounterList(counters = state.latestCounters) {
       }
     });
 
-    actions.append(editBtn);
+    const dangerAllowed = !state.isAdmin || state.user?.adminPermissions?.danger === true;
+    const canEditOthers = state.isAdmin && dangerAllowed;
+    const isOwnerCounter = counter.ownerId && counter.ownerId === state.user?.id;
+    if (!state.isAdmin || isOwnerCounter || canEditOthers) {
+      actions.append(editBtn);
+    }
 
     const downloadBtn = document.createElement('button');
     downloadBtn.type = 'button';
     downloadBtn.className = 'ghost counter-download-btn';
     downloadBtn.innerHTML = '<i class="ri-download-2-line"></i><span> Download</span>';
     downloadBtn.addEventListener('click', () => handleDownloadSingle(counter.id, counter.label || counter.id, downloadBtn));
-    actions.append(downloadBtn);
+    if (!state.isAdmin || isOwnerCounter || canEditOthers) {
+      actions.append(downloadBtn);
+    }
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className = 'danger ghost counter-delete-btn';
-    deleteBtn.innerHTML = '<i class="ri-delete-bin-line" aria-hidden="true"></i><span> Delete</span>';
-    deleteBtn.addEventListener('click', () => removeCounter(counter.id));
-    actions.append(deleteBtn);
+    const canDelete = dangerAllowed || (state.isAdmin && state.ownerOnly && counter.ownerId === state.user?.id);
+    if (canDelete) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'danger ghost counter-delete-btn';
+      deleteBtn.innerHTML = '<i class="ri-delete-bin-line" aria-hidden="true"></i><span> Delete</span>';
+      deleteBtn.addEventListener('click', () => removeCounter(counter.id));
+      actions.append(deleteBtn);
+    }
 
     meta.append(label, id);
     const tagsLine = buildTagBadges(counter.tags);
@@ -1297,6 +1398,8 @@ function hideDashboard() {
   document.body.classList.add('dashboard-footer-hidden');
   adminEmbedBlock?.classList.add('hidden');
   if (adminEmbedSnippet) adminEmbedSnippet.value = '';
+  if (adminEmbedSvgSnippet) adminEmbedSvgSnippet.value = '';
+  setEmbedMode('script');
   paginationEl?.classList.add('hidden');
   deleteAllBtn.disabled = true;
   state.tags = [];
@@ -1334,8 +1437,12 @@ function setLoginLoading(loading) {
 /* -------------------------------------------------------------------------- */
 /* Session state                                                              */
 /* -------------------------------------------------------------------------- */
-async function setUserSession(user) {
-  state.user = user || null;
+async function setUserSession(user, adminPermissions) {
+  if (user && adminPermissions) {
+    state.user = { ...user, adminPermissions };
+  } else {
+    state.user = user || null;
+  }
   state.isAdmin = Boolean(user?.isAdmin || user?.role === 'admin');
   if (!state.user) {
     if (window.VouxErrors?.cacheNavUser) {
@@ -1349,6 +1456,15 @@ async function setUserSession(user) {
     return;
   }
   state.ownerOnly = state.isAdmin ? loadOwnerFilterPreference() : false;
+  if (state.isAdmin && state.user?.adminPermissions?.danger === false) {
+    state.ownerOnly = true;
+    state.ownerOnlyForced = true;
+    saveOwnerFilterPreference(true);
+  } else if (state.isAdmin && state.ownerOnlyForced) {
+    state.ownerOnly = false;
+    state.ownerOnlyForced = false;
+    saveOwnerFilterPreference(false);
+  }
   syncOwnerFilterToggle();
   document.dispatchEvent(new CustomEvent('voux:session-updated', { detail: { user: state.user } }));
   updateCreateCardVisibility();
@@ -1451,6 +1567,9 @@ async function handleDeleteFiltered() {
 /* -------------------------------------------------------------------------- */
 function toggleSelection(counterId, selected, row) {
   if (!counterId) return;
+  if (selected && !canDangerOnCounter(state.counterCache?.get(counterId))) {
+    return;
+  }
   if (selected) {
     state.selectedIds.add(counterId);
   } else {
@@ -1472,16 +1591,24 @@ function clearSelection() {
 }
 
 function refreshSelectionState() {
+  const invalidIds = [];
+  state.selectedIds.forEach((id) => {
+    if (!canDangerOnCounter(state.counterCache?.get(id))) {
+      invalidIds.push(id);
+    }
+  });
+  if (invalidIds.length) {
+    invalidIds.forEach((id) => state.selectedIds.delete(id));
+  }
   if (counterListEl) {
     counterListEl.querySelectorAll('.counter-row').forEach((row) => {
       const counterId = row.dataset?.counterId;
       const selected = counterId && state.selectedIds.has(counterId);
       row.classList.toggle('counter-row--selected', selected);
       const checkbox = row.querySelector('.counter-select input');
-      if (checkbox) {
-        // eslint-disable-next-line no-param-reassign
-        checkbox.checked = Boolean(selected);
-      }
+    if (checkbox) {
+      checkbox.checked = Boolean(selected);
+    }
     });
   }
   updateSelectionToolbar();
@@ -1501,7 +1628,7 @@ function updateSelectionToolbar() {
 /* Exports + downloads                                                        */
 /* -------------------------------------------------------------------------- */
 async function handleDownloadSelected() {
-  const ids = Array.from(state.selectedIds);
+  const ids = Array.from(state.selectedIds).filter((id) => canDangerOnCounter(state.counterCache?.get(id)));
   if (!ids.length) {
     await showAlert('Select at least one counter.');
     return;
@@ -1527,8 +1654,14 @@ function updateCounterCache(counters = []) {
 
 async function handleAddTagsSelected() {
   const ids = Array.from(state.selectedIds);
+  const allowedIds = ids.filter((id) => canDangerOnCounter(state.counterCache?.get(id)));
+  const skippedCount = ids.length - allowedIds.length;
   if (!ids.length) {
     await showAlert('Select at least one counter.');
+    return;
+  }
+  if (!allowedIds.length) {
+    await showAlert("You don't have permission to do that.");
     return;
   }
   if (!state.tags.length) {
@@ -1555,7 +1688,7 @@ async function handleAddTagsSelected() {
   let lastError = null;
   const updatedIds = [];
   const nextTagObjects = state.tags.filter((tag) => selectedTags.includes(tag.id));
-  for (const id of ids) {
+  for (const id of allowedIds) {
     try {
       await updateCounterMetadataRequest(id, { tags: selectedTags });
       updated += 1;
@@ -1565,7 +1698,7 @@ async function handleAddTagsSelected() {
         cached.tags = nextTagObjects.slice();
       }
     } catch (error) {
-      if (error?.message === 'forbidden') {
+      if (error?.message === 'forbidden' || error?.message === 'admin_permission_denied') {
         skipped += 1;
       } else {
         lastError = error;
@@ -1574,7 +1707,9 @@ async function handleAddTagsSelected() {
   }
   await refreshCounters(state.page);
   if (updated) {
-    const message = `Updated tags for ${updated} counter${updated === 1 ? '' : 's'}` + (skipped ? ` · ${skipped} skipped` : '');
+    const message =
+      `Updated tags for ${updated} counter${updated === 1 ? '' : 's'}` +
+      (skipped || skippedCount ? ` · ${skipped + skippedCount} skipped` : '');
     showActionToast(message, 'Undo', async () => {
       let reverted = 0;
       let failed = 0;
@@ -1591,7 +1726,7 @@ async function handleAddTagsSelected() {
           if (cached) {
             cached.tags = state.tags.filter((tag) => previous.includes(tag.id));
           }
-        } catch (_) {
+        } catch {
           failed += 1;
         }
       }
@@ -1606,6 +1741,10 @@ async function handleAddTagsSelected() {
   }
   if (lastError) {
     await showAlert(normalizeAuthMessage(lastError, 'Failed to update tags'));
+  } else if (!updated && (skipped + skippedCount)) {
+    showToast(
+      `${skipped + skippedCount} counter${skipped + skippedCount === 1 ? '' : 's'} skipped (no permission).`
+    );
   }
 }
 
@@ -1673,9 +1812,15 @@ async function handleDeleteSelected() {
     await showAlert('Select at least one counter.');
     return;
   }
+  const allowedIds = ids.filter((id) => canDangerOnCounter(state.counterCache?.get(id)));
+  const skippedCount = ids.length - allowedIds.length;
+  if (!allowedIds.length) {
+    await showAlert("You don't have permission to do that.");
+    return;
+  }
   const confirmed = await showConfirm({
     title: 'Delete selected counters?',
-    message: `This removes ${ids.length} counter(s) permanently.`,
+    message: `This removes ${allowedIds.length} counter(s) permanently.${skippedCount ? ` (${skippedCount} skipped)` : ''}`,
     confirmLabel: 'Delete',
     variant: 'danger'
   });
@@ -1687,7 +1832,7 @@ async function handleDeleteSelected() {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ ids })
+      body: JSON.stringify({ ids: allowedIds })
     });
     assertAuthorizedResponse(res);
     if (!res.ok) {
@@ -1695,10 +1840,20 @@ async function handleDeleteSelected() {
       throw new Error(err.error || 'Failed to delete counters');
     }
     const data = await res.json();
-    ids.forEach((id) => state.selectedIds.delete(id));
+    const deletedCount = Number(data?.deleted || 0);
+    const skippedTotal = Math.max(0, ids.length - deletedCount);
+    if (!deletedCount) {
+      await showAlert("You don't have permission to do that.");
+      return;
+    }
+    allowedIds.forEach((id) => state.selectedIds.delete(id));
     await refreshCounters(state.page);
     updateSelectionToolbar();
-    showToast(`Deleted ${data.deleted ?? ids.length} counters`);
+    showToast(
+      `Deleted ${deletedCount} counter${deletedCount === 1 ? '' : 's'}` +
+        (skippedTotal ? ` · ${skippedTotal} skipped (no permission)` : '')
+    );
+    // Single toast is enough; avoid duplicate "skipped" messages.
   } catch (error) {
     await showAlert(normalizeAuthMessage(error, 'Failed to delete counters'));
   } finally {
@@ -1711,13 +1866,18 @@ async function handleDeleteSelected() {
 /* -------------------------------------------------------------------------- */
 function handleSelectAll() {
   const ids = state.latestCounters.map((counter) => counter.id);
-  const allSelected = ids.every((id) => state.selectedIds.has(id));
+  const allowedIds = ids.filter((id) => canDangerOnCounter(state.counterCache?.get(id)));
+  const skippedCount = ids.length - allowedIds.length;
+  const allSelected = allowedIds.length && allowedIds.every((id) => state.selectedIds.has(id));
   if (allSelected) {
-    ids.forEach((id) => state.selectedIds.delete(id));
+    allowedIds.forEach((id) => state.selectedIds.delete(id));
   } else {
-    ids.forEach((id) => state.selectedIds.add(id));
+    allowedIds.forEach((id) => state.selectedIds.add(id));
   }
   refreshSelectionState();
+  if (skippedCount) {
+    showToast(`${skippedCount} counter${skippedCount === 1 ? '' : 's'} skipped (no permission).`);
+  }
 }
 
 function handlePaginationHotkeys(event) {
@@ -1763,7 +1923,7 @@ function formatNumber(value) {
   if (typeof value === 'string' && /^\d+$/.test(value)) {
     try {
       return BigInt(value).toLocaleString();
-    } catch (_) {
+    } catch {
       // fall through
     }
   }
@@ -1782,7 +1942,6 @@ function formatLastHit(timestamp) {
   const minute = 60;
   const hour = 60 * minute;
   const day = 24 * hour;
-  const monthWindow = 30 * day;
   if (seconds < minute) {
     return 'Just now';
   }
@@ -1866,9 +2025,12 @@ async function updateCounterMetadataRequest(id, payload) {
 /* -------------------------------------------------------------------------- */
 /* Clipboard helpers                                                          */
 /* -------------------------------------------------------------------------- */
-async function copyEmbedSnippet(counterId, button) {
+async function copyEmbedSnippet(counterId, button, format = 'script') {
   const origin = window.location.origin.replace(/\/+$/, '');
-  const snippet = `<script async src="${origin}/embed/${counterId}.js"></script>`;
+  const snippet =
+    format === 'svg'
+      ? `<img src="${origin}/embed/${counterId}.svg" alt="Voux counter">`
+      : `<script async src="${origin}/embed/${counterId}.js"></script>`;
   try {
     await navigator.clipboard.writeText(snippet);
     if (button) {
@@ -1886,7 +2048,8 @@ async function copyEmbedSnippet(counterId, button) {
         button._copyTimeout = null;
       }, 1400);
     }
-  } catch (error) {
+    showToast(format === 'svg' ? 'Copied SVG embed.' : 'Copied script embed.');
+  } catch {
     window.alert('Unable to copy snippet');
   }
 }
@@ -1896,13 +2059,15 @@ async function copyEmbedSnippet(counterId, button) {
 /* -------------------------------------------------------------------------- */
 function updateCreateCardVisibility() {
   if (!createCard) return;
-  const canCreate = !state.privateMode || state.isAdmin;
+  const canCreate = !state.privateMode || Boolean(state.user);
   if (canCreate) {
     createCard.classList.remove('hidden');
   } else {
     createCard.classList.add('hidden');
     adminEmbedBlock?.classList.add('hidden');
     if (adminEmbedSnippet) adminEmbedSnippet.value = '';
+    if (adminEmbedSvgSnippet) adminEmbedSvgSnippet.value = '';
+    setEmbedMode('script');
   }
 }
 
@@ -1932,6 +2097,29 @@ function handleAdminEmbedCopy() {
   });
 }
 
+function handleAdminEmbedSvgCopy() {
+  const text = adminEmbedSvgSnippet?.value || '';
+  if (!text || !adminEmbedSvgCopy) return;
+  if (adminEmbedSvgCopy._copying) return;
+  adminEmbedSvgCopy._copying = true;
+  navigator.clipboard.writeText(text).then(() => {
+    const original = adminEmbedSvgCopy.dataset.originalIcon || adminEmbedSvgCopy.innerHTML;
+    adminEmbedSvgCopy.dataset.originalIcon = original;
+    adminEmbedSvgCopy.classList.add('copied');
+    adminEmbedSvgCopy.innerHTML = '<i class="ri-check-line"></i>';
+    if (adminEmbedSvgCopy._copyTimeout) {
+      clearTimeout(adminEmbedSvgCopy._copyTimeout);
+    }
+    adminEmbedSvgCopy._copyTimeout = setTimeout(() => {
+      adminEmbedSvgCopy.classList.remove('copied');
+      adminEmbedSvgCopy.innerHTML = adminEmbedSvgCopy.dataset.originalIcon || original;
+      adminEmbedSvgCopy._copying = false;
+    }, 1400);
+  }).catch(() => {
+    adminEmbedSvgCopy._copying = false;
+  });
+}
+
 /* -------------------------------------------------------------------------- */
 /* Admin UI state                                                             */
 /* -------------------------------------------------------------------------- */
@@ -1943,14 +2131,20 @@ function updateDeleteFilteredState() {
   if (sortFilterSelect) {
     sortFilterSelect.value = state.sort || 'newest';
   }
+  const dangerAllowed = !state.isAdmin || state.user?.adminPermissions?.danger === true;
+  const allowMyDanger = dangerAllowed || (state.isAdmin && state.ownerOnly);
   const isGlobal = state.modeFilter === 'all';
   if (deleteFilteredBtn) {
-    deleteFilteredBtn.disabled = isGlobal;
-    deleteFilteredBtn.classList.toggle('hidden', isGlobal);
+    deleteFilteredBtn.disabled = isGlobal || !allowMyDanger;
+    deleteFilteredBtn.classList.toggle('hidden', isGlobal || !allowMyDanger);
   }
   if (deleteAllBtn) {
-    deleteAllBtn.classList.toggle('hidden', !isGlobal);
-    deleteAllBtn.disabled = !isGlobal;
+    deleteAllBtn.classList.toggle('hidden', !isGlobal || !allowMyDanger);
+    deleteAllBtn.disabled = !isGlobal || !allowMyDanger;
+  }
+  if (deleteSelectedBtn) {
+    deleteSelectedBtn.disabled = !allowMyDanger;
+    deleteSelectedBtn.classList.toggle('hidden', !allowMyDanger);
   }
 }
 
@@ -1976,7 +2170,17 @@ function updateAdminVisibility() {
   if (!isAdmin) {
     state.ownerOnly = false;
   }
-  ownerFilterWrap?.classList.toggle('hidden', !isAdmin);
+  const dangerAllowed = !state.isAdmin || state.user?.adminPermissions?.danger === true;
+  if (isAdmin && !dangerAllowed) {
+    state.ownerOnly = true;
+    state.ownerOnlyForced = true;
+    saveOwnerFilterPreference(true);
+  } else if (isAdmin && state.ownerOnlyForced) {
+    state.ownerOnly = false;
+    state.ownerOnlyForced = false;
+    saveOwnerFilterPreference(false);
+  }
+  ownerFilterWrap?.classList.toggle('hidden', !isAdmin || (isAdmin && !dangerAllowed));
   syncOwnerFilterToggle();
   updateDeleteFilteredState();
 }
@@ -1999,6 +2203,16 @@ function updateActivityRangeButtons() {
 /* -------------------------------------------------------------------------- */
 async function fetchTags() {
   if (!state.user) return;
+  if (state.isAdmin && state.user?.adminPermissions?.tags === false) {
+    state.tags = [];
+    state.tagFilter = [];
+    state.createTags = [];
+    refreshTagSelectors();
+    renderTagFilterList();
+    updateTagCounterHints();
+    updateTagFilterButton();
+    return;
+  }
   try {
     const res = await authFetch('/api/tags');
     assertAuthorizedResponse(res);
@@ -2015,7 +2229,9 @@ async function fetchTags() {
     updateTagCounterHints();
     updateTagFilterButton();
   } catch (error) {
-    console.warn('Failed to fetch tags', error);
+    if (error?.code !== 'forbidden') {
+      console.warn('Failed to fetch tags', error);
+    }
   }
 }
 
@@ -2448,13 +2664,6 @@ function openTagDialog(existingCount = 0, counterTotal = 0, defaults = {}) {
     colorInput.value = hex;
     colorSwatch.style.background = hex;
     colorValue.textContent = hex.toUpperCase();
-  };
-
-  const blurHandlers = () => {
-    // prevent immediate hide when clicking current color
-    if (pickrInstance && pickrInstance.hide) {
-      pickrInstance.hide();
-    }
   };
 
   const initialColor = colorInput.value;
@@ -3185,7 +3394,7 @@ function scheduleAutoRefresh(delay = 5000) {
     }
     try {
       await refreshCounters(state.page, { silent: true });
-    } catch (_) {
+    } catch {
       // already logged in refreshCounters
     }
     scheduleAutoRefresh(delay);

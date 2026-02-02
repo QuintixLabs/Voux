@@ -183,10 +183,25 @@
     if (user.avatarUrl) {
       menuButton.classList.add('nav-account__button--avatar');
       menuButton.textContent = '';
+      const fallbackName = (user.username || '?').trim();
+      const displayName = (user.displayName || '').trim();
+      const letter = (displayName || fallbackName || '?').charAt(0).toUpperCase();
+      const fallback = document.createElement('span');
+      fallback.className = 'nav-account__avatar nav-account__avatar--fallback hidden';
+      fallback.textContent = letter;
       const img = document.createElement('img');
-      img.className = 'nav-account__avatar';
+      img.className = 'nav-account__avatar nav-account__avatar--image is-loading';
       img.src = user.avatarUrl;
       img.alt = display;
+      img.addEventListener('load', () => {
+        img.classList.remove('is-loading');
+        fallback.classList.add('hidden');
+      });
+      img.addEventListener('error', () => {
+        img.remove();
+        fallback.classList.remove('hidden');
+      });
+      menuButton.appendChild(fallback);
       menuButton.appendChild(img);
       return;
     }
@@ -211,7 +226,7 @@
       const parsed = JSON.parse(raw);
       if (!parsed || (!parsed.username && !parsed.displayName)) return null;
       return parsed;
-    } catch (_) {
+    } catch {
       return null;
     }
   }
@@ -230,7 +245,7 @@
       };
       localStorage.setItem('voux_nav_user', JSON.stringify(payload));
       localStorage.setItem('voux_session_hint', '1');
-    } catch (_) {}
+    } catch {}
   }
 
   function applyCachedAccountButton() {

@@ -15,7 +15,6 @@ const fs = require('fs'); /* loads files and templates */
 /* db: counters */
 const {
   createCounter,
-  listCounters,
   listCountersPage,
   getCounter,
   recordHit,
@@ -85,7 +84,6 @@ const {
 /* middleware */
 const requireAdmin = require('./middleware/requireAdmin');
 const {
-  requireAdminOrKey,
   requireAuth,
   requireAuthOrKey,
   hasCounterAccess,
@@ -103,7 +101,6 @@ const getClientIp = require('./utils/ip');
 
 /* basic settings */
 const PORT = process.env.PORT || 8787;
-const OWNER_USERNAME = '';
 
 /* pagination */
 const DEFAULT_PAGE_SIZE = Number(process.env.ADMIN_PAGE_SIZE) || 5;
@@ -143,6 +140,7 @@ const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const LABEL_LIMIT = 80;
 const NOTE_LIMIT = 200;
 const START_VALUE_DIGIT_LIMIT = 18;
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
 /* sessions */
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
@@ -187,6 +185,9 @@ app.use((req, res, next) => {
 
 /* static files + html */
 const staticDir = path.join(__dirname, '..', 'public');
+const dataDir = path.join(__dirname, '..', 'data');
+const uploadsDir = path.join(dataDir, 'uploads');
+const avatarUploadsDir = path.join(uploadsDir, 'avatars');
 const notFoundPage = path.join(staticDir, '404.html');
 
 /* html cache + env */
@@ -210,6 +211,7 @@ app.get('/api/config', (req, res) => {
     version: getAppVersion(),
     adminPageSize: DEFAULT_PAGE_SIZE,
     usersPageSize: DEFAULT_USERS_PAGE_SIZE,
+    inactiveDaysThreshold: INACTIVE_THRESHOLD_DAYS,
     defaultMode,
     defaultCooldownLabel: describeModeLabel(defaultMode)
   });
@@ -226,7 +228,9 @@ app.get('/api/session', (req, res) => {
     return res.status(401).json({ error: 'unauthorized' });
   }
   const ownerId = getOwnerId();
-  res.json({ user: serializeUser(auth.user, ownerId) });
+  const user = serializeUser(auth.user, ownerId);
+  const adminPermissions = auth.type === 'admin' ? getEffectiveAdminPermissions(auth.user?.id) : null;
+  res.json({ user, adminPermissions });
 });
 
 /* auth */
@@ -256,7 +260,8 @@ app.post('/api/login', (req, res) => {
   recordUserLogin(user.id);
   setSessionCookie(res, token, req);
   const ownerId = getOwnerId();
-  res.json({ user: serializeUser(user, ownerId) });
+  const adminPermissions = user.role === 'admin' ? getEffectiveAdminPermissions(user.id) : null;
+  res.json({ user: serializeUser(user, ownerId), adminPermissions });
 });
 
 app.post('/api/logout', (req, res) => {
@@ -279,7 +284,9 @@ app.get('/api/profile', requireAuth, (req, res) => {
     return res.status(401).json({ error: 'unauthorized' });
   }
   const ownerId = getOwnerId();
-  res.json({ user: serializeUser(auth.user, ownerId) });
+  const user = serializeUser(auth.user, ownerId);
+  const adminPermissions = auth.type === 'admin' ? getEffectiveAdminPermissions(auth.user?.id) : null;
+  res.json({ user, adminPermissions });
 });
 
 app.patch('/api/profile', requireAuth, (req, res) => {
@@ -308,8 +315,17 @@ app.patch('/api/profile', requireAuth, (req, res) => {
     }
     password = String(newPassword);
   }
+  const avatarResult = resolveAvatarUrl(auth.user.id, avatarUrl, userRow?.avatar_url);
+  if (avatarResult.error) {
+    return res.status(400).json({ error: avatarResult.error });
+  }
   try {
-    const updated = updateUser(auth.user.id, { displayName, avatarUrl, password, username });
+    const updated = updateUser(auth.user.id, {
+      displayName,
+      avatarUrl: avatarResult.value,
+      password,
+      username
+    });
     if (!updated) {
       return res.status(404).json({ error: 'user_not_found' });
     }
@@ -332,6 +348,10 @@ Routes: Users (Admin)
 ==========================================================================
 */
 app.get('/api/users', requireAdmin, (_req, res) => {
+  const auth = authenticateRequest(_req);
+  if (auth?.type === 'admin' && !hasAdminPermission(auth, 'users')) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
+  }
   const ownerId = getOwnerId();
   const users = listUsers().map((user) => ({
     ...user,
@@ -341,6 +361,10 @@ app.get('/api/users', requireAdmin, (_req, res) => {
 });
 
 app.post('/api/users', requireAdmin, (req, res) => {
+  const auth = authenticateRequest(req);
+  if (auth?.type === 'admin' && !hasAdminPermission(auth, 'users')) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
+  }
   const { username, password, role, displayName, avatarUrl } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ error: 'username_password_required' });
@@ -348,8 +372,18 @@ app.post('/api/users', requireAdmin, (req, res) => {
   if (String(password).length < 6) {
     return res.status(400).json({ error: 'password_too_short' });
   }
+  const avatarResult = resolveAvatarUrl(`user-${Date.now()}`, avatarUrl, null);
+  if (avatarResult.error) {
+    return res.status(400).json({ error: avatarResult.error });
+  }
   try {
-    const user = createUser({ username, password, role, displayName, avatarUrl });
+    const user = createUser({
+      username,
+      password,
+      role,
+      displayName,
+      avatarUrl: avatarResult.value
+    });
     res.status(201).json({ user });
   } catch (error) {
     if (error.message === 'username_exists') {
@@ -363,8 +397,11 @@ app.post('/api/users', requireAdmin, (req, res) => {
 });
 
 app.patch('/api/users/:id', requireAdmin, (req, res) => {
-  const { role, displayName, avatarUrl, password, username } = req.body || {};
   const auth = authenticateRequest(req);
+  if (auth?.type === 'admin' && !hasAdminPermission(auth, 'users')) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
+  }
+  const { role, displayName, avatarUrl, password, username } = req.body || {};
   const target = getUserById(req.params.id);
   if (!target) {
     return res.status(404).json({ error: 'user_not_found' });
@@ -383,8 +420,18 @@ app.patch('/api/users/:id', requireAdmin, (req, res) => {
   if (username !== undefined && !String(username || '').trim()) {
     return res.status(400).json({ error: 'username_required' });
   }
+  const avatarResult = resolveAvatarUrl(target.id, avatarUrl, target.avatar_url);
+  if (avatarResult.error) {
+    return res.status(400).json({ error: avatarResult.error });
+  }
   try {
-    const updated = updateUser(req.params.id, { role, displayName, avatarUrl, password, username });
+    const updated = updateUser(req.params.id, {
+      role,
+      displayName,
+      avatarUrl: avatarResult.value,
+      password,
+      username
+    });
     if (!updated) {
       return res.status(404).json({ error: 'user_not_found' });
     }
@@ -402,6 +449,9 @@ app.patch('/api/users/:id', requireAdmin, (req, res) => {
 
 app.delete('/api/users/:id', requireAdmin, (req, res) => {
   const auth = authenticateRequest(req);
+  if (auth?.type === 'admin' && !hasAdminPermission(auth, 'users')) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
+  }
   if (auth?.user?.id === req.params.id) {
     return res.status(400).json({ error: 'cannot_delete_self' });
   }
@@ -506,6 +556,7 @@ app.get('/api/counters', requireAuth, (req, res) => {
     const payload = serializeCounterWithStats(counter, dayStart, {
       includeNote: true,
       includeTags: canShowTags,
+      includeOwner: true,
       tagOwnerId: canShowTags ? tagOwnerId : null
     });
     return {
@@ -541,7 +592,9 @@ Counters: Export/Import
 */
 app.get('/api/counters/export', requireAuth, (req, res) => {
   const auth = authenticateRequest(req);
-  const ownerId = auth?.type === 'user' ? auth.user.id : null;
+  const isAdmin = auth?.type === 'admin';
+  const canDanger = !isAdmin || hasAdminPermission(auth, 'danger');
+  const ownerId = auth?.type === 'user' ? auth.user.id : isAdmin && !canDanger ? auth.user.id : null;
   const tagOwnerId = auth?.type === 'user' ? auth.user.id : auth?.type === 'admin' ? auth.user.id : null;
   const counters = exportCounters(ownerId)
     .map(normalizeCounterForExport)
@@ -565,7 +618,9 @@ app.get('/api/counters/export', requireAuth, (req, res) => {
 
 app.post('/api/counters/export-selected', requireAuth, (req, res) => {
   const auth = authenticateRequest(req);
-  const ownerId = auth?.type === 'user' ? auth.user.id : null;
+  const isAdmin = auth?.type === 'admin';
+  const canDanger = !isAdmin || hasAdminPermission(auth, 'danger');
+  const ownerId = auth?.type === 'user' ? auth.user.id : isAdmin && !canDanger ? auth.user.id : null;
   const tagOwnerId = auth?.type === 'user' ? auth.user.id : auth?.type === 'admin' ? auth.user.id : null;
   const ids = normalizeIdsInput(req.body?.ids);
   if (!ids.length) {
@@ -602,8 +657,10 @@ app.post('/api/counters/import', requireAuth, (req, res) => {
   if (!auth) {
     return res.status(401).json({ error: 'unauthorized' });
   }
+  const isAdmin = auth.type === 'admin';
+  const canDanger = !isAdmin || hasAdminPermission(auth, 'danger');
   const ownerId = getOwnerId();
-  const requesterIsOwner = auth?.type === 'admin' && ownerId && auth.user.id === ownerId;
+  const requesterIsOwner = isAdmin && ownerId && auth.user.id === ownerId;
   const { replace = false } = req.body || {};
   let payload = null;
   let dailyPayload = [];
@@ -622,12 +679,14 @@ app.post('/api/counters/import', requireAuth, (req, res) => {
   if (incomingTags) {
     if (auth?.type === 'user') {
       mergeTagCatalog(incomingTags, auth.user.id);
+    } else if (auth?.type === 'admin' && (requesterIsOwner || !canDanger)) {
+      mergeTagCatalog(incomingTags, auth.user.id);
     } else if (auth?.type === 'admin' && requesterIsOwner) {
       mergeTagCatalog(incomingTags, ownerId);
     }
   }
   try {
-    if (auth.type === 'admin') {
+    if (auth.type === 'admin' && canDanger) {
       const imported = importCounters(payload, {
         replace: Boolean(replace),
         tagOwnerId: requesterIsOwner ? ownerId : null
@@ -674,6 +733,13 @@ app.post('/api/counters/bulk-delete', requireAuth, (req, res) => {
     if (!counter) {
       return;
     }
+    if (
+      auth?.type === 'admin' &&
+      !hasAdminPermission(auth, 'danger') &&
+      counter.owner_id !== auth.user?.id
+    ) {
+      return;
+    }
     if (!hasCounterAccess(auth, counter)) {
       return;
     }
@@ -693,6 +759,13 @@ app.delete('/api/counters/:id', requireAuthOrKey, (req, res) => {
   const counter = getCounter(req.params.id);
   if (!counter) {
     return res.status(404).json({ error: 'counter_not_found' });
+  }
+  if (
+    req.auth?.type === 'admin' &&
+    !hasAdminPermission(req.auth, 'danger') &&
+    counter.owner_id !== req.auth.user?.id
+  ) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
   }
   if (!hasCounterAccess(req.auth, counter)) {
     return res.status(403).json({ error: 'forbidden' });
@@ -714,6 +787,13 @@ app.post('/api/counters/:id/value', requireAuthOrKey, (req, res) => {
   if (!counter) {
     return res.status(404).json({ error: 'counter_not_found' });
   }
+  if (
+    req.auth?.type === 'admin' &&
+    !hasAdminPermission(req.auth, 'danger') &&
+    counter.owner_id !== req.auth.user?.id
+  ) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
+  }
   if (!hasCounterAccess(req.auth, counter)) {
     return res.status(403).json({ error: 'forbidden' });
   }
@@ -728,6 +808,13 @@ app.patch('/api/counters/:id', requireAuthOrKey, (req, res) => {
   const counter = getCounter(req.params.id);
   if (!counter) {
     return res.status(404).json({ error: 'counter_not_found' });
+  }
+  if (
+    req.auth?.type === 'admin' &&
+    !hasAdminPermission(req.auth, 'danger') &&
+    counter.owner_id !== req.auth.user?.id
+  ) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
   }
   if (!hasCounterAccess(req.auth, counter)) {
     return res.status(403).json({ error: 'forbidden' });
@@ -799,10 +886,36 @@ Admin: Settings
 ==========================================================================
 */
 app.get('/api/settings', requireAdmin, (req, res) => {
-  res.json({ config: getConfig(), version: getVersion(), usersPageSize: DEFAULT_USERS_PAGE_SIZE });
+  const auth = authenticateRequest(req);
+  const ownerId = getOwnerId();
+  const isOwner = Boolean(ownerId && auth?.user?.id === ownerId);
+  const adminPermissions = auth?.type === 'admin'
+    ? {
+        effective: getEffectiveAdminPermissions(auth.user?.id),
+        defaults: isOwner ? (getConfig().adminPermissions || {}) : null
+      }
+    : null;
+  res.json({
+    config: getConfig(),
+    version: getVersion(),
+    usersPageSize: DEFAULT_USERS_PAGE_SIZE,
+    inactiveDaysThreshold: INACTIVE_THRESHOLD_DAYS,
+    adminPermissions
+  });
 });
 
 app.post('/api/settings', requireAdmin, (req, res) => {
+  const auth = authenticateRequest(req);
+  if (auth?.type === 'admin') {
+    const wantsRuntime = req.body && ('privateMode' in req.body || 'showGuides' in req.body || 'allowedModes' in req.body || 'unlimitedThrottleSeconds' in req.body);
+    const wantsBranding = req.body && ('homeTitle' in req.body || 'brandName' in req.body || 'theme' in req.body);
+    if (wantsRuntime && !hasAdminPermission(auth, 'runtime')) {
+      return res.status(403).json({ error: 'admin_permission_denied' });
+    }
+    if (wantsBranding && !hasAdminPermission(auth, 'branding')) {
+      return res.status(403).json({ error: 'admin_permission_denied' });
+    }
+  }
   const { privateMode, showGuides, homeTitle, brandName, allowedModes, unlimitedThrottleSeconds, theme } = req.body || {};
   const patch = {};
   if (typeof privateMode === 'boolean') patch.privateMode = privateMode;
@@ -832,6 +945,58 @@ app.post('/api/settings', requireAdmin, (req, res) => {
   }
   setUnlimitedThrottle((updated.unlimitedThrottleSeconds || 0) * 1000);
   res.json({ config: updated, version: getVersion() });
+});
+
+/*
+==========================================================================
+Admin: Admin permissions (owner only)
+==========================================================================
+*/
+app.get('/api/admin-permissions', requireAdmin, (req, res) => {
+  const auth = authenticateRequest(req);
+  const ownerId = getOwnerId();
+  if (!ownerId || auth?.user?.id !== ownerId) {
+    return res.status(403).json({ error: 'owner_only' });
+  }
+  const cfg = getConfig();
+  res.json({
+    defaults: cfg.adminPermissions || {},
+    overrides: cfg.adminPermissionOverrides || {}
+  });
+});
+
+app.post('/api/admin-permissions', requireAdmin, (req, res) => {
+  const auth = authenticateRequest(req);
+  const ownerId = getOwnerId();
+  if (!ownerId || auth?.user?.id !== ownerId) {
+    return res.status(403).json({ error: 'owner_only' });
+  }
+  const { defaults } = req.body || {};
+  if (!defaults || typeof defaults !== 'object') {
+    return res.status(400).json({ error: 'invalid_permissions' });
+  }
+  const updated = updateConfig({ adminPermissions: defaults });
+  res.json({ defaults: updated.adminPermissions || {} });
+});
+
+app.post('/api/admin-permissions/:id', requireAdmin, (req, res) => {
+  const auth = authenticateRequest(req);
+  const ownerId = getOwnerId();
+  if (!ownerId || auth?.user?.id !== ownerId) {
+    return res.status(403).json({ error: 'owner_only' });
+  }
+  const userId = String(req.params.id || '').trim();
+  if (!userId) return res.status(400).json({ error: 'user_id_required' });
+  const { override } = req.body || {};
+  const cfg = getConfig();
+  const overrides = { ...(cfg.adminPermissionOverrides || {}) };
+  if (!override || typeof override !== 'object' || !Object.keys(override).length) {
+    delete overrides[userId];
+  } else {
+    overrides[userId] = override;
+  }
+  const updated = updateConfig({ adminPermissionOverrides: overrides });
+  res.json({ overrides: updated.adminPermissionOverrides || {} });
 });
 
 /*
@@ -917,11 +1082,19 @@ Admin: API Keys
 ==========================================================================
 */
 app.get('/api/api-keys', requireAdmin, (req, res) => {
+  const auth = authenticateRequest(req);
+  if (auth?.type === 'admin' && !hasAdminPermission(auth, 'apiKeys')) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
+  }
   const keys = listApiKeys();
   res.json({ keys });
 });
 
 app.post('/api/api-keys', requireAdmin, (req, res) => {
+  const auth = authenticateRequest(req);
+  if (auth?.type === 'admin' && !hasAdminPermission(auth, 'apiKeys')) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
+  }
   const { name, scope = 'global', counters } = req.body || {};
   try {
     const allowed = Array.isArray(counters)
@@ -945,6 +1118,10 @@ app.post('/api/api-keys', requireAdmin, (req, res) => {
 });
 
 app.delete('/api/api-keys/:id', requireAdmin, (req, res) => {
+  const auth = authenticateRequest(req);
+  if (auth?.type === 'admin' && !hasAdminPermission(auth, 'apiKeys')) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
+  }
   const removed = deleteApiKey(req.params.id);
   if (!removed) {
     return res.status(404).json({ error: 'api_key_not_found' });
@@ -958,6 +1135,10 @@ Admin: Cleanup
 ==========================================================================
 */
 app.post('/api/counters/purge-inactive', requireAdmin, (req, res) => {
+  const auth = authenticateRequest(req);
+  if (auth?.type === 'admin' && !hasAdminPermission(auth, 'danger')) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
+  }
   const requestedDays = Number(req.body?.days);
   const safeDays = Math.max(1, Number.isFinite(requestedDays) ? Math.round(requestedDays) : INACTIVE_THRESHOLD_DAYS);
   const removed = deleteInactiveCountersOlderThan(safeDays);
@@ -977,6 +1158,9 @@ app.delete('/api/counters', requireAuth, (req, res) => {
   }
   const ownerOnly =
     auth?.type === 'admin' && String(req.query.owner || '').toLowerCase() === 'me';
+  if (auth?.type === 'admin' && !hasAdminPermission(auth, 'danger') && !ownerOnly) {
+    return res.status(403).json({ error: 'admin_permission_denied' });
+  }
   if (auth?.type === 'user' || ownerOnly) {
     const ownerId = auth.user.id;
     if (modeFilter) {
@@ -998,7 +1182,7 @@ app.post('/api/counters', (req, res) => {
   /* creation is limited per IP when not in private mode */
   if (isPrivateMode()) {
     const auth = authenticateRequest(req);
-    if (!auth || auth.type !== 'admin') {
+    if (!auth || (auth.type !== 'admin' && auth.type !== 'user')) {
       return res.status(401).json({ error: 'unauthorized' });
     }
   }
@@ -1065,10 +1249,14 @@ app.post('/api/counters', (req, res) => {
   const baseUrl = getBaseUrl(req);
   const embedUrl = `${baseUrl}/embed/${counter.id}.js`;
   const embedCode = `<script async src="${embedUrl}"></script>`;
+  const embedSvgUrl = `${baseUrl}/embed/${counter.id}.svg`;
+  const embedSvgCode = `<img src="${embedSvgUrl}" alt="Voux counter">`;
   res.status(201).json({
     counter: serializeCounter(counter, { includeNote: true, includeTags: true, tagOwnerId: ownerId }),
     embedCode,
-    embedUrl
+    embedUrl,
+    embedSvgCode,
+    embedSvgUrl
   });
 });
 
@@ -1080,10 +1268,14 @@ app.get('/api/counters/:id', (req, res) => {
   const baseUrl = getBaseUrl(req);
   const embedUrl = `${baseUrl}/embed/${counter.id}.js`;
   const embedCode = `<script async src="${embedUrl}"></script>`;
+  const embedSvgUrl = `${baseUrl}/embed/${counter.id}.svg`;
+  const embedSvgCode = `<img src="${embedSvgUrl}" alt="Voux counter">`;
   res.json({
     counter: serializeCounterWithStats(counter, getDayStart(), { includeTags: false }),
     embedCode,
-    embedUrl
+    embedUrl,
+    embedSvgCode,
+    embedSvgUrl
   });
 });
 
@@ -1128,6 +1320,236 @@ app.get('/embed/:id.js', (req, res) => {
   res.send(script);
 });
 
+/* Embed SVG (no-store) */
+app.get('/embed/:id.svg', (req, res) => {
+  res.type('image/svg+xml');
+
+  const isPreview = isPreviewRequest(req);
+  const isGitHubCamo = String(req.get('user-agent') || '').toLowerCase().startsWith('github-camo');
+
+  // SVG error response (keeps GitHub from caching plain text/XML errors).
+  const renderErrorSvg = (message) => {
+    const safe = String(message || 'Counter not found').replace(/[<>&'"]/g, (char) => ({
+      '<': '&lt;',
+      '>': '&gt;',
+      '&': '&amp;',
+      "'": '&apos;',
+      '"': '&quot;'
+    }[char]));
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="48" viewBox="0 0 320 48">
+  <style>
+    text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; fill: #9ca3af; }
+  </style>
+  <text x="12" y="28">${safe}</text>
+</svg>`;
+  };
+
+  // Resolve counter + record hit (with GitHub‑camo behavior).
+  let result = null;
+  if (isPreview) {
+    const counter = getCounter(req.params.id);
+    if (!counter) {
+      return res.status(200).send(renderErrorSvg('Counter not found'));
+    }
+    result = { counter, incremented: false };
+  } else {
+    const counter = getCounter(req.params.id);
+    if (!counter) {
+      return res.status(200).send(renderErrorSvg('Counter not found'));
+    }
+    if (counter.count_mode === 'unlimited' && isGitHubCamo) {
+      const updated = updateCounterValue(req.params.id, BigInt(counter.value || 0) + 1n);
+      const fresh = updated ? getCounter(req.params.id) : counter;
+      result = { counter: fresh, incremented: true };
+    } else {
+      result = recordHit(req.params.id, getClientIp(req));
+    }
+    if (!result) {
+      return res.status(404).send('Counter not found');
+    }
+  }
+
+  // Normalized label/value + query helpers.
+  const { counter } = result;
+  const labelRaw = typeof counter.label === 'string' ? counter.label.trim() : '';
+  const valueRaw = normalizeCounterValue(counter.value);
+  const valueFormatted = String(valueRaw).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const label = labelRaw.replace(/[<>&'"]/g, (char) => ({
+    '<': '&lt;',
+    '>': '&gt;',
+    '&': '&amp;',
+    "'": '&apos;',
+    '"': '&quot;'
+  }[char]));
+  const valueText = valueFormatted.replace(/[<>&'"]/g, (char) => ({
+    '<': '&lt;',
+    '>': '&gt;',
+    '&': '&amp;',
+    "'": '&apos;',
+    '"': '&quot;'
+  }[char]));
+  const queryValue = (key) => {
+    const raw = req.query[key];
+    return Array.isArray(raw) ? raw[0] : raw;
+  };
+  const parseBool = (raw, fallback = false) => {
+    if (raw === undefined || raw === null) return fallback;
+    const normalized = String(raw).trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+    return fallback;
+  };
+  const parseHexColor = (raw, fallback) => {
+    if (!raw) return fallback;
+    const normalized = String(raw).trim().replace(/^#/, '');
+    if (/^[0-9a-fA-F]{3}$/.test(normalized)) {
+      return `#${normalized}`;
+    }
+    if (/^[0-9a-fA-F]{6}$/.test(normalized)) {
+      return `#${normalized}`;
+    }
+    return fallback;
+  };
+  const parseSize = (raw, fallback) => {
+    const num = Number(raw);
+    if (!Number.isFinite(num)) return fallback;
+    return Math.min(48, Math.max(12, Math.round(num)));
+  };
+  const parseAlign = (raw) => {
+    if (!raw) return 'left';
+    const normalized = String(raw).trim().toLowerCase();
+    if (normalized === 'center' || normalized === 'right' || normalized === 'left') {
+      return normalized;
+    }
+    return 'left';
+  };
+
+  const showLabel = parseBool(queryValue('label'), true);
+  const inlineLabel = parseBool(queryValue('inline'), false);
+  const wrapEnabled = parseBool(queryValue('wrap'), inlineLabel ? false : true);
+  const align = parseAlign(queryValue('align'));
+  const baseColor = parseHexColor(queryValue('color'), '#8A8F98');
+  const valueColor = parseHexColor(queryValue('valueColor'), baseColor);
+  const labelColor = parseHexColor(queryValue('labelColor'), baseColor);
+  const bgColor = parseHexColor(queryValue('bg'), 'transparent');
+  const baseSize = parseSize(queryValue('size'), 20);
+  const valueSize = parseSize(queryValue('sizeValue'), baseSize);
+  const labelSize = parseSize(queryValue('sizeLabel'), Math.max(10, Math.round(baseSize * 0.6)));
+  const labelFontSize = labelSize;
+  const radius = Math.max(0, Math.min(24, Math.round(Number(queryValue('radius')) || 0)));
+  const maxWidthRaw = Math.round(Number(queryValue('maxWidth')) || 0);
+  const maxWidthDefault = wrapEnabled ? Math.round(360 * (valueSize / 20)) : 900;
+  const maxWidth = Math.max(160, Math.min(900, maxWidthRaw > 0 ? maxWidthRaw : maxWidthDefault));
+  const padX = Math.max(4, Math.min(64, Math.round(Number(queryValue('padX')) || 10)));
+  const padY = Math.max(4, Math.min(64, Math.round(Number(queryValue('padY')) || 8)));
+  const anchor = align === 'center' ? 'middle' : align === 'right' ? 'end' : 'start';
+
+  const hasLabel = Boolean(label) && showLabel;
+  const inlineLabelText = hasLabel && inlineLabel ? label : label;
+  const inlineText = hasLabel && inlineLabel
+    ? `${inlineLabelText}${inlineLabelText ? ' ' : ''}${valueText}`
+    : valueText;
+  const labelLine = hasLabel && !inlineLabel ? label : '';
+
+  // Soft wrap (word based) for long labels.
+  const wrapText = (text, maxChars) => {
+    if (!wrapEnabled || !text || maxChars <= 0 || text.length <= maxChars) {
+      return [text];
+    }
+    const words = text.split(/\s+/).filter(Boolean);
+    if (!words.length) return [text];
+    const lines = [];
+    let line = '';
+    words.forEach((word) => {
+      const next = line ? `${line} ${word}` : word;
+      if (next.length <= maxChars) {
+        line = next;
+      } else if (line) {
+        lines.push(line);
+        line = word;
+      } else {
+        lines.push(word.slice(0, maxChars));
+        line = word.slice(maxChars);
+      }
+    });
+    if (line) lines.push(line);
+    return lines.slice(0, 3);
+  };
+
+  const valueCharWidth = valueSize * 0.6;
+  const labelCharWidth = labelFontSize * 0.6;
+  const labelLineHeight = labelFontSize + 2;
+  const valueLineHeight = valueSize + 2;
+  const maxValueChars = Math.floor((maxWidth - padX * 2) / valueCharWidth);
+  const maxLabelChars = Math.floor((maxWidth - padX * 2) / labelCharWidth);
+
+  let labelLines = [];
+  let valueLines = [];
+  let inlineSplit = false;
+
+  if (hasLabel && !inlineLabel) {
+    labelLines = wrapText(labelLine, maxLabelChars);
+    valueLines = wrapText(valueText, maxValueChars);
+  } else if (hasLabel && inlineLabel && wrapEnabled && inlineText.length > maxValueChars) {
+    inlineSplit = true;
+    labelLines = wrapText(inlineLabelText, maxLabelChars);
+    valueLines = wrapText(valueText, maxValueChars);
+  } else {
+    valueLines = [inlineText];
+  }
+
+  const longestLine = Math.max(
+    ...labelLines.map((line) => line.length),
+    ...valueLines.map((line) => line.length),
+    inlineText.length
+  );
+  const width = Math.max(
+    160,
+    Math.min(maxWidth, padX * 2 + Math.round(longestLine * valueCharWidth))
+  );
+  const labelBlockHeight = labelLines.length ? labelLines.length * labelLineHeight + 6 : 0;
+  const valueBlockHeight = valueLines.length * valueLineHeight - 2;
+  const height = padY * 2 + labelBlockHeight + valueBlockHeight;
+  const labelY = padY + labelFontSize;
+  const valueY = padY + labelBlockHeight + valueSize;
+  const textX = align === 'center' ? Math.round(width / 2) : align === 'right' ? width - padX : padX;
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <style>
+    text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: ${baseColor}; }
+    .label { font-size: ${labelFontSize}px; font-weight: 500; fill: ${labelColor}; }
+    .value { font-size: ${valueSize}px; font-weight: 600; fill: ${valueColor}; }
+  </style>
+  ${bgColor !== 'transparent' ? `<rect x="0" y="0" width="${width}" height="${height}" rx="${radius}" ry="${radius}" fill="${bgColor}"/>` : ''}
+  ${
+    labelLines.length
+      ? `<text class="label" x="${textX}" y="${labelY}" text-anchor="${anchor}">
+  ${labelLines.map((line, idx) => `<tspan x="${textX}" dy="${idx === 0 ? 0 : labelLineHeight}">${line}</tspan>`).join('')}
+</text>`
+      : ''
+  }
+  ${
+    hasLabel && inlineLabel && !inlineSplit
+      ? `<text class="value" x="${textX}" y="${valueY}" text-anchor="${anchor}">
+  <tspan fill="${labelColor}" font-weight="500" font-size="${labelFontSize}px">${inlineLabelText}${inlineLabelText ? ' ' : ''}</tspan><tspan fill="${valueColor}">${valueText}</tspan>
+</text>`
+      : `<text class="value" x="${textX}" y="${valueY}" text-anchor="${anchor}">
+  ${valueLines.map((line, idx) => `<tspan x="${textX}" dy="${idx === 0 ? 0 : valueLineHeight}">${line}</tspan>`).join('')}
+</text>`
+  }
+</svg>`;
+
+  // GitHub Camo: make every‑visit revalidate often; otherwise let GitHub cache.
+  if (isGitHubCamo && counter.count_mode === 'unlimited') {
+    res.set('Cache-Control', 'max-age=0, no-cache, no-store, must-revalidate');
+  } else if (!isGitHubCamo) {
+    res.set('Cache-Control', 'no-store');
+  }
+  res.send(svg);
+});
+
 /*
 ==========================================================================
 Routes: Pages
@@ -1148,6 +1570,21 @@ app.get('/terms', serveHtml('terms.html'));
 Static Assets + 404
 ==========================================================================
 */
+app.use(
+  '/uploads',
+  express.static(uploadsDir, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.jpeg') || filePath.endsWith('.webp') || filePath.endsWith('.gif')) {
+        if (IS_DEV) {
+          res.setHeader('Cache-Control', 'no-store');
+        } else {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      }
+    }
+  })
+);
+
 app.use(
   express.static(staticDir, {
     extensions: ['html'],
@@ -1311,9 +1748,67 @@ function validateCounterValue(rawValue) {
   }
   try {
     return { value: BigInt(normalizedRaw) };
-  } catch (_) {
+  } catch {
     return { error: 'startValue must be a positive number', message: 'Starting value must be a positive number.' };
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Avatars                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function isDataImageUrl(value) {
+  return /^data:image\/(png|jpeg|jpg|webp|gif);base64,/.test(value || '');
+}
+
+function extractDataImage(value) {
+  if (!isDataImageUrl(value)) return null;
+  const match = /^data:image\/(png|jpeg|jpg|webp|gif);base64,(.*)$/s.exec(value);
+  if (!match) return null;
+  const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+  return { ext, data: match[2] || '' };
+}
+
+function safeRemoveAvatarFile(avatarUrl) {
+  if (!avatarUrl || typeof avatarUrl !== 'string') return;
+  if (!avatarUrl.startsWith('/uploads/avatars/')) return;
+  const relativePath = avatarUrl.replace(/^\/uploads\//, '');
+  const dataPath = path.join(uploadsDir, relativePath);
+  const publicPath = path.join(staticDir, 'uploads', relativePath);
+  try {
+    fs.unlinkSync(dataPath);
+  } catch {
+    // ignore missing files
+  }
+  try {
+    fs.unlinkSync(publicPath);
+  } catch {
+    // ignore missing files
+  }
+}
+
+function resolveAvatarUrl(userId, avatarUrl, existingUrl) {
+  if (avatarUrl === undefined) return { value: undefined };
+  const trimmed = String(avatarUrl || '').trim();
+  if (!trimmed) {
+    safeRemoveAvatarFile(existingUrl);
+    return { value: null };
+  }
+  if (!isDataImageUrl(trimmed)) {
+    return { value: trimmed.slice(0, 2048) };
+  }
+  const extracted = extractDataImage(trimmed);
+  if (!extracted) return { error: 'invalid_avatar' };
+  const buffer = Buffer.from(extracted.data, 'base64');
+  if (!buffer.length || buffer.length > AVATAR_MAX_BYTES) {
+    return { error: 'avatar_too_large' };
+  }
+  fs.mkdirSync(avatarUploadsDir, { recursive: true });
+  safeRemoveAvatarFile(existingUrl);
+  const filename = `${userId}-${Date.now()}.${extracted.ext}`;
+  const filePath = path.join(avatarUploadsDir, filename);
+  fs.writeFileSync(filePath, buffer);
+  return { value: `/uploads/avatars/${filename}` };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1413,7 +1908,7 @@ function getVersion() {
     const pkgPath = path.join(__dirname, '..', 'package.json');
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
     return pkg.version || '0.0.0';
-  } catch (_) {
+  } catch {
     return '0.0.0';
   }
 }
@@ -1428,7 +1923,12 @@ function getAppVersion() {
 /* -------------------------------------------------------------------------- */
 function serializeCounter(counter, options = {}) {
   if (!counter) return null;
-  const { includeNote = false, includeTags = false, tagOwnerId = null } = options;
+  const {
+    includeNote = false,
+    includeTags = false,
+    includeOwner = false,
+    tagOwnerId = null
+  } = options;
   const mode = counter.count_mode === 'unlimited' ? 'unlimited' : 'unique';
   const value = normalizeCounterValue(counter.value);
   const createdAt = toSafeNumber(counter.created_at);
@@ -1441,6 +1941,9 @@ function serializeCounter(counter, options = {}) {
     cooldownMode: mode,
     cooldownLabel: describeModeLabel(mode)
   };
+  if (includeOwner) {
+    payload.ownerId = counter.owner_id || null;
+  }
   if (includeNote) {
     payload.note = counter.note || '';
   }
@@ -1477,6 +1980,38 @@ function serializeUser(user, ownerId = null) {
     isAdmin: user.role === 'admin',
     isOwner: ownerId ? user.id === ownerId : false
   };
+}
+
+function getEffectiveAdminPermissions(userId) {
+  const cfg = getConfig();
+  const defaults = cfg.adminPermissions || {};
+  const ownerId = getOwnerId();
+  if (ownerId && userId === ownerId) {
+    const ownerPerms = {};
+    Object.keys(defaults).forEach((key) => {
+      ownerPerms[key] = true;
+    });
+    return ownerPerms;
+  }
+  const overrides = cfg.adminPermissionOverrides || {};
+  const override = overrides[userId];
+  const merged = {};
+  Object.keys(defaults).forEach((key) => {
+    if (override && Object.prototype.hasOwnProperty.call(override, key)) {
+      merged[key] = override[key] !== false;
+    } else {
+      merged[key] = defaults[key] !== false;
+    }
+  });
+  return merged;
+}
+
+function hasAdminPermission(auth, key) {
+  if (!auth || auth.type !== 'admin') return false;
+  const ownerId = getOwnerId();
+  if (ownerId && auth.user?.id === ownerId) return true;
+  const perms = getEffectiveAdminPermissions(auth.user?.id);
+  return perms && perms[key] !== false;
 }
 
 /* -------------------------------------------------------------------------- */

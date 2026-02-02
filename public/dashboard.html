@@ -161,14 +161,28 @@
           </form>
           <div id="adminEmbedBlock" class="embed-block hidden">
             <div class="embed-block__head">
-              <h4>Your embed code</h4>
-              <p class="hint">Drop this script where you want the counter to appear:</p>
+              <div class="embed-block__title-row">
+                <h4>Embed</h4>
+                <div class="embed-toggle-group" role="tablist" aria-label="Embed format">
+                  <button type="button" class="embed-toggle is-active" data-embed="script">Script</button>
+                  <button type="button" class="embed-toggle" data-embed="svg">SVG</button>
+                </div>
+              </div>
+              <p class="hint embed-block__desc" data-embed-desc="script">Drop this script where you want the counter to appear:</p>
+              <p class="hint embed-block__desc hidden" data-embed-desc="svg">Use this image where scripts aren't allowed (README, badges, etc).  
+              params are supported, see the <a href="https://voux-docs.vercel.app/docs/basics/counters#styling-svgs-embeds" target="_blank" rel="noopener">docs</a>.</p>
             </div>
-            <div class="embed-snippet">
+            <div class="embed-snippet" data-embed-panel="script">
               <button type="button" class="ghost embed-snippet__copy" id="adminEmbedCopy" aria-label="Copy embed code">
                 <i class="ri-file-copy-line" aria-hidden="true"></i>
               </button>
               <textarea id="adminEmbedSnippet" readonly></textarea>
+            </div>
+            <div class="embed-snippet embed-snippet--dual hidden" data-embed-panel="svg">
+              <button type="button" class="ghost embed-snippet__copy" id="adminEmbedSvgCopy" aria-label="Copy SVG embed">
+                <i class="ri-file-copy-line" aria-hidden="true"></i>
+              </button>
+              <textarea id="adminEmbedSvgSnippet" readonly></textarea>
             </div>
           </div>
           <div id="adminPreview" class="preview hidden">
@@ -222,10 +236,13 @@
             <label class="admin-filter">
               <span>Sort by</span>
               <select id="sortFilter">
+                <option value="" disabled selected>— Date —</option>
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
+                <option value="" disabled>— Views —</option>
                 <option value="views">Most views</option>
                 <option value="views_asc">Least views</option>
+                <option value="" disabled>— Activity —</option>
                 <option value="last_hit">Latest hit</option>
                 <option value="inactive">Inactive only</option>
               </select>

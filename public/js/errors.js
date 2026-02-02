@@ -14,6 +14,9 @@
     if (message === 'username_exists') {
       return 'That username is already taken.';
     }
+    if (message === 'admin_permission_denied' || message === 'forbidden') {
+      return "You don't have permission to do that.";
+    }
     return message || fallback;
   }
 
@@ -31,7 +34,7 @@
           avatarUrl: user.avatarUrl || ''
         };
         localStorage.setItem('voux_nav_user', JSON.stringify(payload));
-      } catch (_) {}
+      } catch {}
     }
   };
 })();

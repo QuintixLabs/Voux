@@ -26,7 +26,7 @@
     document.documentElement.setAttribute('data-theme', safe);
     try {
       localStorage.setItem('voux_theme', safe);
-    } catch (_) {}
+    } catch {}
     return safe;
   }
 

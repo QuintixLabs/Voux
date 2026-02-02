@@ -11,12 +11,16 @@ const form = document.querySelector('#create-form');
 const resultSection = document.querySelector('#result');
 const snippetArea = document.querySelector('#embedSnippet');
 const embedCopyBtn = document.querySelector('#embedCopy');
+const svgSnippetArea = document.querySelector('#embedSvgSnippet');
+const embedSvgCopyBtn = document.querySelector('#embedSvgCopy');
+const embedToggles = Array.from(document.querySelectorAll('.embed-toggle'));
+const embedPanels = Array.from(document.querySelectorAll('[data-embed-panel]'));
+const embedDescs = Array.from(document.querySelectorAll('[data-embed-desc]'));
 const previewTarget = document.querySelector('#previewTarget');
 const builderSection = document.querySelector('#builderSection');
 const privateDashboardCard = document.querySelector('#privateDashboardCard');
 const stylingCard = document.querySelector('#stylingCard');
 const selfHostCard = document.querySelector('#selfHostCard');
-const noticeCard = document.querySelector('#noticeCard');
 const cooldownSelect = document.querySelector('#cooldownSelect');
 const startValueInput = document.querySelector('#startValue');
 let isPrivateMode = false;
@@ -38,7 +42,6 @@ document.querySelectorAll('.expander').forEach((details) => {
   const arrow = summary.querySelector('i');
   let isAnimating = false;
   let closeTimeout = null;
-  let targetState = null; // Track what state we're animating to
   
   summary.addEventListener('click', (e) => {
     // Always prevent default and handle manually
@@ -59,7 +62,6 @@ document.querySelectorAll('.expander').forEach((details) => {
     
     // If currently open, animate close
     if (details.open) {
-      targetState = 'closing';
       
       // Manually rotate arrow immediately
       if (arrow) {
@@ -80,11 +82,9 @@ document.querySelectorAll('.expander').forEach((details) => {
           arrow.style.transform = ''; // Reset to CSS control
         }
         isAnimating = false;
-        targetState = null;
         closeTimeout = null;
       }, 400); // Match the CSS transition duration
     } else {
-      targetState = 'opening';
       
       // Opening - add open attribute first
       details.setAttribute('open', '');
@@ -103,7 +103,6 @@ document.querySelectorAll('.expander').forEach((details) => {
             arrow.style.transform = ''; // Reset to CSS control
           }
           isAnimating = false;
-          targetState = null;
         }, 400);
       });
     }
@@ -200,7 +199,11 @@ if (form) {
 
       const data = await response.json();
       snippetArea.value = data.embedCode;
+      if (svgSnippetArea) {
+        svgSnippetArea.value = data.embedSvgCode || '';
+      }
       resultSection.classList.remove('hidden');
+      setEmbedMode('script');
       renderPreview(data.embedUrl);
     } catch (error) {
       await showAlert(error.message || 'Something went wrong', {
@@ -240,6 +243,48 @@ if (embedCopyBtn) {
   });
 }
 
+if (embedSvgCopyBtn) {
+  embedSvgCopyBtn.addEventListener('click', () => {
+    const text = svgSnippetArea?.value || '';
+    if (!text) return;
+    if (embedSvgCopyBtn._copying) return;
+    embedSvgCopyBtn._copying = true;
+    navigator.clipboard.writeText(text).then(() => {
+      const original = embedSvgCopyBtn.dataset.originalIcon || embedSvgCopyBtn.innerHTML;
+      embedSvgCopyBtn.dataset.originalIcon = original;
+      embedSvgCopyBtn.classList.add('copied');
+      embedSvgCopyBtn.innerHTML = '<i class="ri-check-line"></i>';
+      if (embedSvgCopyBtn._copyTimeout) {
+        clearTimeout(embedSvgCopyBtn._copyTimeout);
+      }
+      embedSvgCopyBtn._copyTimeout = setTimeout(() => {
+        embedSvgCopyBtn.classList.remove('copied');
+        embedSvgCopyBtn.innerHTML = embedSvgCopyBtn.dataset.originalIcon || original;
+        embedSvgCopyBtn._copying = false;
+      }, 1400);
+    }).catch(() => {
+      embedSvgCopyBtn._copying = false;
+    });
+  });
+}
+
+function setEmbedMode(mode) {
+  const target = mode === 'svg' ? 'svg' : 'script';
+  embedToggles.forEach((toggle) => {
+    toggle.classList.toggle('is-active', toggle.dataset.embed === target);
+  });
+  embedPanels.forEach((panel) => {
+    panel.classList.toggle('hidden', panel.dataset.embedPanel !== target);
+  });
+  embedDescs.forEach((desc) => {
+    desc.classList.toggle('hidden', desc.dataset.embedDesc !== target);
+  });
+}
+
+embedToggles.forEach((toggle) => {
+  toggle.addEventListener('click', () => setEmbedMode(toggle.dataset.embed || 'script'));
+});
+
 /* -------------------------------------------------------------------------- */
 /* Preview                                                                    */
 /* -------------------------------------------------------------------------- */
@@ -276,7 +321,7 @@ document.querySelectorAll('.copy-button').forEach((button) => {
 
     navigator.clipboard.writeText(text).then(() => {
       const originalHTML = button.innerHTML;
-      button.innerHTML = '<i class="ri-check-line"></i>Copied!';
+      button.innerHTML = '<i class="ri-check-line"></i>';
       button.disabled = true;
 
       setTimeout(() => {
@@ -392,7 +437,7 @@ function appendPreviewParam(url) {
     const parsed = new URL(url, window.location.origin);
     parsed.searchParams.set('preview', '1');
     return parsed.toString();
-  } catch (_) {
+  } catch {
     return url.includes('?') ? `${url}&preview=1` : `${url}?preview=1`;
   }
 }

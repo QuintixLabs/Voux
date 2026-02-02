@@ -31,7 +31,7 @@
       if (localStorage.getItem('voux_session_hint') !== '1') {
         document.documentElement.classList.add('auth-pending');
       }
-    } catch (_) {
+    } catch {
       document.documentElement.classList.add('auth-pending');
     }
   </script>
@@ -100,7 +100,7 @@
           <div class="field__label">Profile photo</div>
           <div class="profile-avatar">
             <button type="button" class="profile-avatar__button" id="profileAvatarButton" aria-label="Upload profile photo">
-              <img id="profileAvatarPreview" alt="" />
+              <img id="profileAvatarPreview" alt="" class="hidden" />
               <span id="profileAvatarFallback">?</span>
             </button>
             <div class="profile-avatar__meta">

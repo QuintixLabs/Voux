@@ -32,7 +32,15 @@ const defaultConfig = {
   ),
   unlimitedThrottleSeconds: sanitizeThrottle(process.env.UNLIMITED_THROTTLE_SECONDS),
   theme: sanitizeTheme(process.env.THEME || 'default'),
-  tagCatalog: []
+  tagCatalog: [],
+  adminPermissions: {
+    runtime: true,
+    branding: true,
+    apiKeys: true,
+    users: true,
+    danger: true
+  },
+  adminPermissionOverrides: {}
 };
 
 let config = loadConfig();
@@ -83,6 +91,15 @@ function sanitizeConfig(raw) {
     safe.theme = sanitizeTheme(raw.theme);
   }
   safe.tagCatalog = Array.isArray(raw.tagCatalog) ? sanitizeTagCatalog(raw.tagCatalog) : [];
+  if (raw && typeof raw.adminPermissions === 'object') {
+    safe.adminPermissions = sanitizeAdminPermissions(raw.adminPermissions, defaultConfig.adminPermissions);
+  }
+  if (raw && typeof raw.adminPermissionOverrides === 'object') {
+    safe.adminPermissionOverrides = sanitizeAdminPermissionOverrides(
+      raw.adminPermissionOverrides,
+      defaultConfig.adminPermissions
+    );
+  }
   return safe;
 }
 
@@ -183,6 +200,25 @@ function sanitizeColor(value) {
     return normalized.toLowerCase();
   }
   return '#4c6ef5';
+}
+
+function sanitizeAdminPermissions(input, fallback = {}) {
+  const safe = {};
+  const keys = Object.keys(fallback || {});
+  keys.forEach((key) => {
+    const raw = input && Object.prototype.hasOwnProperty.call(input, key) ? input[key] : fallback[key];
+    safe[key] = raw !== false;
+  });
+  return safe;
+}
+
+function sanitizeAdminPermissionOverrides(overrides = {}, fallback = {}) {
+  const safe = {};
+  Object.entries(overrides || {}).forEach(([userId, perms]) => {
+    if (!userId || typeof perms !== 'object') return;
+    safe[userId] = sanitizeAdminPermissions(perms, fallback);
+  });
+  return safe;
 }
 
 /* ========================================================================== */
