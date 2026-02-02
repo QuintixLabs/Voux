@@ -5,19 +5,20 @@
 
 
 <p align="center">
-<a href="#-features">Features</a> •
-<a href="#-self-hosting">Self hosting</a> •
-<a href="#-configuration">Configuration</a> •
-<a href="#-api-quick-reference">API quick reference</a> • 
-<a href="#-styling-embeds">Styling embeds</a> • 
-<a href="#-public-instances">Public Instances</a> 
+<a href="#-features">⭐ Features</a> •
+<a href="#-self-hosting">🏡 Self hosting</a> •
+<!--<a href="#-configuration">Configuration</a> •-->
+<!--<a href="#-api-quick-reference">API quick reference</a> •-->
+<a href="#customization">🖌️ Customization</a> • 
+<a href="#-public-instances">🌍 Public Instances</a> •
+<a href="#-public-instances">📘 Documentation</a>  
 <!--<a href="#-styling-embeds">Styling embeds</a> •
 <a href="#-clearing-saved-ips">Clearing saved IPs</a>--->
 </p>
 
 ## ⭐ Features
 
-- Generate counters easily and embed them with one `<script>` tag.
+- Generate counters easily and embed them with one `<script>` tag or as **SVGs**.
 - You can download a backup of your `data/counters.db` (your database) as **JSON** in Settings or you can also download whatever counters you want as JSON (you can choose).
 - Multi-select toolbar lets you download per-counter **JSON** or delete groups of counters in one go.
 - The **dashboard** gives you `search`, `pagination`, `inline edits`, `notes`, `filters`, and `auto-refreshing stats`.
@@ -26,6 +27,7 @@
 - Owner **API** keys so collaborators can manage their own counters without using the main admin password.
 - Change your **instance name** and **homepage title** easily from the `Settings`.
 - You can turn on per-IP limits for **"Every visit"** counters to slow down spam refreshes.
+- **And much more...!**
 
 So yeah... it's pretty good `:)`
 
@@ -65,7 +67,7 @@ cp .env.example .env
 
 Open `.env` and set your settings.
 This is where you configure your admin login, site URL, port, and other options.
-You must set `ADMIN_USERNAME` + `ADMIN_PASSWORD` before running the server. For more settings check [Configuration](#-configuration)
+You must set `ADMIN_USERNAME` + `ADMIN_PASSWORD` before running the server. For more settings check [Documentation](https://voux-docs.vercel.app/docs/configuration/environment-variables)
 
 ### 4. Start Voux
 **Development (auto-reload) :**
@@ -103,10 +105,11 @@ docker compose up -d
 ```
 
 - Change `ADMIN_USERNAME` + `ADMIN_PASSWORD` to your own login (do not leave it as the example).
-- Mount `./data` so counters survive restarts.
-- Add more `-e VAR=value` flags for <a href="#-configuration">more settings</a> if you need them.
+- Add more `-e VAR=value` flags for <a href="https://voux-docs.vercel.app/docs/configuration/environment-variables">more settings</a> if you need them.
 
+<p>Need more details or advanced setup options? <a href="https://voux-docs.vercel.app/docs/getting-started/installation/docker" target="_blank">Read the documentation</a>.</p>
 
+<!---
 ## 🔧 Configuration
 
 Environment variables. You can tweak some of these options later from `/settings` without editing `.env`.
@@ -132,7 +135,9 @@ Environment variables. You can tweak some of these options later from `/settings
 | `DEV_MODE` | `development` | Use `development` in `.env` to serve HTML/JS/CSS with `no-store` caching. |
 
 SQLite lives in `data/counters.db`. Back it up occasionally if you care about the numbers (or download a JSON backup from `/settings`, which now includes the 30-day activity summaries and your tag catalog). If you delete the DB file, **Voux** creates a fresh empty one on the next start, but all counters are wiped unless you restore from a backup.
+--->
 
+<!---
 ## 🧩 API quick reference
 
 - `GET /api/config` – tells the UI what's enabled: `{ privateMode, showGuides, allowedModes, defaultMode, adminPageSize }`.
@@ -161,9 +166,9 @@ SQLite lives in `data/counters.db`. Back it up occasionally if you care about th
 - `POST /api/tags` – create a new tag with `{ "name": "Articles", "color": "#ff8800" }` (admin only).
 
 Every admin request needs the `X-Voux-Admin: <token>` header. For day-to-day management, just visit `/dashboard`, sign in once, and use the dashboard (it already calls these endpoints under the hood). Owner API keys use the `X-Voux-Key: <token>` header and can only touch the counters you assign to them.
+--->
 
-
-## 🎨 Styling embeds
+<h2 id="customization"> 🎨 Styling script embeds </h2>
 
 Styling your counter with **Voux** is super simple. All you need to do is wrap your counter script inside an element. We'll use a `<span>` in this example:
 
@@ -191,6 +196,35 @@ Once that's in place, you can style it however you like using **CSS**. Here's a 
 ```
 And that's it. Your counter is now styled and ready to use. You can change the font, colors, or layout any way you like.
 
+## 🧩 Styling SVGs embeds
+
+Voux also provides an **SVG embed** for cases where you cannot use **JavaScript**, such as **READMEs**, **Markdown files**, or **restricted platforms**.
+
+```html
+<img src="https://your-domain/embed/abc123.svg" alt="Voux counter">
+```
+
+You can also customize the **SVG** by passing **parameters** in the `URL` query string:
+
+```html
+<img src="https://your-domain/embed/abc123.svg?bg=F54927&color=ffffff" alt="Voux counter">
+```
+See the [documentation](https://voux-docs.vercel.app/docs/basics/counters#styling-svgs-embeds) for a full list of **SVG** parameters. 
+
+
+## 👀 SVG counters on GitHub
+
+GitHub READMEs do not allow **JavaScript**, so **SVGs** are the only option.
+
+| Mode | Info | Example |
+| ---- | ---- | ------- |
+| 👤 Unique visitors | Not available on GitHub (images are cached and proxied, so Voux cannot use its IP-based method) | ❌ |
+| 🔁 Every visit | Works on refresh | ✅ |
+
+And on **documentation websites**, Unique Visitors work, check it out [here](https://voux-docs.vercel.app/docs/basics/counters#svgs-in-documentation)!
+
+
+<!---
 ## 🧹 Clearing saved IPs
 
 Voux keeps a simple list of "which IP hit which counter, and when" so it can avoid double-counting unique visitors. To wipe that list (for privacy or to give everyone a fresh start), run:
@@ -200,6 +234,7 @@ npm run clear-hits
 ```
 
 This keeps your counters and their values. It only clears the saved IP/timestamp pairs so future visits count again.
+--->
 
 ## 🌐 Public instances
 
