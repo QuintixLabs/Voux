@@ -11,7 +11,7 @@
 <!--<a href="#-api-quick-reference">API quick reference</a> •-->
 <a href="#customization">🖌️ Customization</a> • 
 <a href="#-public-instances">🌍 Public Instances</a> •
-<a href="#-public-instances">📘 Documentation</a>  
+<a href="https://voux-docs.vercel.app/">📘 Documentation</a>  
 <!--<a href="#-styling-embeds">Styling embeds</a> •
 <a href="#-clearing-saved-ips">Clearing saved IPs</a>--->
 </p>
@@ -219,7 +219,7 @@ GitHub READMEs do not allow **JavaScript**, so **SVGs** are the only option.
 | Mode | Info | Example |
 | ---- | ---- | ------- |
 | 👤 Unique visitors | Not available on GitHub (images are cached and proxied, so Voux cannot use its IP-based method) | ❌ |
-| 🔁 Every visit | Works on refresh | ✅ |
+| 🔁 Every visit | Works on refresh (try it now just refresh the page) | <img src="https://voux.fr0st.xyz/embed/3bskh2nb.svg?bg=0F1115&color=ffffff" alt="Voux counter"> |
 
 And on **documentation websites**, Unique Visitors work, check it out [here](https://voux-docs.vercel.app/docs/basics/counters#svgs-in-documentation)!
 
@@ -245,7 +245,7 @@ If you want to run your own public **Voux instance** and add it to the official 
 [![GNU GPLv3 Image](https://www.gnu.org/graphics/gplv3-127x51.png)](http://www.gnu.org/licenses/gpl-3.0.en.html)
 
 Voux is [Free Software](https://en.wikipedia.org/wiki/Free_software): You can use, study, share and modify it at your will. The app can be redistributed and/or modified under the terms of the
-[GNU General Public License version 3 or later](https://www.gnu.org/licenses/gpl.html) published by the 
+[GNU General Public License version 3](https://www.gnu.org/licenses/gpl.html) published by the 
 [Free Software Foundation](https://www.fsf.org/).
 
 <div align="right">
