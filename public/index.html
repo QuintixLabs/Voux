@@ -149,21 +149,21 @@
           </div>
         </div>
         <p class="hint embed-block__desc" data-embed-desc="script">Drop this script where you want the counter to appear:</p>
-        <p class="hint embed-block__desc hidden" data-embed-desc="svg">Use this image where scripts aren't allowed (README, badges, etc).
+        <p class="hint embed-block__desc hidden" data-embed-desc="svg">Use this image where scripts aren't allowed <b style="color: white;">(README, badges, etc)</b>.
           params are supported, see the <a href="https://voux-docs.vercel.app/docs/basics/counters#styling-svgs-embeds" target="_blank" rel="noopener">docs</a>.</p>
       </div>
       <div class="embed-snippet" data-embed-panel="script">
-        <button type="button" class="ghost embed-snippet__copy" id="embedCopy" aria-label="Copy embed code">
-          <i class="ri-file-copy-line" aria-hidden="true"></i>
-        </button>
-        <textarea id="embedSnippet" readonly></textarea>
+        <div class="code-snippet embed-code">
+          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <pre><code class="language-markup" id="embedSnippetCode"></code></pre>
+        </div>
       </div>
 
       <div class="embed-snippet embed-snippet--dual hidden" data-embed-panel="svg">
-        <button type="button" class="ghost embed-snippet__copy" id="embedSvgCopy" aria-label="Copy SVG embed">
-          <i class="ri-file-copy-line" aria-hidden="true"></i>
-        </button>
-        <textarea id="embedSvgSnippet" readonly></textarea>
+        <div class="code-snippet embed-code">
+          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <pre><code class="language-markup" id="embedSvgSnippetCode"></code></pre>
+        </div>
       </div>
 
       <div class="preview">
@@ -182,7 +182,7 @@
     <div>
       <div class="expander__content-inner">
         <h4>🎨 · Styling script embeds</h4>
-        <p>Styling your counter with <b data-brand-inline>Voux</b> is super simple. All you need to do is wrap your counter script inside an element. We'll use a <span class="code-inline">&lt;span&gt;</span> in this example:</p>
+        <p>Styling your counter with <b>Voux</b> is super simple. All you need to do is wrap your counter script inside an element. We'll use a <span class="code-inline">&lt;span&gt;</span> in this example:</p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i></button>
           <pre><code class="language-markup">&lt;span class="counter-widget"&gt;

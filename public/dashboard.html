@@ -14,7 +14,7 @@
     rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.8.0/fonts/remixicon.css" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css"/> <!-- 'monolith' theme -->
-
+  
   <!-- Icons -->
   <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
   <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
@@ -162,27 +162,27 @@
           <div id="adminEmbedBlock" class="embed-block hidden">
             <div class="embed-block__head">
               <div class="embed-block__title-row">
-                <h4>Embed</h4>
+                <h2>Embed</h2>
                 <div class="embed-toggle-group" role="tablist" aria-label="Embed format">
                   <button type="button" class="embed-toggle is-active" data-embed="script">Script</button>
                   <button type="button" class="embed-toggle" data-embed="svg">SVG</button>
                 </div>
               </div>
               <p class="hint embed-block__desc" data-embed-desc="script">Drop this script where you want the counter to appear:</p>
-              <p class="hint embed-block__desc hidden" data-embed-desc="svg">Use this image where scripts aren't allowed (README, badges, etc).  
+              <p class="hint embed-block__desc hidden" data-embed-desc="svg">Use this image where scripts aren't allowed <b style="color: white;">(README, badges, etc)</b>.  
               params are supported, see the <a href="https://voux-docs.vercel.app/docs/basics/counters#styling-svgs-embeds" target="_blank" rel="noopener">docs</a>.</p>
             </div>
             <div class="embed-snippet" data-embed-panel="script">
-              <button type="button" class="ghost embed-snippet__copy" id="adminEmbedCopy" aria-label="Copy embed code">
-                <i class="ri-file-copy-line" aria-hidden="true"></i>
-              </button>
-              <textarea id="adminEmbedSnippet" readonly></textarea>
+              <div class="code-snippet embed-code">
+                <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+                <pre><code class="language-markup" id="adminEmbedSnippetCode"></code></pre>
+              </div>
             </div>
             <div class="embed-snippet embed-snippet--dual hidden" data-embed-panel="svg">
-              <button type="button" class="ghost embed-snippet__copy" id="adminEmbedSvgCopy" aria-label="Copy SVG embed">
-                <i class="ri-file-copy-line" aria-hidden="true"></i>
-              </button>
-              <textarea id="adminEmbedSvgSnippet" readonly></textarea>
+              <div class="code-snippet embed-code">
+                <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+                <pre><code class="language-markup" id="adminEmbedSvgSnippetCode"></code></pre>
+              </div>
             </div>
           </div>
           <div id="adminPreview" class="preview hidden">
@@ -318,6 +318,10 @@
 
   <!-- External libraries (scripts) -->
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js" defer></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
 </body>
 
 </html>

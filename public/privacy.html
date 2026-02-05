@@ -78,18 +78,24 @@
       </p>
       <h1>Privacy Policy</h1>
       <p><span data-brand-inline>Voux</span> runs on your hardware, so you control what data it stores. Here's what gets saved by default and how to manage it.</p>
-      <p class="hint last-updated">Last updated: 22 November 2025</p>
+      <p class="hint last-updated">Last updated: 5 February 2026</p>
     </header>
 
     <section class="card">
       <h2>What gets saved</h2>
-      <p>The SQLite file keeps counter IDs, labels, values, and if you enable unique visitors it also stores the IP address and last visit time. Nothing leaves your machine.</p>
+      <p>The SQLite file keeps counter IDs, labels, values, and the visitor IP address with a last visit timestamp. IPs are stored in both counting modes. Nothing leaves your machine.</p>
     </section>
 
     <section class="card">
       <h2>Unique visit mode</h2>
-      <p>If you pick "Unique visitors," <span data-brand-inline>Voux</span> stores the IPs it sees so it can avoid counting the same visitor twice. 
-      These IP entries are kept only for visit tracking and can be cleared at any time through the <span class="code-inline">npm run clear-hits</span> script/command.</p>
+      <p>If you pick "Unique visitors" <span data-brand-inline>Voux</span> stores visitor IPs and uses them to make sure each IP is only counted once. 
+      If the same IP visits again, the counter does not go up.</p>
+    </section>
+
+        <section class="card">
+      <h2>Every-visit mode</h2>
+      <p>If you pick "Every-visit" <span data-brand-inline>Voux</span> always stores visitor IPs. With a <span class="code-inline">0s</span> throttle, every page load is counted, 
+      even from the same IP. If a throttle is set (for example <span class="code-inline">10s</span>), the same IP can only increase the counter once per throttle window.</p>
     </section>
 
     <section class="card">

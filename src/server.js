@@ -1325,7 +1325,8 @@ app.get('/embed/:id.svg', (req, res) => {
   res.type('image/svg+xml');
 
   const isPreview = isPreviewRequest(req);
-  const isGitHubCamo = String(req.get('user-agent') || '').toLowerCase().startsWith('github-camo');
+  const ua = String(req.get('user-agent') || '').toLowerCase();
+  const isGitHubCamo = ua.includes('github-camo') || ua.includes('github');
 
   // SVG error response (keeps GitHub from caching plain text/XML errors).
   const renderErrorSvg = (message) => {
@@ -1358,13 +1359,11 @@ app.get('/embed/:id.svg', (req, res) => {
     if (!counter) {
       return res.status(200).send(renderErrorSvg('Counter not found'));
     }
-    if (counter.count_mode === 'unlimited' && isGitHubCamo) {
-      const updated = updateCounterValue(req.params.id, BigInt(counter.value || 0) + 1n);
-      const fresh = updated ? getCounter(req.params.id) : counter;
-      result = { counter: fresh, incremented: true };
-    } else {
-      result = recordHit(req.params.id, getClientIp(req));
+    let hitIp = isGitHubCamo ? 'github-camo' : getClientIp(req);
+    if (!hitIp) {
+      hitIp = 'unknown-svg';
     }
+    result = recordHit(req.params.id, hitIp);
     if (!result) {
       return res.status(404).send('Counter not found');
     }

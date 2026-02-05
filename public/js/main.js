@@ -9,13 +9,12 @@
 /* -------------------------------------------------------------------------- */
 const form = document.querySelector('#create-form');
 const resultSection = document.querySelector('#result');
-const snippetArea = document.querySelector('#embedSnippet');
-const embedCopyBtn = document.querySelector('#embedCopy');
-const svgSnippetArea = document.querySelector('#embedSvgSnippet');
-const embedSvgCopyBtn = document.querySelector('#embedSvgCopy');
+const snippetCode = document.querySelector('#embedSnippetCode');
+const svgSnippetCode = document.querySelector('#embedSvgSnippetCode');
 const embedToggles = Array.from(document.querySelectorAll('.embed-toggle'));
 const embedPanels = Array.from(document.querySelectorAll('[data-embed-panel]'));
 const embedDescs = Array.from(document.querySelectorAll('[data-embed-desc]'));
+let embedMode = 'script';
 const previewTarget = document.querySelector('#previewTarget');
 const builderSection = document.querySelector('#builderSection');
 const privateDashboardCard = document.querySelector('#privateDashboardCard');
@@ -198,12 +197,13 @@ if (form) {
       }
 
       const data = await response.json();
-      snippetArea.value = data.embedCode;
-      if (svgSnippetArea) {
-        svgSnippetArea.value = data.embedSvgCode || '';
+      if (snippetCode) snippetCode.textContent = data.embedCode || '';
+      if (svgSnippetCode) svgSnippetCode.textContent = data.embedSvgCode || '';
+      if (window.Prism?.highlightAll) {
+        window.Prism.highlightAll();
       }
       resultSection.classList.remove('hidden');
-      setEmbedMode('script');
+      setEmbedMode(embedMode);
       renderPreview(data.embedUrl);
     } catch (error) {
       await showAlert(error.message || 'Something went wrong', {
@@ -215,61 +215,9 @@ if (form) {
   });
 }
 
-/* -------------------------------------------------------------------------- */
-/* Embed copy                                                                 */
-/* -------------------------------------------------------------------------- */
-if (embedCopyBtn) {
-  embedCopyBtn.addEventListener('click', () => {
-    const text = snippetArea?.value || '';
-    if (!text) return;
-    if (embedCopyBtn._copying) return;
-    embedCopyBtn._copying = true;
-    navigator.clipboard.writeText(text).then(() => {
-      const original = embedCopyBtn.dataset.originalIcon || embedCopyBtn.innerHTML;
-      embedCopyBtn.dataset.originalIcon = original;
-      embedCopyBtn.classList.add('copied');
-      embedCopyBtn.innerHTML = '<i class="ri-check-line"></i>';
-      if (embedCopyBtn._copyTimeout) {
-        clearTimeout(embedCopyBtn._copyTimeout);
-      }
-      embedCopyBtn._copyTimeout = setTimeout(() => {
-        embedCopyBtn.classList.remove('copied');
-        embedCopyBtn.innerHTML = embedCopyBtn.dataset.originalIcon || original;
-        embedCopyBtn._copying = false;
-      }, 1400);
-    }).catch(() => {
-      embedCopyBtn._copying = false;
-    });
-  });
-}
-
-if (embedSvgCopyBtn) {
-  embedSvgCopyBtn.addEventListener('click', () => {
-    const text = svgSnippetArea?.value || '';
-    if (!text) return;
-    if (embedSvgCopyBtn._copying) return;
-    embedSvgCopyBtn._copying = true;
-    navigator.clipboard.writeText(text).then(() => {
-      const original = embedSvgCopyBtn.dataset.originalIcon || embedSvgCopyBtn.innerHTML;
-      embedSvgCopyBtn.dataset.originalIcon = original;
-      embedSvgCopyBtn.classList.add('copied');
-      embedSvgCopyBtn.innerHTML = '<i class="ri-check-line"></i>';
-      if (embedSvgCopyBtn._copyTimeout) {
-        clearTimeout(embedSvgCopyBtn._copyTimeout);
-      }
-      embedSvgCopyBtn._copyTimeout = setTimeout(() => {
-        embedSvgCopyBtn.classList.remove('copied');
-        embedSvgCopyBtn.innerHTML = embedSvgCopyBtn.dataset.originalIcon || original;
-        embedSvgCopyBtn._copying = false;
-      }, 1400);
-    }).catch(() => {
-      embedSvgCopyBtn._copying = false;
-    });
-  });
-}
-
 function setEmbedMode(mode) {
   const target = mode === 'svg' ? 'svg' : 'script';
+  embedMode = target;
   embedToggles.forEach((toggle) => {
     toggle.classList.toggle('is-active', toggle.dataset.embed === target);
   });
@@ -322,10 +270,12 @@ document.querySelectorAll('.copy-button').forEach((button) => {
     navigator.clipboard.writeText(text).then(() => {
       const originalHTML = button.innerHTML;
       button.innerHTML = '<i class="ri-check-line"></i>';
+      button.classList.add('copied');
       button.disabled = true;
 
       setTimeout(() => {
         button.innerHTML = originalHTML;
+        button.classList.remove('copied');
         button.disabled = false;
       }, 2000);
     });

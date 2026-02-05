@@ -449,7 +449,8 @@ function getCounter(id) {
 }
 
 function recordHit(counterId, ip) {
-  return recordHitTx(counterId, ip, Date.now());
+  const safeIp = ip || 'unknown';
+  return recordHitTx(counterId, safeIp, Date.now());
 }
 
 function updateCounterValue(id, value) {

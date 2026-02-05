@@ -792,22 +792,45 @@ body.modal-open {
       color: var(--text-primary);
     }
 
-    .code-snippet {
-      position: relative;
-      background: #101013;
-      border: 1px solid var(--border-primary);
-      border-radius: 10px;
-      padding: 1.25rem;
-    }
+.code-snippet {
+  position: relative;
+  background: #101013;
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+}
 
-    .code-snippet pre {
-      margin: 0;
-      padding: 0;
-      padding-right: 1.25rem;
-      background: transparent;
-      border: none;
-      overflow-x: auto;
+.code-snippet pre {
+  margin: 0;
+  padding: 0;
+  padding-right: 1.6rem;
+  background: #101013;
+  border: none;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.95rem;
+}
+
+/* dashboard only embed code */
+.embed-code pre[class*="language-"],
+.embed-code code[class*="language-"] {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #101013 !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+/* same for here its dashboard only for 520px */
+@media (max-width: 520px) {
+    .embed-code pre[class*="language-"],
+    .embed-code code[class*="language-"] {
+      white-space: pre !important;   /* no wrap */
+      word-break: normal !important;
+      overflow-x: auto !important;   /* show scrollbar */
     }
+  }
 
     .copy-button {
       position: absolute;
@@ -830,6 +853,11 @@ body.modal-open {
       font-size: 0.8rem;
     }
 
+    .copy-button.copied {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.5);
+      color: #34d399;
+    }
 
 .instructions code {
       font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
@@ -3924,6 +3952,19 @@ body.modal-open {
 
 .embed-block__head {
   margin-bottom: 0.5rem;
+}
+
+.embed-block__head h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
+}
+
+.embed-block__desc {
+  font-size: 0.9375rem;
+  margin-bottom: 1rem;
+  color: var(--text-secondary);
 }
 
 .embed-block__title-row {

@@ -1,7 +1,7 @@
 /*
   clearHits.js
 
-  Wipes the hits table so unique-visitor tracking starts fresh.
+  Wipes the hits table so last hit + activity stats restart. Counter values stay the same.
   Run `npm run clear-hits` to clear dedupe entries without touching counters.
 */
 

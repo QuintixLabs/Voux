@@ -38,10 +38,8 @@ const createLabelInput = document.querySelector('#adminLabel');
 const createNoteInput = document.querySelector('#adminNote');
 const createStartInput = document.querySelector('#adminStartValue');
 const adminEmbedBlock = document.querySelector('#adminEmbedBlock');
-const adminEmbedCopy = document.querySelector('#adminEmbedCopy');
-const adminEmbedSnippet = document.querySelector('#adminEmbedSnippet');
-const adminEmbedSvgCopy = document.querySelector('#adminEmbedSvgCopy');
-const adminEmbedSvgSnippet = document.querySelector('#adminEmbedSvgSnippet');
+const adminEmbedSnippetCode = document.querySelector('#adminEmbedSnippetCode');
+const adminEmbedSvgSnippetCode = document.querySelector('#adminEmbedSvgSnippetCode');
 const embedToggles = Array.from(document.querySelectorAll('.embed-toggle'));
 const embedPanels = Array.from(document.querySelectorAll('[data-embed-panel]'));
 const embedDescs = Array.from(document.querySelectorAll('[data-embed-desc]'));
@@ -117,6 +115,7 @@ const state = {
   latestCounters: [],
   selectedIds: new Set(),
   counterCache: new Map(),
+  embedMode: 'script',
   tags: [],
   tagFilter: [],
   createTags: [],
@@ -407,6 +406,7 @@ function appendPreviewParam(url) {
 
 function setEmbedMode(mode) {
   const target = mode === 'svg' ? 'svg' : 'script';
+  state.embedMode = target;
   embedToggles.forEach((toggle) => {
     toggle.classList.toggle('is-active', toggle.dataset.embed === target);
   });
@@ -453,8 +453,6 @@ function init() {
   deleteAllBtn?.addEventListener('click', handleDeleteAll);
   deleteFilteredBtn?.addEventListener('click', handleDeleteFiltered);
   createForm?.addEventListener('submit', handleCreateCounter);
-  adminEmbedCopy?.addEventListener('click', handleAdminEmbedCopy);
-  adminEmbedSvgCopy?.addEventListener('click', handleAdminEmbedSvgCopy);
   modeFilterSelect?.addEventListener('change', handleModeFilterChange);
   sortFilterSelect?.addEventListener('change', handleSortChange);
   ownerFilterToggle?.addEventListener('click', handleOwnerFilterToggle);
@@ -518,6 +516,28 @@ function init() {
   updateDeleteFilteredState();
   updateActivityRangeButtons();
   updateTagCounterHints();
+
+  document.querySelectorAll('.code-snippet .copy-button').forEach((button) => {
+    button.addEventListener('click', () => {
+      const block = button.closest('.code-snippet') || button.parentElement;
+      const code = block?.querySelector('code');
+      if (!code) return;
+      const text = code.textContent;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="ri-check-line"></i>';
+        button.classList.add('copied');
+        button.disabled = true;
+
+        setTimeout(() => {
+          button.innerHTML = originalHTML;
+          button.classList.remove('copied');
+          button.disabled = false;
+        }, 2000);
+      });
+    });
+  });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -924,14 +944,17 @@ async function handleCreateCounter(event) {
       throw new Error(err.error || 'Failed to create counter');
     }
     const data = await res.json();
-  if (adminEmbedSnippet) {
-    adminEmbedSnippet.value = data.embedCode;
-    adminEmbedBlock?.classList.remove('hidden');
-    setEmbedMode('script');
+  if (adminEmbedSnippetCode) {
+    adminEmbedSnippetCode.textContent = data.embedCode || '';
   }
-  if (adminEmbedSvgSnippet) {
-    adminEmbedSvgSnippet.value = data.embedSvgCode || '';
+  if (adminEmbedSvgSnippetCode) {
+    adminEmbedSvgSnippetCode.textContent = data.embedSvgCode || '';
   }
+  if (window.Prism?.highlightAll) {
+    window.Prism.highlightAll();
+  }
+  adminEmbedBlock?.classList.remove('hidden');
+  setEmbedMode(state.embedMode || 'script');
   if (data.embedUrl) {
     renderAdminPreview(data.embedUrl);
   }
@@ -1397,8 +1420,8 @@ function hideDashboard() {
   adminControls?.classList.remove('is-loading');
   document.body.classList.add('dashboard-footer-hidden');
   adminEmbedBlock?.classList.add('hidden');
-  if (adminEmbedSnippet) adminEmbedSnippet.value = '';
-  if (adminEmbedSvgSnippet) adminEmbedSvgSnippet.value = '';
+  if (adminEmbedSnippetCode) adminEmbedSnippetCode.textContent = '';
+  if (adminEmbedSvgSnippetCode) adminEmbedSvgSnippetCode.textContent = '';
   setEmbedMode('script');
   paginationEl?.classList.add('hidden');
   deleteAllBtn.disabled = true;
@@ -2065,59 +2088,10 @@ function updateCreateCardVisibility() {
   } else {
     createCard.classList.add('hidden');
     adminEmbedBlock?.classList.add('hidden');
-    if (adminEmbedSnippet) adminEmbedSnippet.value = '';
-    if (adminEmbedSvgSnippet) adminEmbedSvgSnippet.value = '';
-    setEmbedMode('script');
+    if (adminEmbedSnippetCode) adminEmbedSnippetCode.textContent = '';
+    if (adminEmbedSvgSnippetCode) adminEmbedSvgSnippetCode.textContent = '';
+    setEmbedMode(state.embedMode || 'script');
   }
-}
-
-/* -------------------------------------------------------------------------- */
-/* Admin embed copy                                                           */
-/* -------------------------------------------------------------------------- */
-function handleAdminEmbedCopy() {
-  const text = adminEmbedSnippet?.value || '';
-  if (!text || !adminEmbedCopy) return;
-  if (adminEmbedCopy._copying) return;
-  adminEmbedCopy._copying = true;
-  navigator.clipboard.writeText(text).then(() => {
-    const original = adminEmbedCopy.dataset.originalIcon || adminEmbedCopy.innerHTML;
-    adminEmbedCopy.dataset.originalIcon = original;
-    adminEmbedCopy.classList.add('copied');
-    adminEmbedCopy.innerHTML = '<i class="ri-check-line"></i>';
-    if (adminEmbedCopy._copyTimeout) {
-      clearTimeout(adminEmbedCopy._copyTimeout);
-    }
-    adminEmbedCopy._copyTimeout = setTimeout(() => {
-      adminEmbedCopy.classList.remove('copied');
-      adminEmbedCopy.innerHTML = adminEmbedCopy.dataset.originalIcon || original;
-      adminEmbedCopy._copying = false;
-    }, 1400);
-  }).catch(() => {
-    adminEmbedCopy._copying = false;
-  });
-}
-
-function handleAdminEmbedSvgCopy() {
-  const text = adminEmbedSvgSnippet?.value || '';
-  if (!text || !adminEmbedSvgCopy) return;
-  if (adminEmbedSvgCopy._copying) return;
-  adminEmbedSvgCopy._copying = true;
-  navigator.clipboard.writeText(text).then(() => {
-    const original = adminEmbedSvgCopy.dataset.originalIcon || adminEmbedSvgCopy.innerHTML;
-    adminEmbedSvgCopy.dataset.originalIcon = original;
-    adminEmbedSvgCopy.classList.add('copied');
-    adminEmbedSvgCopy.innerHTML = '<i class="ri-check-line"></i>';
-    if (adminEmbedSvgCopy._copyTimeout) {
-      clearTimeout(adminEmbedSvgCopy._copyTimeout);
-    }
-    adminEmbedSvgCopy._copyTimeout = setTimeout(() => {
-      adminEmbedSvgCopy.classList.remove('copied');
-      adminEmbedSvgCopy.innerHTML = adminEmbedSvgCopy.dataset.originalIcon || original;
-      adminEmbedSvgCopy._copying = false;
-    }, 1400);
-  }).catch(() => {
-    adminEmbedSvgCopy._copying = false;
-  });
 }
 
 /* -------------------------------------------------------------------------- */
