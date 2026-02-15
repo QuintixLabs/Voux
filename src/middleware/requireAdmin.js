@@ -37,7 +37,12 @@ function parseCookies(req) {
     const key = rawKey.trim();
     const value = rest.join('=').trim();
     if (!key) return acc;
-    acc[key] = decodeURIComponent(value || '');
+    try {
+      acc[key] = decodeURIComponent(value || '');
+    } catch {
+      // ignore invalid cookie encoding
+      acc[key] = value || '';
+    }
     return acc;
   }, {});
 }

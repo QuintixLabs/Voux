@@ -67,8 +67,12 @@ function authFetch(url, options = {}) {
 function showToast(message, variant = 'success') {
   const toast = document.createElement('div');
   toast.className = `toast toast--${variant}`;
-  toast.innerHTML = `<i class="${variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}"></i>
-    <span>${message}</span>`;
+  const icon = document.createElement('i');
+  icon.className = variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line';
+  icon.setAttribute('aria-hidden', 'true');
+  const text = document.createElement('span');
+  text.textContent = String(message ?? '');
+  toast.append(icon, text);
   const timer = document.createElement('span');
   timer.className = 'toast__timer';
   toast.appendChild(timer);

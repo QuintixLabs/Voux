@@ -89,7 +89,7 @@
     titleEl.className = 'modal__title';
     titleEl.id = 'vouxModalTitle';
 
-    messageEl = document.createElement('p');
+    messageEl = document.createElement('div');
     messageEl.className = 'modal__message';
     messageEl.id = 'vouxModalMessage';
 
@@ -119,15 +119,43 @@
     }
   }
 
-  function setModalMessage(message, allowHtml) {
+  function setModalMessage(message, allowHtml, messageParts) {
     if (!messageEl) return;
+    if (Array.isArray(messageParts) && messageParts.length) {
+      // render a "rich" message without using innerHTML (prevents XSS).
+      messageEl.textContent = '';
+      messageParts.forEach((part) => {
+        if (part == null) return;
+        if (typeof part === 'string' || typeof part === 'number' || typeof part === 'boolean') {
+          messageEl.appendChild(document.createTextNode(String(part)));
+          return;
+        }
+        if (typeof part === 'object') {
+          if (Object.prototype.hasOwnProperty.call(part, 'strong')) {
+            const strongEl = document.createElement('strong');
+            strongEl.textContent = String(part.strong ?? '');
+            messageEl.appendChild(strongEl);
+            return;
+          }
+          if (part.br) {
+            messageEl.appendChild(document.createElement('br'));
+            return;
+          }
+          if (part.hr) {
+            messageEl.appendChild(document.createElement('hr'));
+            return;
+          }
+        }
+      });
+      return;
+    }
     if (!allowHtml) {
       messageEl.textContent = message || '';
       return;
     }
     const template = document.createElement('template');
     template.innerHTML = message || '';
-    const allowed = new Set(['STRONG', 'EM', 'BR']);
+    const allowed = new Set(['STRONG', 'EM', 'BR', 'HR']);
     const walker = document.createTreeWalker(
       template.content,
       NodeFilter.SHOW_ELEMENT,
@@ -153,7 +181,7 @@
   /* ------------------------------------------------------------------------ */
   /* Modal open/close                                                         */
   /* ------------------------------------------------------------------------ */
-  function openModal({ title, message, buttons, allowClose = true, allowHtml = false, input }) {
+  function openModal({ title, message, messageParts, buttons, allowClose = true, allowHtml = false, input }) {
     ensureElements();
     dismissible = allowClose;
     ensureGlobalKeys();
@@ -163,7 +191,7 @@
     overlay.dataset.modalAllowEnter = 'true';
     overlay.dataset.modalAllowEscape = dismissible ? 'true' : 'false';
     titleEl.textContent = title || '';
-    setModalMessage(message, false);
+    setModalMessage(message, allowHtml, messageParts);
     clearInput();
     actionsEl.innerHTML = '';
     let confirmButton = null;
@@ -264,6 +292,7 @@
     return openModal({
       title: options.title || 'Heads up',
       message,
+      messageParts: options.messageParts,
       allowClose: options.dismissible !== false,
       allowHtml: options.allowHtml === true,
       buttons: [
@@ -281,6 +310,7 @@
     return openModal({
       title: options.title || 'Confirm',
       message,
+      messageParts: options.messageParts,
       allowClose: options.dismissible !== false,
       allowHtml: options.allowHtml === true,
       buttons: [
@@ -305,6 +335,7 @@
       return openModal({
         title: options.title || 'Confirm',
         message: options.message || 'Are you sure?',
+        messageParts: options.messageParts,
         allowClose: options.dismissible !== false,
         allowHtml: options.allowHtml === true,
         input: {

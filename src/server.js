@@ -155,7 +155,7 @@ App Setup
 ==========================================================================
 */
 const app = express();
-app.set('trust proxy', true);
+app.set('trust proxy', resolveTrustProxySetting(process.env.TRUST_PROXY));
 app.use(express.json({ limit: '3mb' }));
 // CSP
 app.use((req, res, next) => {
@@ -179,6 +179,24 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   if (shouldUseSecureCookie(req)) {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+// CSRF guard for cookie-authenticated state changes.
+// This does not affect API-key/server-to-server requests without session cookies.
+app.use((req, res, next) => {
+  if (!isUnsafeMethod(req.method)) {
+    return next();
+  }
+  if (!req.path.startsWith('/api/')) {
+    return next();
+  }
+  if (!getSessionToken(req)) {
+    return next();
+  }
+  if (!isSameOriginRequest(req)) {
+    return res.status(403).json({ error: 'csrf_blocked' });
   }
   next();
 });
@@ -207,7 +225,16 @@ app.get('/api/config', (req, res) => {
   const runtimeConfig = getConfig();
   const defaultMode = getDefaultMode(runtimeConfig);
   res.json({
-    ...runtimeConfig,
+    // Public-safe config only. 
+    // Admin permissions/overrides should never be exposed here.
+    // even tho its nun harmful there's no reason to expose admin-related data publicly :/
+    privateMode: Boolean(runtimeConfig.privateMode),
+    showGuides: Boolean(runtimeConfig.showGuides),
+    allowedModes: runtimeConfig.allowedModes || { unique: true, unlimited: true },
+    brandName: runtimeConfig.brandName || 'Voux',
+    homeTitle: runtimeConfig.homeTitle || '',
+    unlimitedThrottleSeconds: Number(runtimeConfig.unlimitedThrottleSeconds) || 0,
+    theme: runtimeConfig.theme || 'default',
     version: getAppVersion(),
     adminPageSize: DEFAULT_PAGE_SIZE,
     usersPageSize: DEFAULT_USERS_PAGE_SIZE,
@@ -1289,13 +1316,13 @@ app.get('/embed/:id.js', (req, res) => {
   if (isPreview) {
     const counter = getCounter(req.params.id);
     if (!counter) {
-      return res.send(`console.warn('Counter "${req.params.id}" not found');`);
+      return res.send(`console.warn(${JSON.stringify(`Counter "${String(req.params.id || '')}" not found`)});`);
     }
     result = { counter, incremented: false };
   } else {
     result = recordHit(req.params.id, getClientIp(req));
     if (!result) {
-      return res.send(`console.warn('Counter "${req.params.id}" not found');`);
+      return res.send(`console.warn(${JSON.stringify(`Counter "${String(req.params.id || '')}" not found`)});`);
     }
   }
 
@@ -1634,12 +1661,8 @@ app.listen(PORT, () => {
   console.log(`Voux running at http://localhost:${PORT}`);
 });
 
-/* ========================================================================== */
-/* Helpers                                                                    */
-/* ========================================================================== */
-
 /* -------------------------------------------------------------------------- */
-/* Session + bootstrap                                                        */
+/* Security, session + bootstrap                                              */
 /* -------------------------------------------------------------------------- */
 function getBaseUrl(req) {
   if (process.env.PUBLIC_BASE_URL) {
@@ -1650,12 +1673,62 @@ function getBaseUrl(req) {
   return `${protocol}://${host}`;
 }
 
+function isUnsafeMethod(method) {
+  const normalized = String(method || '').toUpperCase();
+  return normalized === 'POST' || normalized === 'PUT' || normalized === 'PATCH' || normalized === 'DELETE';
+}
+
+function normalizeOrigin(value) {
+  if (!value) return '';
+  try {
+    const url = new URL(String(value));
+    return url.origin.toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function expectedOrigin(req) {
+  const configured = normalizeOrigin(process.env.PUBLIC_BASE_URL);
+  if (configured) return configured;
+  const host = String(req.get('host') || '').trim();
+  if (!host) return '';
+  const protocol = req.protocol || 'http';
+  return `${protocol}://${host}`.toLowerCase();
+}
+
+function isSameOriginRequest(req) {
+  const expected = expectedOrigin(req);
+  if (!expected) return false;
+  const origin = normalizeOrigin(req.get('origin'));
+  if (origin) {
+    return origin === expected;
+  }
+  const referer = normalizeOrigin(req.get('referer'));
+  if (referer) {
+    return referer === expected;
+  }
+  return false;
+}
+
 function shouldUseSecureCookie(req) {
   if (req.secure) return true;
   const forwarded = req.get('x-forwarded-proto');
   if (forwarded && forwarded.includes('https')) return true;
   const base = process.env.PUBLIC_BASE_URL;
   return typeof base === 'string' && base.startsWith('https://');
+}
+
+function resolveTrustProxySetting(rawValue) {
+  if (rawValue === undefined || rawValue === null || rawValue === '') {
+    // Safe default: only trust local reverse proxies (nginx/caddy on same host).
+    return 'loopback';
+  }
+  const value = String(rawValue).trim().toLowerCase();
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  if (/^\d+$/.test(value)) return Number(value);
+  return rawValue;
 }
 
 function setSessionCookie(res, token, req) {
@@ -1757,12 +1830,12 @@ function validateCounterValue(rawValue) {
 /* -------------------------------------------------------------------------- */
 
 function isDataImageUrl(value) {
-  return /^data:image\/(png|jpeg|jpg|webp|gif);base64,/.test(value || '');
+  return /^data:image\/(png|jpeg|jpg);base64,/.test(value || '');
 }
 
 function extractDataImage(value) {
   if (!isDataImageUrl(value)) return null;
-  const match = /^data:image\/(png|jpeg|jpg|webp|gif);base64,(.*)$/s.exec(value);
+  const match = /^data:image\/(png|jpeg|jpg);base64,(.*)$/s.exec(value);
   if (!match) return null;
   const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
   return { ext, data: match[2] || '' };
@@ -1771,9 +1844,13 @@ function extractDataImage(value) {
 function safeRemoveAvatarFile(avatarUrl) {
   if (!avatarUrl || typeof avatarUrl !== 'string') return;
   if (!avatarUrl.startsWith('/uploads/avatars/')) return;
-  const relativePath = avatarUrl.replace(/^\/uploads\//, '');
-  const dataPath = path.join(uploadsDir, relativePath);
-  const publicPath = path.join(staticDir, 'uploads', relativePath);
+  const relativePath = avatarUrl.replace(/^\/uploads\/avatars\//, '');
+  const safeRelative = sanitizeAvatarRelativePath(relativePath);
+  if (!safeRelative) return;
+  const dataPath = resolveSafeChildPath(avatarUploadsDir, safeRelative);
+  const publicAvatarUploadsDir = path.join(staticDir, 'uploads', 'avatars');
+  const publicPath = resolveSafeChildPath(publicAvatarUploadsDir, safeRelative);
+  if (!dataPath || !publicPath) return;
   try {
     fs.unlinkSync(dataPath);
   } catch {
@@ -1786,6 +1863,22 @@ function safeRemoveAvatarFile(avatarUrl) {
   }
 }
 
+function sanitizeAvatarRelativePath(value) {
+  const raw = String(value || '').trim().replace(/\\/g, '/');
+  if (!raw || raw.includes('\0')) return null;
+  const normalized = path.posix.normalize(`/${raw}`).replace(/^\/+/, '');
+  if (!normalized || normalized.startsWith('..')) return null;
+  return normalized;
+}
+
+function resolveSafeChildPath(baseDir, childRelativePath) {
+  const root = path.resolve(baseDir);
+  const target = path.resolve(root, childRelativePath);
+  if (target === root) return null;
+  if (!target.startsWith(`${root}${path.sep}`)) return null;
+  return target;
+}
+
 function resolveAvatarUrl(userId, avatarUrl, existingUrl) {
   if (avatarUrl === undefined) return { value: undefined };
   const trimmed = String(avatarUrl || '').trim();
@@ -1793,7 +1886,12 @@ function resolveAvatarUrl(userId, avatarUrl, existingUrl) {
     safeRemoveAvatarFile(existingUrl);
     return { value: null };
   }
+  // Only allow local uploaded avatars or supported raster uploads.
   if (!isDataImageUrl(trimmed)) {
+    const isLocalAvatar =
+      trimmed.startsWith('/uploads/avatars/') &&
+      /\.(png|jpe?g)$/i.test(trimmed);
+    if (!isLocalAvatar) return { error: 'invalid_avatar' };
     return { value: trimmed.slice(0, 2048) };
   }
   const extracted = extractDataImage(trimmed);
@@ -1862,7 +1960,8 @@ function injectVersion(html) {
 
 function injectTheme(html) {
   if (!html) return html;
-  const theme = String(getConfig()?.theme || 'default').trim().toLowerCase() || 'default';
+  const rawTheme = String(getConfig()?.theme || 'default').trim().toLowerCase();
+  const theme = rawTheme.replace(/[^a-z0-9_-]/g, '') || 'default';
   return html.replace(/<html\b([^>]*)>/i, (match, attrs) => {
     if (/data-theme=/.test(attrs)) return match;
     return `<html${attrs} data-theme="${theme}">`;

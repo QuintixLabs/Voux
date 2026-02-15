@@ -8,11 +8,12 @@
   const THEMES = [
     'default',
     'neutral',
+    'graphite',
     'ocean',
+    'blush',
     'forest',
     'ember',
-    'blush',
-    'crimson'
+    'crimson',
   ];
 
   function sanitize(theme) {

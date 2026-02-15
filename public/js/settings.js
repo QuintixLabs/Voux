@@ -951,6 +951,11 @@ async function handleUserDelete(user) {
   const confirmed = await modalConfirm({
     title: 'Delete user?',
     message: `Remove "${user.username}" from this instance? Their counters will become unowned.`,
+    messageParts: [
+      'Remove "',
+      { strong: user.username || 'user' },
+      '" from this instance? Their counters will become unowned.'
+    ],
     confirmLabel: 'Delete user',
     variant: 'danger'
   });
@@ -1031,7 +1036,7 @@ function handleAllowedModesChange(sourceInput) {
   };
   if (!allowed.unique && !allowed.unlimited) {
     if (sourceInput) sourceInput.checked = true;
-    showToast('Keep at least one mode enabled.', 'danger');
+    showToast('Keep at least one mode enabled!', 'danger');
     return;
   }
   handleToggleChange({ allowedModes: allowed }, 'Allowed modes updated', sourceInput);
@@ -1055,8 +1060,12 @@ function ensureToastSupport() {
   window.showToast = (message, variant = 'success') => {
     const toast = document.createElement('div');
     toast.className = `toast toast--${variant}`;
-    toast.innerHTML = `<i class="${variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}"></i>
-      <span>${message}</span>`;
+    const icon = document.createElement('i');
+    icon.className = variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line';
+    icon.setAttribute('aria-hidden', 'true');
+    const text = document.createElement('span');
+    text.textContent = String(message ?? '');
+    toast.append(icon, text);
     const timer = document.createElement('span');
     timer.className = 'toast__timer';
     toast.appendChild(timer);
@@ -1324,6 +1333,13 @@ async function handlePurgeInactive() {
   const confirmedFinal = await modalConfirm({
     title: 'Really remove inactive counters?',
     message: `This will permanently remove every counter that has no hits for ${daysLabel} on: ${siteUrl}. You'll confirm by typing DELETE next.`,
+    messageParts: [
+      'This will permanently remove every counter that has no hits for ',
+      { strong: daysLabel },
+      ' on: ',
+      { strong: siteUrl },
+      ". You'll confirm by typing DELETE next."
+    ],
     confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
     variant: 'danger'
@@ -1447,7 +1463,11 @@ function renderApiKeys() {
     deleteBtn.type = 'button';
     deleteBtn.className = 'danger ghost';
     deleteBtn.innerHTML = '<i class="ri-delete-bin-line"></i>';
-    deleteBtn.addEventListener('click', () => handleApiKeyDelete(key.id));
+    deleteBtn.addEventListener('click', () => handleApiKeyDelete({
+      id: key.id,
+      name: key.name || '',
+      createdAt: key.createdAt || ''
+    }));
     actions.appendChild(deleteBtn);
     row.append(meta, actions);
     apiKeysList.appendChild(row);
@@ -1508,11 +1528,22 @@ async function handleApiKeyCreate(event) {
   }
 }
 
-async function handleApiKeyDelete(id) {
+function formatKeyIdSuffix(id) {
+  const raw = String(id || '');
+  if (!raw) return 'unknown';
+  return raw.length <= 8 ? raw : `...${raw.slice(-8)}`;
+}
+
+async function handleApiKeyDelete(key = {}) {
+  const id = key.id;
   if (!id) return;
+  const name = String(key.name || '').trim() || '(unnamed key)';
+  const idSuffix = formatKeyIdSuffix(id);
+  const created = formatTimestamp(key.createdAt);
   const confirmed = await modalConfirm({
     title: 'Delete API key?',
-    message: 'This key will immediately stop working.',
+    message: `This key will immediately stop working.<hr><strong>Key name:</strong> ${escapeHtml(name)}<br><strong>Key reference:</strong> ${escapeHtml(idSuffix)}<br><strong>Created:</strong> ${escapeHtml(created)}`,
+    allowHtml: true,
     confirmLabel: 'Delete key',
     variant: 'danger'
   });

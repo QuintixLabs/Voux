@@ -16,6 +16,8 @@ const crypto = require('crypto');
 /* ========================================================================== */
 const DATA_DIR = path.resolve(__dirname, '..', 'data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
+const THEME_HELPER_PATH = path.resolve(__dirname, '..', 'public', 'js', 'theme.js');
+const ALLOWED_THEMES = loadAllowedThemesFromThemeHelper();
 
 const defaultConfig = {
   privateMode: String(process.env.PRIVATE_MODE || '').toLowerCase() === 'true',
@@ -173,7 +175,27 @@ function sanitizeThrottle(value) {
 
 function sanitizeTheme(value) {
   const key = String(value || '').trim().toLowerCase();
-  return key || 'default'; // allow any key; client will apply if defined
+  return ALLOWED_THEMES.has(key) ? key : 'default';
+}
+
+function loadAllowedThemesFromThemeHelper() {
+  const fallback = new Set(['default']);
+  try {
+    const source = fs.readFileSync(THEME_HELPER_PATH, 'utf8');
+    const match = source.match(/const\s+THEMES\s*=\s*\[([\s\S]*?)\];/);
+    if (!match) return fallback;
+    const entries = [];
+    const valueRegex = /['"]([a-z0-9_-]+)['"]/gi;
+    let next = valueRegex.exec(match[1]);
+    while (next) {
+      entries.push(next[1].toLowerCase());
+      next = valueRegex.exec(match[1]);
+    }
+    if (!entries.length) return fallback;
+    return new Set(entries);
+  } catch {
+    return fallback;
+  }
 }
 
 function sanitizeTagCatalog(list) {

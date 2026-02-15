@@ -229,8 +229,12 @@ function showToast(message, variant = 'success') {
   if (!toastContainer) return;
   const toast = document.createElement('div');
   toast.className = `toast toast--${variant}`;
-  toast.innerHTML = `<i class="${variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}"></i>
-    <span>${message}</span>`;
+  const icon = document.createElement('i');
+  icon.className = variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line';
+  icon.setAttribute('aria-hidden', 'true');
+  const text = document.createElement('span');
+  text.textContent = String(message ?? '');
+  toast.append(icon, text);
   const timer = document.createElement('span');
   timer.className = 'toast__timer';
   toast.appendChild(timer);
@@ -851,6 +855,13 @@ async function handleDeleteAll() {
   const confirmed = await showConfirm({
     title: 'Really delete everything?',
     message: `This will permanently remove ${targetLabel} and their data on: ${siteUrl}. You'll confirm by typing DELETE next.`,
+    messageParts: [
+      'This will permanently remove ',
+      { strong: targetLabel },
+      ' and their data on: ',
+      { strong: siteUrl },
+      ". You'll confirm by typing DELETE next."
+    ],
     confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
     variant: 'danger'
@@ -1345,6 +1356,11 @@ async function removeCounter(id) {
   const confirmed = await showConfirm({
     title: 'Delete counter?',
     message: `Counter "${id}" will be removed permanently.`,
+    messageParts: [
+      'Counter "',
+      { strong: id },
+      '" will be removed permanently.'
+    ],
     confirmLabel: 'Delete counter',
     variant: 'danger'
   });
@@ -1549,6 +1565,13 @@ async function handleDeleteFiltered() {
   const confirmed = await showConfirm({
     title: 'Delete filtered counters?',
     message: `This will permanently remove ${scopeLabel} on: ${siteUrl}. You'll confirm by typing DELETE next.`,
+    messageParts: [
+      'This will permanently remove ',
+      { strong: scopeLabel },
+      ' on: ',
+      { strong: siteUrl },
+      ". You'll confirm by typing DELETE next."
+    ],
     confirmLabel: 'Continue',
     cancelLabel: 'Cancel',
     variant: 'danger'
@@ -2440,6 +2463,11 @@ async function confirmTagDeletion(tag) {
   const confirmed = await showConfirm({
     title: 'Delete tag?',
     message: `"${name}" will be removed from all filters and counters.`,
+    messageParts: [
+      '"',
+      { strong: name },
+      '" will be removed from all filters and counters.'
+    ],
     confirmLabel: 'Delete tag',
     variant: 'danger'
   });

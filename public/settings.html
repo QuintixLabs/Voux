@@ -232,19 +232,19 @@
       </div>
       <form id="apiKeyForm" class="api-key-form" action="javascript:void(0);">
         <div class="field">
-          <label for="apiKeyName">Key name</label>
-          <input type="text" id="apiKeyName" maxlength="80" placeholder="My API key" required />
+          <div class="field__label" id="apiKeyNameLabel">Key name</div>
+          <input type="text" id="apiKeyName" aria-labelledby="apiKeyNameLabel" maxlength="80" placeholder="My API key" required />
         </div>
         <div class="field">
-          <label for="apiKeyScope">Scope</label>
-          <select id="apiKeyScope">
+          <div class="field__label" id="apiKeyScopeLabel">Scope</div>
+          <select id="apiKeyScope" aria-labelledby="apiKeyScopeLabel">
             <option value="global">Full access (all counters)</option>
             <option value="limited">Specific counters only</option>
           </select>
         </div>
         <div class="field hidden" id="apiKeyCountersField">
-          <label for="apiKeyCounters">Allowed counter IDs</label>
-          <textarea id="apiKeyCounters" rows="3" placeholder="txtctg7s
+          <div class="field__label" id="apiKeyCountersLabel">Allowed counter IDs</div>
+          <textarea id="apiKeyCounters" aria-labelledby="apiKeyCountersLabel" rows="3" placeholder="txtctg7s
 9f2kx7q"></textarea>
           <small class="hint">Use the counter ID only (not the embed script). One ID per line.</small>
         </div>
@@ -335,7 +335,7 @@
       <p class="modal__message" id="userEditMessage"></p>
       <div class="modal__input-wrap">
         <div class="modal__input-label">Username</div>
-        <input class="modal__input" type="text" id="userEditUsername" maxlength="40" />
+        <input class="modal__input" type="text" id="userEditUsername" maxlength="40" placeholder="Username"/>
       </div>
       <div class="modal__input-wrap">
         <div class="modal__input-label">Display name</div>
@@ -344,7 +344,7 @@
       <div class="modal__input-wrap">
         <div class="modal__input-label">New password</div>
         <div class="password-field password-field--no-icon">
-          <input class="modal__input" type="password" id="userEditPassword" minlength="6" placeholder="Leave blank to keep current" />
+          <input class="modal__input" type="password" id="userEditPassword" minlength="6" placeholder="New password" />
           <button type="button" class="password-toggle" aria-label="Show password">
             <i class="ri-eye-off-line" aria-hidden="true"></i>
           </button>
