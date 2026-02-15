@@ -1693,7 +1693,19 @@ function expectedOrigin(req) {
   if (configured) return configured;
   const host = String(req.get('host') || '').trim();
   if (!host) return '';
-  const protocol = req.protocol || 'http';
+  // Prefer HTTPS when a trusted upstream indicates it.
+  // We intentionally mirror shouldUseSecureCookie() here so same-origin checks
+  // don't break behind TLS-terminating proxies/tunnels even if trust proxy is
+  // not configured.
+  let protocol = req.protocol || 'http';
+  if (req.secure) {
+    protocol = 'https';
+  } else {
+    const forwarded = req.get('x-forwarded-proto');
+    if (forwarded && String(forwarded).toLowerCase().includes('https')) {
+      protocol = 'https';
+    }
+  }
   return `${protocol}://${host}`.toLowerCase();
 }
 
