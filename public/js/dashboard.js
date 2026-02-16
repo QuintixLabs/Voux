@@ -476,6 +476,11 @@ function init() {
   clearSelectionBtn?.addEventListener('click', () => clearSelection());
   document.addEventListener('click', handleDocumentClick);
   document.addEventListener('keydown', handleGlobalKeydown);
+  window.addEventListener('resize', () => {
+    if (tagFilterMenuOpen) {
+      positionTagFilterMenu();
+    }
+  });
   tagFilterButton?.addEventListener('click', handleTagFilterToggle);
   const tagFilterLabel = tagFilterControls?.querySelector('span');
   tagFilterLabel?.addEventListener('click', handleTagFilterLabelClick);
@@ -767,26 +772,7 @@ async function refreshCounters(page = 1, options = {}) {
   try {
     const data = await fetchCounters(page);
     const counters = data.counters || [];
-    let patched = false;
-    if (silent && canPatchCounters(state.latestCounters, counters)) {
-      patched = patchCounterRows(counters);
-    }
-    if (!patched) {
-      renderCounterList(counters);
-    }
-    state.latestCounters = counters;
-    updateCounterCache(counters);
-    state.page = data.pagination?.page || 1;
-    state.totalPages = data.pagination?.totalPages || 1;
-    state.total = data.pagination?.total || (data.counters?.length ?? 0);
-    state.totalOverall = data.totals?.overall ?? state.totalOverall ?? state.total;
-    updatePagination();
-    updateCounterTotal();
-    updateTagCounterHints();
-    updateDeleteFilteredState();
-    adminControls?.classList.remove('hidden');
-    adminControls?.classList.remove('is-loading');
-    document.body.classList.remove('dashboard-footer-hidden');
+    applyCounterResponse(data, counters, { silent });
     if (!silent) {
       scheduleAutoRefresh();
     }
@@ -799,6 +785,161 @@ async function refreshCounters(page = 1, options = {}) {
     }
     throw error;
   }
+}
+
+function applyCounterResponse(data, counters, options = {}) {
+  const { silent = false } = options;
+  const selectionSnapshot = silent ? snapshotDashboardTextSelection() : null;
+  let patched = false;
+  if (silent && canPatchCounters(state.latestCounters, counters)) {
+    patched = patchCounterRows(counters);
+  }
+  if (!patched) {
+    renderCounterList(counters);
+  }
+  state.latestCounters = counters;
+  updateCounterCache(counters);
+  state.page = data.pagination?.page || 1;
+  state.totalPages = data.pagination?.totalPages || 1;
+  state.total = data.pagination?.total || (data.counters?.length ?? 0);
+  state.totalOverall = data.totals?.overall ?? state.totalOverall ?? state.total;
+  updatePagination();
+  updateCounterTotal();
+  updateTagCounterHints();
+  updateDeleteFilteredState();
+  adminControls?.classList.remove('hidden');
+  adminControls?.classList.remove('is-loading');
+  document.body.classList.remove('dashboard-footer-hidden');
+  if (selectionSnapshot) {
+    restoreDashboardTextSelection(selectionSnapshot);
+  }
+}
+
+function snapshotDashboardTextSelection() {
+  const selection = window.getSelection?.();
+  if (!isSelectionInsideCounterList(selection)) {
+    return null;
+  }
+  const anchor = snapshotSelectionPosition(selection.anchorNode, selection.anchorOffset);
+  const focus = snapshotSelectionPosition(selection.focusNode, selection.focusOffset);
+  if (!anchor || !focus) {
+    return null;
+  }
+  return {
+    anchor,
+    focus,
+    backward: isSelectionBackward(selection)
+  };
+}
+
+function restoreDashboardTextSelection(snapshot) {
+  if (!snapshot) return;
+  const selection = window.getSelection?.();
+  if (!selection) return;
+  try {
+    const restored = restoreSelectionSnapshot(snapshot);
+    if (!restored) return;
+    applySelectionRange(selection, restored, snapshot.backward);
+  } catch {
+    // If DOM changed too much to restore, skip silently.
+  }
+}
+
+function snapshotSelectionPosition(node, offset) {
+  if (!node || !counterListEl || !counterListEl.contains(node)) {
+    return null;
+  }
+  const path = getNodePathFromCounterList(node);
+  if (!path) return null;
+  return { path, offset };
+}
+
+function restoreSelectionPosition(snapshot) {
+  if (!snapshot || !counterListEl) {
+    return null;
+  }
+  let node = resolveNodeFromPath(snapshot.path);
+  if (!node) return null;
+  const maxOffset = node.nodeType === Node.TEXT_NODE
+    ? (node.textContent ? node.textContent.length : 0)
+    : node.childNodes.length;
+  const clampedOffset = Math.max(0, Math.min(snapshot.offset, maxOffset));
+  return { node, offset: clampedOffset };
+}
+
+function isSelectionBackward(selection) {
+  if (!selection?.anchorNode || !selection.focusNode) {
+    return false;
+  }
+  if (selection.anchorNode === selection.focusNode) {
+    return selection.anchorOffset > selection.focusOffset;
+  }
+  const position = selection.anchorNode.compareDocumentPosition(selection.focusNode);
+  return Boolean(position & Node.DOCUMENT_POSITION_PRECEDING);
+}
+
+function isSelectionInsideCounterList(selection) {
+  if (!selection || selection.isCollapsed || selection.rangeCount === 0 || !counterListEl) {
+    return false;
+  }
+  const range = selection.getRangeAt(0);
+  const container = range.commonAncestorContainer;
+  const containerEl = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+  return Boolean(containerEl && counterListEl.contains(containerEl));
+}
+
+function restoreSelectionSnapshot(snapshot) {
+  const anchor = restoreSelectionPosition(snapshot.anchor);
+  const focus = restoreSelectionPosition(snapshot.focus);
+  if (!anchor || !focus) {
+    return null;
+  }
+  return { anchor, focus };
+}
+
+function applySelectionRange(selection, restored, backward) {
+  const { anchor, focus } = restored;
+  selection.removeAllRanges();
+  if (typeof selection.setBaseAndExtent === 'function') {
+    if (backward) {
+      selection.setBaseAndExtent(focus.node, focus.offset, anchor.node, anchor.offset);
+    } else {
+      selection.setBaseAndExtent(anchor.node, anchor.offset, focus.node, focus.offset);
+    }
+    return;
+  }
+  const range = document.createRange();
+  range.setStart(anchor.node, anchor.offset);
+  range.setEnd(focus.node, focus.offset);
+  selection.addRange(range);
+}
+
+function getNodePathFromCounterList(node) {
+  const path = [];
+  let current = node;
+  while (current && current !== counterListEl) {
+    const parent = current.parentNode;
+    if (!parent) return null;
+    const index = Array.prototype.indexOf.call(parent.childNodes, current);
+    if (index < 0) return null;
+    path.push(index);
+    current = parent;
+  }
+  if (current !== counterListEl) return null;
+  return path.reverse();
+}
+
+function resolveNodeFromPath(path) {
+  if (!Array.isArray(path) || !counterListEl) return null;
+  let node = counterListEl;
+  for (let i = 0; i < path.length; i += 1) {
+    const idx = path[i];
+    if (!node?.childNodes || idx < 0 || idx >= node.childNodes.length) {
+      return null;
+    }
+    node = node.childNodes[idx];
+  }
+  return node;
 }
 
 async function fetchCounters(page) {
@@ -1067,10 +1208,10 @@ function renderCounterList(counters = state.latestCounters) {
     copyMenu.className = 'counter-copy__menu';
     const copyScript = document.createElement('button');
     copyScript.type = 'button';
-    copyScript.innerHTML = '<i class="ri-code-line" aria-hidden="true"></i> · Copy script';
+    copyScript.innerHTML = '<i class="ri-code-s-slash-line" aria-hidden="true"></i><span>Copy script</span>';
     const copySvg = document.createElement('button');
     copySvg.type = 'button';
-    copySvg.innerHTML = '<i class="ri-image-line" aria-hidden="true"></i> · Copy SVG';
+    copySvg.innerHTML = '<i class="ri-image-line" aria-hidden="true"></i><span>Copy SVG</span>';
     copyMenu.append(copyScript, copySvg);
     copyBtn.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -2255,11 +2396,13 @@ function renderTagFilterList() {
       setTagFilter(next);
     });
     const chip = document.createElement('span');
-    chip.className = 'tag-chip';
+    chip.className = 'tag-chip tag-filter__chip';
     applyTagStyles(chip, tag.color, { textContrast: false });
     const chipLabel = document.createElement('span');
-    chipLabel.className = 'tag-chip__label';
-    chipLabel.textContent = tag.name || tag.id;
+    chipLabel.className = 'tag-chip__label tag-filter__label';
+    const tagText = tag.name || tag.id;
+    chipLabel.textContent = tagText;
+    chipLabel.title = tagText;
     chip.appendChild(chipLabel);
     const editBtn = document.createElement('button');
     editBtn.type = 'button';
@@ -2313,10 +2456,20 @@ function toggleTagFilterMenu(force) {
   const next = typeof force === 'boolean' ? force : !tagFilterMenuOpen;
   tagFilterMenuOpen = next;
   tagFilterMenu.classList.toggle('hidden', !next);
+  if (next) {
+    positionTagFilterMenu();
+  }
 }
 
 function closeTagFilterMenu() {
   toggleTagFilterMenu(false);
+}
+
+function positionTagFilterMenu() {
+  if (!tagFilterMenu || tagFilterMenu.classList.contains('hidden')) return;
+  tagFilterMenu.style.left = '0';
+  tagFilterMenu.style.right = 'auto';
+  tagFilterMenu.style.transform = 'none';
 }
 
 function handleTagFilterLabelClick(event) {

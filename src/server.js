@@ -28,7 +28,6 @@ const {
   deleteInactiveCountersOlderThan,
   countCounters,
   getLastHitTimestamp,
-  countHitsSince,
   getCounterDailyTrend,
   exportDailyActivity,
   exportDailyActivityFor,
@@ -2067,8 +2066,8 @@ function serializeCounterWithStats(counter, dayStart, options = {}) {
   const base = serializeCounter(counter, options);
   if (!base) return base;
   const lastHit = toSafeNumber(getLastHitTimestamp(counter.id));
-  const hitsToday = dayStart ? toSafeNumber(countHitsSince(counter.id, dayStart)) : 0;
   const activityTrend = formatActivityTrend(getCounterDailyTrend(counter.id, ACTIVITY_WINDOW_DAYS));
+  const hitsToday = toSafeNumber(activityTrend.todayHits ?? 0);
   const inactivity = buildInactiveStatus(counter, lastHit);
   return {
     ...base,
@@ -2231,10 +2230,12 @@ function formatActivityTrend(trend = []) {
   const total30d = chronological.reduce((sum, item) => sum + (item.hits || 0), 0);
   const recentWeek = chronological.slice(-7);
   const weekOrdered = orderWeekByLabel(recentWeek);
+  const todayHits = chronological.length ? (chronological[chronological.length - 1].hits || 0) : 0;
   const total7d = recentWeek.reduce((sum, item) => sum + (item.hits || 0), 0);
   const maxHits = weekOrdered.reduce((peak, item) => Math.max(peak, item.hits || 0), 0);
   return {
     trend: weekOrdered,
+    todayHits,
     total7d,
     total30d,
     maxHits

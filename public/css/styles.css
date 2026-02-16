@@ -1150,35 +1150,25 @@ body.modal-open {
 
 .tag-filter__menu {
   position: absolute;
-  top: 110%;
+  top: calc(100% + 0.4rem);
   left: 0;
   z-index: 5;
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
   border-radius: 12px;
   padding: 0.75rem;
-  min-width: 220px;
-  max-width: 260px;
+  width: min(220px, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-@media (max-width: 460px) {
-  .tag-filter__footer {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .tag-filter__footer button {
-    width: auto;
-    min-width: 110px;
-  }
-
+@media (max-width: 600px) {
   .tag-filter__menu {
-
-    min-width: 156px;
-    max-width: 260px;
+    width: min(156px, calc(100vw - 1rem));
+    max-width: calc(100vw - 1rem);
   }
 }
 
@@ -1190,6 +1180,7 @@ body.modal-open {
 .tag-filter__list {
   max-height: 200px;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
@@ -1228,13 +1219,13 @@ body.modal-open {
 .toggle-filter input:checked::after {
   content: '';
   position: absolute;
-  top: -0.05rem;
-  left: 0.20em;
-  width: 0.2rem;
+  top: 50%;
+  left: 50%;
+  width: 0.28rem;
   height: 0.55rem;
   border-right: 2px solid var(--bg-primary);
   border-bottom: 2px solid var(--bg-primary);
-  transform: rotate(45deg);
+  transform: translate(-50%, -58%) rotate(45deg);
 }
 
 
@@ -1244,7 +1235,29 @@ body.modal-open {
   gap: 0.4rem;
   font-size: 0.85rem;
   color: var(--text-primary);
-  word-break: break-word;
+  min-width: 0;
+}
+
+.tag-filter__chip {
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.tag-filter__label {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+  flex: 1 1 auto;
+}
+
+.tag-filter__chip .tag-chip__edit,
+.tag-filter__chip .tag-chip__remove {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .tag-chip__edit {
@@ -1265,10 +1278,21 @@ body.modal-open {
 }
 
 .tag-filter__footer {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
   margin-top: 0.35rem;
+}
+
+.tag-filter__footer .filter-button2 {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 620px) {
+  .tag-filter__footer {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tag-count-hint {
@@ -1295,7 +1319,7 @@ body.modal-open {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  /* align-items: flex-start; */ /* enable this if u dont want the extra spacing for the tags */
+  align-items: flex-start;
 }
 
 .tag-picker__actions {
@@ -1341,7 +1365,7 @@ body.modal-open {
 .tag-pill {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   border: 1px solid var(--tag-color, var(--border-primary));
   border-radius: 15px;
   padding: 0.2rem 0.4rem;
@@ -1351,12 +1375,16 @@ body.modal-open {
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   gap: 0.25rem;
-  max-width: 100%;
+  max-width: min(100%, 18rem);
+  min-width: 0;
 }
 
 .tag-pill .tag-chip__label {
-  white-space: normal;
-  overflow-wrap: anywhere;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   line-height: 1.2;
 }
 
@@ -1369,6 +1397,7 @@ body.modal-open {
 .counter-tags {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   gap: 0.35rem;
   margin-top: 0.35rem;
 }
@@ -1429,6 +1458,29 @@ body.modal-open {
 .tag-chip__edit {
   align-self: flex-start;
   flex: 0 0 auto;
+}
+
+/* Tag filter dropdown: keep actions fixed and truncate long names. */
+.tag-filter__item .tag-chip {
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.tag-filter__item .tag-chip .tag-chip__label {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+  flex: 1 1 auto;
+}
+
+.tag-filter__item .tag-chip .tag-chip__edit,
+.tag-filter__item .tag-chip .tag-chip__remove {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .tag-dialog {
@@ -1831,7 +1883,6 @@ body.modal-open {
   transition: opacity 0.2s ease, transform 0.2s ease;
   word-break: break-word;
   pointer-events: auto;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
   backdrop-filter: blur(2px) saturate(115%);
 }
 
@@ -2059,13 +2110,13 @@ body.modal-open {
     .counter-select input:checked::after {
       content: "";
       position: absolute;
-      top: 0rem;
-      left: 0.25rem;
+      top: 50%;
+      left: 50%;
       width: 0.3rem;
       height: 0.55rem;
       border-right: 2px solid var(--bg-primary);
       border-bottom: 2px solid var(--bg-primary);
-      transform: rotate(45deg);
+      transform: translate(-50%, -58%) rotate(45deg);
     }
 
     .counter-meta {
@@ -3526,13 +3577,13 @@ body.modal-open {
 .toggle input:checked::after {
   content: '';
   position: absolute;
-  top: 0.05rem;
-  left: 0.25rem;
+  top: 50%;
+  left: 50%;
   width: 0.3rem;
   height: 0.55rem;
   border-right: 2px solid var(--bg-primary);
   border-bottom: 2px solid var(--bg-primary);
-  transform: rotate(45deg);
+  transform: translate(-50%, -58%) rotate(45deg);
 }
 
 .toggle strong {
@@ -4088,18 +4139,31 @@ body.modal-open {
 
 .counter-copy__menu {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 10px);
   left: 50%;
   right: auto;
   transform: translateX(-50%);
   display: none;
   flex-direction: column;
-  min-width: 140px;
+  min-width: 154px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-primary);
-  border-radius: 10px;
-  padding: 0.35rem;
+  border-radius: 12px;
+  padding: 0.4rem;
   z-index: 5;
+}
+
+.counter-copy__menu::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border-primary);
+  border-left: 1px solid var(--border-primary);
+  transform: translateX(-50%) rotate(45deg);
 }
 
 .counter-copy__menu.is-open {
@@ -4111,14 +4175,25 @@ body.modal-open {
   background: transparent;
   color: var(--text-primary);
   text-align: left;
-  padding: 0.4rem 0.5rem;
+  padding: 0.35rem 0.45rem;
   border-radius: 8px;
   font-size: 0.82rem;
+  font-weight: 500;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .counter-copy__menu button:hover {
   background: var(--bg-secondary);
+}
+
+.counter-copy__menu button i {
+  width: 1rem;
+  display: inline-flex;
+  justify-content: center;
+  color: var(--text-secondary);
 }
 
 
