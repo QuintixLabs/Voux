@@ -4230,7 +4230,6 @@ body.modal-open {
   gap: 0.75rem;
 }
 
-/* old unused code for snippets
 #adminEmbedSnippet {
   width: 100%;
   min-height: 70px;
@@ -4272,7 +4271,6 @@ body.modal-open {
   padding: 0.75rem 2.5rem 0.75rem 0.75rem;
   font-family: 'SF Mono', 'Cascadia Code', monospace;
 }
-*/
 
 .embed-snippet {
   position: relative;
