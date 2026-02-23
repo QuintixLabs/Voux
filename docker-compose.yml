@@ -7,5 +7,6 @@ services:
     environment:
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=change-this-password
+      # - PUBLIC_BASE_URL=https://your-domain.com
     volumes:
       - ./data:/app/data
