@@ -4,7 +4,7 @@
   "description": "A self hosted view counter for blogs and websites with a built in dashboard.",
   "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
+    "dev": "nodemon --ignore data/backups --ignore data/backups/** src/server.js",
     "start": "node src/server.js",
     "clear-hits": "node scripts/clearHits.js"
   },
