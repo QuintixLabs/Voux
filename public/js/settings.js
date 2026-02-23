@@ -26,6 +26,7 @@ const autoBackupTimeInput = document.getElementById('autoBackupTime');
 const autoBackupWeekdayField = document.getElementById('autoBackupWeekdayField');
 const autoBackupWeekdayInput = document.getElementById('autoBackupWeekday');
 const autoBackupRetentionInput = document.getElementById('autoBackupRetention');
+const autoBackupIncludeJsonInput = document.getElementById('autoBackupIncludeJson');
 const saveAutoBackupBtn = document.getElementById('saveAutoBackup');
 const runAutoBackupNowBtn = document.getElementById('runAutoBackupNow');
 const apiKeysCard = document.getElementById('apiKeysCard');
@@ -576,6 +577,7 @@ function setupBackupControls(canManageAutoBackups = false) {
   autoBackupRetentionInput?.addEventListener('input', syncAutoBackupUiState);
   autoBackupTimeInput?.addEventListener('input', syncAutoBackupUiState);
   autoBackupWeekdayInput?.addEventListener('change', syncAutoBackupUiState);
+  autoBackupIncludeJsonInput?.addEventListener('change', syncAutoBackupUiState);
   saveAutoBackupBtn?.addEventListener('click', () => handleSaveAutoBackup());
   runAutoBackupNowBtn?.addEventListener('click', () => handleRunAutoBackupNow());
   toggleAutoBackupBody(false);
@@ -1358,13 +1360,14 @@ function syncAutoBackupUiState() {
       autoBackupSummary.textContent = 'Off';
       return;
     }
+    const jsonSuffix = autoBackupIncludeJsonInput?.checked ? ' · JSON' : '';
     if (frequency === 'weekly') {
       const weekday = Number(autoBackupWeekdayInput?.value || 0);
       const dayLabel = AUTO_BACKUP_WEEKDAYS[Math.max(0, Math.min(6, Math.floor(weekday)))] || 'Sunday';
-      autoBackupSummary.textContent = `Weekly · ${dayLabel} · ${time} · Keep ${keep}`;
+      autoBackupSummary.textContent = `Weekly · ${dayLabel} · ${time} · Keep ${keep}${jsonSuffix}`;
       return;
     }
-    autoBackupSummary.textContent = `Daily · ${time} · Keep ${keep}`;
+    autoBackupSummary.textContent = `Daily · ${time} · Keep ${keep}${jsonSuffix}`;
   }
 }
 
@@ -1431,6 +1434,9 @@ function applyAutoBackupForm(autoBackup = {}) {
     const safeRetention = Number.isFinite(retention) ? Math.max(1, Math.min(30, Math.round(retention))) : 7;
     autoBackupRetentionInput.value = String(safeRetention);
   }
+  if (autoBackupIncludeJsonInput) {
+    autoBackupIncludeJsonInput.checked = autoBackup.includeJson === true;
+  }
   syncAutoBackupUiState();
 }
 
@@ -1452,7 +1458,8 @@ function collectAutoBackupPayload() {
     frequency,
     time: /^\d{2}:\d{2}$/.test(time) ? time : '03:00',
     weekday: Number.isFinite(weekday) ? Math.max(0, Math.min(6, Math.floor(weekday))) : 0,
-    retention: Number.isFinite(retention) ? Math.max(1, Math.min(30, Math.round(retention))) : 7
+    retention: Number.isFinite(retention) ? Math.max(1, Math.min(30, Math.round(retention))) : 7,
+    includeJson: autoBackupIncludeJsonInput?.checked === true
   };
 }
 
@@ -1503,8 +1510,9 @@ async function handleRunAutoBackupNow() {
     }
     const data = await res.json().catch(() => ({}));
     const fileName = data?.backup?.fileName || 'database backup';
+    const jsonName = data?.jsonBackup?.fileName || '';
     setBackupStatus('');
-    showToast(`DB backup created: ${fileName}`);
+    showToast(jsonName ? `DB + JSON backups created: ${fileName}` : `DB backup created: ${fileName}`);
   } catch (error) {
     setBackupStatus('');
     await showAlert(normalizeAuthMessage(error, 'Failed to run DB backup'));

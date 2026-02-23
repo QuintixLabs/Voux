@@ -38,7 +38,8 @@ const defaultConfig = {
     frequency: process.env.AUTO_BACKUP_FREQUENCY || 'off',
     time: process.env.AUTO_BACKUP_TIME || '03:00',
     weekday: process.env.AUTO_BACKUP_WEEKDAY,
-    retention: process.env.AUTO_BACKUP_RETENTION
+    retention: process.env.AUTO_BACKUP_RETENTION,
+    includeJson: process.env.AUTO_BACKUP_INCLUDE_JSON
   }),
   tagCatalog: [],
   adminPermissions: {
@@ -203,7 +204,8 @@ function sanitizeAutoBackup(input) {
     frequency,
     time,
     weekday,
-    retention
+    retention,
+    includeJson: toBoolean(raw.includeJson, false)
   };
 }
 
@@ -219,6 +221,16 @@ function sanitizeBackupTime(value) {
   const hour = Math.max(0, Math.min(23, Math.floor(h)));
   const minute = Math.max(0, Math.min(59, Math.floor(m)));
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function toBoolean(value, fallback = false) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'on') return true;
+    if (normalized === 'false' || normalized === '0' || normalized === 'no' || normalized === 'off') return false;
+  }
+  return fallback;
 }
 
 function loadAllowedThemesFromThemeHelper() {

@@ -202,16 +202,21 @@ app.use((req, res, next) => {
 });
 
 /* static files + html */
+// Web-served static root (example absolute path: /mnt/c/Users/lain/Downloads/Voux/public).
 const staticDir = path.join(__dirname, '..', 'public');
 const dataDir = path.join(__dirname, '..', 'data');
-const backupDir = path.resolve(process.env.BACKUP_DIR || path.join(dataDir, 'backups'));
+// User-uploaded files root (example absolute path: /mnt/c/Users/lain/Downloads/Voux/data/uploads).
 const uploadsDir = path.join(dataDir, 'uploads');
+const defaultBackupDir = path.resolve(path.join(dataDir, 'backups'));
+const backupDir = resolveBackupDir(process.env.BACKUP_DIR);
 const avatarUploadsDir = path.join(uploadsDir, 'avatars');
 const notFoundPage = path.join(staticDir, '404.html');
 const AUTO_BACKUP_TICK_MS = 60 * 1000;
 let autoBackupTimer = null;
 let autoBackupRunKey = '';
 let autoBackupBusy = false;
+
+ensureBackupDirIsSafe();
 
 /* html cache + env */
 const htmlCache = new Map();
@@ -765,8 +770,8 @@ app.post('/api/backups/run', requireAdmin, async (req, res) => {
   }
   try {
     autoBackupBusy = true;
-    const backup = await createAndStoreDbBackup('manual');
-    res.status(201).json({ ok: true, backup });
+    const created = await createAndStoreBackups('manual');
+    res.status(201).json({ ok: true, backup: created.dbBackup, jsonBackup: created.jsonBackup || null });
   } catch (error) {
     console.error('Manual backup failed', error);
     res.status(500).json({ error: 'backup_failed' });
@@ -948,14 +953,16 @@ app.get('/api/settings', requireAdmin, (req, res) => {
   const auth = authenticateRequest(req);
   const ownerId = getOwnerId();
   const isOwner = Boolean(ownerId && auth?.user?.id === ownerId);
+  const runtimeConfig = getConfig();
+  const visibleConfig = isOwner ? runtimeConfig : { ...runtimeConfig, autoBackup: undefined };
   const adminPermissions = auth?.type === 'admin'
     ? {
         effective: getEffectiveAdminPermissions(auth.user?.id),
-        defaults: isOwner ? (getConfig().adminPermissions || {}) : null
+        defaults: isOwner ? (runtimeConfig.adminPermissions || {}) : null
       }
     : null;
   const payload = {
-    config: getConfig(),
+    config: visibleConfig,
     version: getVersion(),
     usersPageSize: DEFAULT_USERS_PAGE_SIZE,
     inactiveDaysThreshold: INACTIVE_THRESHOLD_DAYS,
@@ -1018,7 +1025,9 @@ app.post('/api/settings', requireAdmin, (req, res) => {
     htmlCache.clear();
   }
   setUnlimitedThrottle((updated.unlimitedThrottleSeconds || 0) * 1000);
-  res.json({ config: updated, version: getVersion() });
+  const isOwner = Boolean(ownerId && auth?.user?.id === ownerId);
+  const visibleConfig = isOwner ? updated : { ...updated, autoBackup: undefined };
+  res.json({ config: visibleConfig, version: getVersion() });
 });
 
 /*
@@ -1709,20 +1718,23 @@ app.listen(PORT, () => {
   console.log(`Voux running at http://localhost:${PORT}`);
 });
 
-async function createAndStoreDbBackup(source = 'auto') {
+async function createAndStoreBackups(source = 'auto') {
   ensureBackupDir();
   const timestamp = buildBackupTimestamp(new Date());
-  const fileName = `voux-db-${timestamp}.db`;
-  const outputPath = path.join(backupDir, fileName);
-  await createDatabaseBackup(outputPath);
-  const stat = fs.statSync(outputPath);
-  const retention = sanitizeBackupRetention(getConfig().autoBackup?.retention);
-  pruneOldBackups(retention);
+  const schedule = getConfig().autoBackup || {};
+  const dbBackup = await createDbBackupFile(timestamp, source);
+  let jsonBackup = null;
+  if (schedule.includeJson === true) {
+    jsonBackup = createJsonBackupFile(timestamp, source);
+  }
+  const retention = sanitizeBackupRetention(schedule.retention);
+  pruneOldBackups(retention, 'db');
+  if (jsonBackup) {
+    pruneOldBackups(retention, 'json');
+  }
   return {
-    fileName,
-    size: stat.size,
-    createdAt: stat.mtimeMs,
-    source
+    dbBackup,
+    jsonBackup
   };
 }
 
@@ -1769,19 +1781,100 @@ async function maybeRunScheduledBackup(now = new Date()) {
   if (runKey === autoBackupRunKey) {
     return;
   }
+  if (hasBackupForScheduledMinute(now)) {
+    autoBackupRunKey = runKey;
+    return;
+  }
   autoBackupBusy = true;
   try {
-    await createAndStoreDbBackup('auto');
+    await createAndStoreBackups('auto');
     autoBackupRunKey = runKey;
   } finally {
     autoBackupBusy = false;
   }
 }
 
+async function createDbBackupFile(timestamp, source = 'auto') {
+  const fileName = `voux-db-${timestamp}.db`;
+  const outputPath = path.join(backupDir, fileName);
+  await createDatabaseBackup(outputPath);
+  const stat = fs.statSync(outputPath);
+  return {
+    fileName,
+    size: stat.size,
+    createdAt: stat.mtimeMs,
+    source
+  };
+}
+
+function createJsonBackupFile(timestamp, source = 'auto') {
+  const fileName = `voux-export-${timestamp}.json`;
+  const outputPath = path.join(backupDir, fileName);
+  const tempPath = `${outputPath}.tmp-${process.pid}-${Date.now()}`;
+  const counters = exportCounters()
+    .map(normalizeCounterForExport)
+    .filter(Boolean);
+  const daily = exportDailyActivity();
+  const payload = {
+    counters,
+    daily,
+    exportedAt: Date.now()
+  };
+  try {
+    fs.writeFileSync(tempPath, JSON.stringify(payload, null, 2), 'utf8');
+    fs.renameSync(tempPath, outputPath);
+  } finally {
+    if (fs.existsSync(tempPath)) {
+      try {
+        fs.unlinkSync(tempPath);
+      } catch {
+        // ignore temp cleanup failures
+      }
+    }
+  }
+  const stat = fs.statSync(outputPath);
+  return {
+    fileName,
+    size: stat.size,
+    createdAt: stat.mtimeMs,
+    source
+  };
+}
+
 function ensureBackupDir() {
   if (!fs.existsSync(backupDir)) {
     fs.mkdirSync(backupDir, { recursive: true });
   }
+}
+
+function ensureBackupDirIsSafe() {
+  // Block web-served locations:
+  // - staticDir  -> /home/$USER/Voux/public
+  // - uploadsDir -> /home/$USER/Voux/data/uploads
+  const blockedRoots = [staticDir, uploadsDir];
+  if (blockedRoots.some((root) => isSameOrInsidePath(backupDir, root))) {
+    throw new Error(`Unsafe backup directory path: ${backupDir}`);
+  }
+}
+
+function resolveBackupDir(rawPath) {
+  const requested = path.resolve(rawPath || defaultBackupDir);
+  // Same blocked roots as above (public files + user uploads).
+  const blockedRoots = [staticDir, uploadsDir];
+  if (blockedRoots.some((root) => isSameOrInsidePath(requested, root))) {
+    console.warn(
+      `BACKUP_DIR "${requested}" is unsafe (inside a web-served directory). Falling back to ${defaultBackupDir}.`
+    );
+    return defaultBackupDir;
+  }
+  return requested;
+}
+
+function isSameOrInsidePath(targetPath, basePath) {
+  const target = path.resolve(targetPath);
+  const base = path.resolve(basePath);
+  const relative = path.relative(base, target);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
 function buildBackupTimestamp(date) {
@@ -1794,10 +1887,43 @@ function buildBackupTimestamp(date) {
   return `${year}${month}${day}-${hour}${minute}${second}`;
 }
 
-function pruneOldBackups(retention = 7) {
+function hasBackupForScheduledMinute(date) {
+  try {
+    if (!fs.existsSync(backupDir)) return false;
+    const dayPrefix = buildBackupDayPrefix(date);
+    const minutePrefix = buildBackupMinutePrefix(date);
+    const files = fs.readdirSync(backupDir);
+    return files.some((file) => {
+      if (!file.startsWith(`voux-db-${dayPrefix}-${minutePrefix}`)) {
+        return false;
+      }
+      return file.endsWith('.db');
+    });
+  } catch {
+    return false;
+  }
+}
+
+function buildBackupDayPrefix(date) {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
+
+function buildBackupMinutePrefix(date) {
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${hour}${minute}`;
+}
+
+function pruneOldBackups(retention = 7, type = 'db') {
   const keep = sanitizeBackupRetention(retention);
+  const pattern = type === 'json'
+    ? /^voux-export-\d{8}-\d{6}\.json$/i
+    : /^voux-db-\d{8}-\d{6}\.db$/i;
   const files = fs.readdirSync(backupDir)
-    .filter((file) => /^voux-db-\d{8}-\d{6}\.db$/i.test(file))
+    .filter((file) => pattern.test(file))
     .map((file) => {
       const fullPath = path.join(backupDir, file);
       const stat = fs.statSync(fullPath);

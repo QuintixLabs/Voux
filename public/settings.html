@@ -277,10 +277,16 @@
                   placeholder="7"
                 />
               </div>
+              <label class="auto-backup__checkbox auto-backup__json-field" for="autoBackupIncludeJson">
+                <input type="checkbox" id="autoBackupIncludeJson" />
+                <span>
+                  <strong class="mode-chip__title">Also create JSON backup</strong>
+                </span>
+              </label>
             </div>
             <div class="backup-actions">
               <button type="button" id="saveAutoBackup"><i class="ri-save-line"></i> Save schedule</button>
-              <button type="button" class="ghost" id="runAutoBackupNow"><i class="ri-database-2-line"></i> Run DB backup now</button>
+              <button type="button" class="ghost" id="runAutoBackupNow"><i class="ri-database-2-line"></i> Create backup now</button>
             </div>
           </div>
         </div>
