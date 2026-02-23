@@ -66,8 +66,13 @@ cp .env.example .env
 ```
 
 Open `.env` and set your settings.
-This is where you configure your admin login, site URL, port, and other options.
-You must set `ADMIN_USERNAME` + `ADMIN_PASSWORD` before running the server. For more settings check [Documentation](https://voux-docs.vercel.app/docs/configuration/environment-variables)
+This is where you configure your **admin login**, **site URL**, **port**, and **other options**.
+You must set `ADMIN_USERNAME` + `ADMIN_PASSWORD` before running the server.
+<br>
+<br>
+If you run **Voux** on a public domain, set `PUBLIC_BASE_URL` to your full URL (for example, [https://your-domain.com](https://your-domain.com)) so embeds and previews use the correct **HTTPS** address. 
+If you want a development setup, add `DEV_MODE=development`.
+For more settings check [Documentation](https://voux-docs.vercel.app/docs/configuration/environment-variables)
 
 ### 4. Start Voux
 **Development (auto-reload) :**
@@ -94,6 +99,7 @@ docker run -d \
   -p 8787:8787 \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=change-this-password \
+  # -e PUBLIC_BASE_URL=https://your-domain.com \
   -v $(pwd)/data:/app/data \
   ghcr.io/quintixlabs/voux/voux:latest
 ```
@@ -105,6 +111,7 @@ docker compose up -d
 ```
 
 - Change `ADMIN_USERNAME` + `ADMIN_PASSWORD` to your own login (do not leave it as the example).
+- If deploying on a public domain, set `PUBLIC_BASE_URL` to your full site URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>).
 - Add more `-e VAR=value` flags for <a href="https://voux-docs.vercel.app/docs/configuration/environment-variables">more settings</a> if you need them.
 
 <p>Need more details or advanced setup options? <a href="https://voux-docs.vercel.app/docs/getting-started/installation/docker" target="_blank">Read the documentation</a>.</p>
