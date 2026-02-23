@@ -899,10 +899,8 @@ body.modal-open {
 }
 
 .self-host-list li {
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  position: relative;
+  padding-left: 0.9rem;
   border-radius: 10px;
   font-size: 0.9rem;
   color: var(--text-secondary);
@@ -911,10 +909,13 @@ body.modal-open {
 
 .self-host-list li::before {
   content: '•';
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
   font-size: 1.1rem;
   line-height: 1;
+  transform: translateY(-1px);
   color: var(--text-primary);
-  margin-top: 0.15rem;
 }
 
 .self-host-list li .code-inline {
@@ -4230,6 +4231,7 @@ body.modal-open {
   gap: 0.75rem;
 }
 
+/* old unused code for snippets
 #adminEmbedSnippet {
   width: 100%;
   min-height: 70px;
@@ -4271,6 +4273,7 @@ body.modal-open {
   padding: 0.75rem 2.5rem 0.75rem 0.75rem;
   font-family: 'SF Mono', 'Cascadia Code', monospace;
 }
+*/
 
 .embed-snippet {
   position: relative;

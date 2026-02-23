@@ -271,8 +271,11 @@ npm install --production   # for production installs</code></pre>
         </div>
         <p>Open <span class="code-inline">.env</span> and set your settings. 
         This is where you configure your admin login, site URL, port, and other options. 
-        You must set <strong>ADMIN_USERNAME</strong> + <strong>ADMIN_PASSWORD</strong> before running the server,
-        and if you want to configure your own instance for development, add <strong>DEV_MODE=development</strong>. 
+        You must set <span class="code-inline">ADMIN_USERNAME</span> + <span class="code-inline">ADMIN_PASSWORD</span> before running the server.
+        If you run <strong>Voux</strong> on a public domain, set
+        <span class="code-inline">PUBLIC_BASE_URL</span> to your full URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>) 
+        so embeds and previews use the correct HTTPS address.
+        If you want a development setup, add <span class="code-inline">DEV_MODE=development</span>. 
         For more settings check <a href="https://voux-docs.vercel.app/docs/configuration/environment-variables" target="_blank">Documentation</a></p>
 
         <p><strong>4. Start Voux</strong></p>
@@ -317,6 +320,7 @@ npm install --production   # for production installs</code></pre>
         </div>
         <ul class="self-host-list">
           <li>Change <span class="code-inline">ADMIN_USERNAME</span> + <span class="code-inline">ADMIN_PASSWORD</span> to your own login (do not leave it as the example).</li>
+          <li>If deploying on a public domain, set <span class="code-inline">PUBLIC_BASE_URL</span> to your full site URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>).</li>
           <li>Add more <span class="code-inline">-e VAR=value</span> flags for <a href="https://voux-docs.vercel.app/docs/configuration/environment-variables" target="_blank">more settings</a> if you need them.</li>
         </ul>
 
