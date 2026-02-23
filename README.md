@@ -1,12 +1,12 @@
 <h1 id="start-of-content" align="center">
-  <a id="start-of-content" href="http://voux.fr0st.xyz" target="_blank"><img src="https://github.com/QuintixLabs/Voux/blob/master/public/assets/banner-2.png" alt="Voux" width="900"></a>
+  <a id="start-of-content" href="http://voux.fr0st.xyz" target="_blank"><img src="./public/assets/banner-2.png" alt="Voux" width="900"></a>
 </h1>
 <p align="center"><strong>Simple Free & Open Source Hit Counter for Blogs and Websites</strong></p>
 
 
 <p align="center">
 <a href="#-features">⭐ Features</a> •
-<a href="#-self-hosting">🏡 Self hosting</a> •
+<a href="#-self-hosting">🏡 Self Hosting</a> •
 <!--<a href="#-configuration">Configuration</a> •-->
 <!--<a href="#-api-quick-reference">API quick reference</a> •-->
 <a href="#customization">🖌️ Customization</a> • 
@@ -18,20 +18,20 @@
 
 ## ⭐ Features
 
-- Generate counters easily and embed them with one `<script>` tag or as **SVGs**.
-- You can download a backup of your `data/counters.db` (your database) as **JSON** in Settings or you can also download whatever counters you want as JSON (you can choose).
-- Multi-select toolbar lets you download per-counter **JSON** or delete groups of counters in one go.
-- The **dashboard** gives you `search`, `pagination`, `inline edits`, `notes`, `filters`, and `auto-refreshing stats`.
-- Toggle the instance between `public/private` however you like.
-- See **7-day** and **30-day** activity charts, plus inactive badges, so you can spot old or unused counters fast.
-- Owner **API** keys so collaborators can manage their own counters without using the main admin password.
-- Change your **instance name** and **homepage title** easily from the `Settings`.
-- You can turn on per-IP limits for **"Every visit"** counters to slow down spam refreshes.
-- **And much more...!**
+- **Simple embeds**: Generate counters easily and embed them with one `<script>` tag or as **SVGs**.
+- **Self hosted**: Your data stays on your own server. No third party tracking, no relying on someone else's service.
+- **Full data ownership**: Export your whole database or selected counters as `JSON` anytime.
+- **Clean control panel**: Fast dashboard with **search**, **filters**, **quick edits**, **notes**, and **live stats**.
+- **Today, 7 day, 30 day stats**: Clear activity views so you always know what is actually being used.
+- **Users, roles and API**: Add **users**, turn permissions **on** or **off**, and use the **API** if you need it.
+- **Public or Private**: Keep it public or restrict it completely.
+- **Abuse protection**: Optional per IP limit throttle for every-visit based counters.
+- **Lightweight**: Minimal setup, low resource usage, runs fine on small servers.
+- *And much more...!*
 
 So yeah... it's pretty good `:)`
 
-## 🏡 Self hosting
+## 🏡 Self Hosting
 
 ### `📦 Manual installation`
 
