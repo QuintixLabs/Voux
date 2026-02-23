@@ -1046,6 +1046,18 @@ function fetchTagsForCounters(ids = []) {
   return stmt.all(ids);
 }
 
+async function createDatabaseBackup(targetPath) {
+  if (!targetPath) {
+    throw new Error('backup_path_required');
+  }
+  if (typeof db.backup === 'function') {
+    await db.backup(targetPath);
+    return;
+  }
+  db.pragma('wal_checkpoint(PASSIVE)');
+  fs.copyFileSync(dbPath, targetPath);
+}
+
 /* ========================================================================== */
 /* Exports                                                                    */
 /* ========================================================================== */
@@ -1091,6 +1103,7 @@ module.exports = {
   describeModeLabel,
   parseRequestedMode,
   removeTagAssignments,
+  createDatabaseBackup,
   hashPassword,
   verifyPassword,
   listUsers,

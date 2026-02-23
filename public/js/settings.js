@@ -15,6 +15,19 @@ const allowModeUnlimitedInput = document.getElementById('allowModeUnlimited');
 const downloadBackupBtn = document.getElementById('downloadBackup');
 const restoreFileInput = document.getElementById('restoreFile');
 const backupStatusLabel = document.getElementById('backupStatus');
+const autoBackupSection = document.getElementById('autoBackupSection');
+const autoBackupToggle = document.getElementById('autoBackupToggle');
+const autoBackupSummary = document.getElementById('autoBackupSummary');
+const autoBackupBody = document.getElementById('autoBackupBody');
+const autoBackupPath = document.getElementById('autoBackupPath');
+const autoBackupPathValue = document.getElementById('autoBackupPathValue');
+const autoBackupFrequencyInput = document.getElementById('autoBackupFrequency');
+const autoBackupTimeInput = document.getElementById('autoBackupTime');
+const autoBackupWeekdayField = document.getElementById('autoBackupWeekdayField');
+const autoBackupWeekdayInput = document.getElementById('autoBackupWeekday');
+const autoBackupRetentionInput = document.getElementById('autoBackupRetention');
+const saveAutoBackupBtn = document.getElementById('saveAutoBackup');
+const runAutoBackupNowBtn = document.getElementById('runAutoBackupNow');
 const apiKeysCard = document.getElementById('apiKeysCard');
 const apiKeysList = document.getElementById('apiKeysList');
 const apiKeyForm = document.getElementById('apiKeyForm');
@@ -129,6 +142,7 @@ const ADMIN_PERMISSION_ITEMS = [
   { key: 'users', label: 'Users', hint: 'Manage user accounts.' },
   { key: 'danger', label: 'Danger actions', hint: 'Gives admins full control over all counters.' }
 ];
+const AUTO_BACKUP_WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /* -------------------------------------------------------------------------- */
 /* Theme helpers                                                              */
@@ -210,8 +224,8 @@ checkSession();
 
 function initAdmin() {
   fetchSettings()
-    .then(({ config, usersPageSize, inactiveDaysThreshold: inactiveDays, adminPermissions }) => {
-      populateForm(config);
+    .then(({ config, usersPageSize, inactiveDaysThreshold: inactiveDays, adminPermissions, backupDirectory }) => {
+      populateForm(config, { backupDirectory });
       if (Number.isFinite(inactiveDays) && inactiveDays > 0) {
         inactiveDaysThreshold = Math.max(1, Math.round(inactiveDays));
       }
@@ -230,7 +244,7 @@ function initAdmin() {
       );
       allowModeUniqueInput?.addEventListener('change', (event) => handleAllowedModesChange(event.target));
       allowModeUnlimitedInput?.addEventListener('change', (event) => handleAllowedModesChange(event.target));
-      setupBackupControls();
+      setupBackupControls(Boolean(activeUser?.isOwner));
       setupApiKeys();
       setupUsers();
       setupBrandingForm();
@@ -252,7 +266,10 @@ function initMember() {
   if (backupDesc) {
     backupDesc.textContent = 'Download your counters as JSON or restore them later.';
   }
-  setupBackupControls();
+  if (autoBackupSection) {
+    autoBackupSection.classList.add('hidden');
+  }
+  setupBackupControls(false);
   document.body.classList.remove('settings-footer-hidden');
 }
 
@@ -267,7 +284,8 @@ async function fetchSettings() {
     config: data.config || {},
     usersPageSize: Number(data.usersPageSize),
     inactiveDaysThreshold: Number(data.inactiveDaysThreshold),
-    adminPermissions: data.adminPermissions || null
+    adminPermissions: data.adminPermissions || null,
+    backupDirectory: data.backupDirectory || ''
   };
 }
 
@@ -486,7 +504,7 @@ adminPermSave?.addEventListener('click', async () => {
 /* -------------------------------------------------------------------------- */
 /* Settings form                                                              */
 /* -------------------------------------------------------------------------- */
-function populateForm(config) {
+function populateForm(config, options = {}) {
   if (togglePrivate) togglePrivate.checked = Boolean(config.privateMode);
   if (toggleGuides) toggleGuides.checked = Boolean(config.showGuides);
   if (allowModeUniqueInput) allowModeUniqueInput.checked = config.allowedModes ? config.allowedModes.unique !== false : true;
@@ -519,6 +537,8 @@ function populateForm(config) {
     }
     throttleSelect.value = safe;
   }
+  applyAutoBackupForm(config.autoBackup || {});
+  applyAutoBackupPath(options.backupDirectory || '');
   initialBranding = {
     brandName: brandNameInputField?.value?.trim() || DEFAULT_BRAND_NAME,
     homeTitle: homeTitleInputField?.value?.trim() || DEFAULT_HOME_TITLE,
@@ -541,9 +561,44 @@ function updateInactiveButtonLabel() {
 /* -------------------------------------------------------------------------- */
 /* Setup helpers                                                              */
 /* -------------------------------------------------------------------------- */
-function setupBackupControls() {
+function setupBackupControls(canManageAutoBackups = false) {
   downloadBackupBtn?.addEventListener('click', () => handleBackupDownload());
   restoreFileInput?.addEventListener('change', (event) => handleBackupRestore(event));
+  if (autoBackupSection) {
+    autoBackupSection.classList.toggle('hidden', !canManageAutoBackups);
+  }
+  if (!canManageAutoBackups) {
+    return;
+  }
+  autoBackupToggle?.addEventListener('click', () => toggleAutoBackupBody());
+  autoBackupFrequencyInput?.addEventListener('change', syncAutoBackupUiState);
+  autoBackupTimeInput?.addEventListener('pointerdown', handleTimePickerHotspot);
+  autoBackupRetentionInput?.addEventListener('input', syncAutoBackupUiState);
+  autoBackupTimeInput?.addEventListener('input', syncAutoBackupUiState);
+  autoBackupWeekdayInput?.addEventListener('change', syncAutoBackupUiState);
+  saveAutoBackupBtn?.addEventListener('click', () => handleSaveAutoBackup());
+  runAutoBackupNowBtn?.addEventListener('click', () => handleRunAutoBackupNow());
+  toggleAutoBackupBody(false);
+  syncAutoBackupUiState();
+}
+
+function handleTimePickerHotspot(event) {
+  const input = autoBackupTimeInput;
+  if (!input || typeof input.showPicker !== 'function') {
+    return;
+  }
+  const rect = input.getBoundingClientRect();
+  const hotspotWidth = 44;
+  const isHotspot = event.clientX >= rect.right - hotspotWidth;
+  if (!isHotspot) {
+    return;
+  }
+  event.preventDefault();
+  try {
+    input.showPicker();
+  } catch {
+    // Ignore if browser blocks programmatic picker.
+  }
 }
 
 function setupApiKeys() {
@@ -1284,7 +1339,178 @@ async function handleBackupRestore(event) {
 
 function setBackupStatus(message) {
   if (backupStatusLabel) {
-    backupStatusLabel.textContent = message || '';
+    const text = message || '';
+    backupStatusLabel.textContent = text;
+    backupStatusLabel.classList.toggle('hidden', !text);
+  }
+}
+
+function syncAutoBackupUiState() {
+  const frequency = autoBackupFrequencyInput?.value || 'off';
+  if (autoBackupWeekdayField) {
+    autoBackupWeekdayField.classList.toggle('hidden', frequency !== 'weekly');
+  }
+  if (autoBackupSummary) {
+    const retention = Number(autoBackupRetentionInput?.value || 7);
+    const keep = Number.isFinite(retention) ? Math.max(1, Math.min(30, Math.round(retention))) : 7;
+    const time = formatTime12h(String(autoBackupTimeInput?.value || '03:00'));
+    if (frequency === 'off') {
+      autoBackupSummary.textContent = 'Off';
+      return;
+    }
+    if (frequency === 'weekly') {
+      const weekday = Number(autoBackupWeekdayInput?.value || 0);
+      const dayLabel = AUTO_BACKUP_WEEKDAYS[Math.max(0, Math.min(6, Math.floor(weekday)))] || 'Sunday';
+      autoBackupSummary.textContent = `Weekly · ${dayLabel} · ${time} · Keep ${keep}`;
+      return;
+    }
+    autoBackupSummary.textContent = `Daily · ${time} · Keep ${keep}`;
+  }
+}
+
+function formatTime12h(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) {
+    return '03:00 AM';
+  }
+  const hour24 = Math.max(0, Math.min(23, Number(match[1])));
+  const minute = String(Math.max(0, Math.min(59, Number(match[2])))).padStart(2, '0');
+  const suffix = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${minute} ${suffix}`;
+}
+
+function toggleAutoBackupBody(forceOpen) {
+  if (!autoBackupBody || !autoBackupToggle) return;
+  const nextOpen = typeof forceOpen === 'boolean'
+    ? forceOpen
+    : !autoBackupBody.classList.contains('is-open');
+  const onTransitionEnd = (event) => {
+    if (event.target !== autoBackupBody || event.propertyName !== 'height') return;
+    if (autoBackupBody.classList.contains('is-open')) {
+      autoBackupBody.style.height = 'auto';
+    }
+    autoBackupBody.removeEventListener('transitionend', onTransitionEnd);
+  };
+  autoBackupBody.removeEventListener('transitionend', onTransitionEnd);
+  if (nextOpen) {
+    autoBackupBody.classList.add('is-open');
+    autoBackupToggle.setAttribute('aria-expanded', 'true');
+    autoBackupBody.style.height = '0px';
+    // Force reflow so height transition starts from 0.
+    void autoBackupBody.offsetHeight;
+    autoBackupBody.style.height = `${autoBackupBody.scrollHeight}px`;
+    autoBackupBody.addEventListener('transitionend', onTransitionEnd);
+    return;
+  }
+  autoBackupToggle.setAttribute('aria-expanded', 'false');
+  autoBackupBody.style.height = `${autoBackupBody.scrollHeight}px`;
+  void autoBackupBody.offsetHeight;
+  autoBackupBody.classList.remove('is-open');
+  autoBackupBody.style.height = '0px';
+}
+
+function applyAutoBackupForm(autoBackup = {}) {
+  if (autoBackupFrequencyInput) {
+    const frequency = ['off', 'daily', 'weekly'].includes(autoBackup.frequency) ? autoBackup.frequency : 'off';
+    autoBackupFrequencyInput.value = frequency;
+  }
+  if (autoBackupTimeInput) {
+    const time = typeof autoBackup.time === 'string' && /^\d{2}:\d{2}$/.test(autoBackup.time)
+      ? autoBackup.time
+      : '03:00';
+    autoBackupTimeInput.value = time;
+  }
+  if (autoBackupWeekdayInput) {
+    const weekday = Number(autoBackup.weekday);
+    autoBackupWeekdayInput.value = Number.isFinite(weekday) ? String(Math.max(0, Math.min(6, Math.floor(weekday)))) : '0';
+  }
+  if (autoBackupRetentionInput) {
+    const retention = Number(autoBackup.retention);
+    const safeRetention = Number.isFinite(retention) ? Math.max(1, Math.min(30, Math.round(retention))) : 7;
+    autoBackupRetentionInput.value = String(safeRetention);
+  }
+  syncAutoBackupUiState();
+}
+
+function applyAutoBackupPath(rawPath) {
+  if (!autoBackupPath || !autoBackupPathValue) return;
+  const value = typeof rawPath === 'string' && rawPath.trim() ? rawPath.trim() : './data/backups';
+  autoBackupPathValue.textContent = value;
+  autoBackupPath.title = value;
+}
+
+function collectAutoBackupPayload() {
+  const frequency = ['off', 'daily', 'weekly'].includes(autoBackupFrequencyInput?.value)
+    ? autoBackupFrequencyInput.value
+    : 'off';
+  const time = String(autoBackupTimeInput?.value || '03:00').trim();
+  const weekday = Number(autoBackupWeekdayInput?.value || 0);
+  const retention = Number(autoBackupRetentionInput?.value || 7);
+  return {
+    frequency,
+    time: /^\d{2}:\d{2}$/.test(time) ? time : '03:00',
+    weekday: Number.isFinite(weekday) ? Math.max(0, Math.min(6, Math.floor(weekday))) : 0,
+    retention: Number.isFinite(retention) ? Math.max(1, Math.min(30, Math.round(retention))) : 7
+  };
+}
+
+async function handleSaveAutoBackup() {
+  if (!saveAutoBackupBtn) return;
+  const payload = collectAutoBackupPayload();
+  try {
+    saveAutoBackupBtn.disabled = true;
+    // setBackupStatus('Saving schedule...');
+    const res = await authFetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ autoBackup: payload })
+    });
+    assertSession(res);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to save backup schedule');
+    }
+    const data = await res.json().catch(() => ({}));
+    applyConfigUpdate(data);
+    applyAutoBackupForm(data?.config?.autoBackup || payload);
+    setBackupStatus('');
+    showToast(payload.frequency === 'off' ? 'Automatic backups disabled' : 'Automatic backup schedule saved');
+  } catch (error) {
+    setBackupStatus('');
+    await showAlert(normalizeAuthMessage(error, 'Failed to save backup schedule'));
+  } finally {
+    saveAutoBackupBtn.disabled = false;
+  }
+}
+
+async function handleRunAutoBackupNow() {
+  if (!runAutoBackupNowBtn) return;
+  if (backupBusy) {
+    showToast('Finish the current backup task first', 'danger');
+    return;
+  }
+  try {
+    backupBusy = true;
+    runAutoBackupNowBtn.disabled = true;
+    // setBackupStatus('Creating DB backup...');
+    const res = await authFetch('/api/backups/run', { method: 'POST' });
+    assertSession(res);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to run DB backup');
+    }
+    const data = await res.json().catch(() => ({}));
+    const fileName = data?.backup?.fileName || 'database backup';
+    setBackupStatus('');
+    showToast(`DB backup created: ${fileName}`);
+  } catch (error) {
+    setBackupStatus('');
+    await showAlert(normalizeAuthMessage(error, 'Failed to run DB backup'));
+  } finally {
+    backupBusy = false;
+    runAutoBackupNowBtn.disabled = false;
   }
 }
 

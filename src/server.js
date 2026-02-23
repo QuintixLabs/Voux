@@ -41,6 +41,7 @@ const {
   parseRequestedMode,
   describeModeLabel,
   removeTagAssignments,
+  createDatabaseBackup,
   listTagCatalog,
   addTagToCatalog,
   updateTagInCatalog,
@@ -203,9 +204,14 @@ app.use((req, res, next) => {
 /* static files + html */
 const staticDir = path.join(__dirname, '..', 'public');
 const dataDir = path.join(__dirname, '..', 'data');
+const backupDir = path.resolve(process.env.BACKUP_DIR || path.join(dataDir, 'backups'));
 const uploadsDir = path.join(dataDir, 'uploads');
 const avatarUploadsDir = path.join(uploadsDir, 'avatars');
 const notFoundPage = path.join(staticDir, '404.html');
+const AUTO_BACKUP_TICK_MS = 60 * 1000;
+let autoBackupTimer = null;
+let autoBackupRunKey = '';
+let autoBackupBusy = false;
 
 /* html cache + env */
 const htmlCache = new Map();
@@ -744,6 +750,33 @@ app.post('/api/counters/import', requireAuth, (req, res) => {
 
 /*
 ==========================================================================
+Admin: Database backups
+==========================================================================
+*/
+app.post('/api/backups/run', requireAdmin, async (req, res) => {
+  const auth = authenticateRequest(req);
+  const ownerId = getOwnerId();
+  const isOwner = Boolean(ownerId && auth?.user?.id === ownerId);
+  if (!isOwner) {
+    return res.status(403).json({ error: 'owner_only' });
+  }
+  if (autoBackupBusy) {
+    return res.status(409).json({ error: 'backup_busy' });
+  }
+  try {
+    autoBackupBusy = true;
+    const backup = await createAndStoreDbBackup('manual');
+    res.status(201).json({ ok: true, backup });
+  } catch (error) {
+    console.error('Manual backup failed', error);
+    res.status(500).json({ error: 'backup_failed' });
+  } finally {
+    autoBackupBusy = false;
+  }
+});
+
+/*
+==========================================================================
 Counters: Bulk Actions
 ==========================================================================
 */
@@ -921,19 +954,25 @@ app.get('/api/settings', requireAdmin, (req, res) => {
         defaults: isOwner ? (getConfig().adminPermissions || {}) : null
       }
     : null;
-  res.json({
+  const payload = {
     config: getConfig(),
     version: getVersion(),
     usersPageSize: DEFAULT_USERS_PAGE_SIZE,
     inactiveDaysThreshold: INACTIVE_THRESHOLD_DAYS,
     adminPermissions
-  });
+  };
+  if (isOwner) {
+    payload.backupDirectory = backupDir;
+  }
+  res.json(payload);
 });
 
 app.post('/api/settings', requireAdmin, (req, res) => {
   const auth = authenticateRequest(req);
+  const ownerId = getOwnerId();
+  const wantsAutoBackup = Boolean(req.body && Object.prototype.hasOwnProperty.call(req.body, 'autoBackup'));
   if (auth?.type === 'admin') {
-    const wantsRuntime = req.body && ('privateMode' in req.body || 'showGuides' in req.body || 'allowedModes' in req.body || 'unlimitedThrottleSeconds' in req.body);
+    const wantsRuntime = req.body && ('privateMode' in req.body || 'showGuides' in req.body || 'allowedModes' in req.body || 'unlimitedThrottleSeconds' in req.body || wantsAutoBackup);
     const wantsBranding = req.body && ('homeTitle' in req.body || 'brandName' in req.body || 'theme' in req.body);
     if (wantsRuntime && !hasAdminPermission(auth, 'runtime')) {
       return res.status(403).json({ error: 'admin_permission_denied' });
@@ -941,8 +980,11 @@ app.post('/api/settings', requireAdmin, (req, res) => {
     if (wantsBranding && !hasAdminPermission(auth, 'branding')) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
+    if (wantsAutoBackup && (!ownerId || auth.user?.id !== ownerId)) {
+      return res.status(403).json({ error: 'owner_only' });
+    }
   }
-  const { privateMode, showGuides, homeTitle, brandName, allowedModes, unlimitedThrottleSeconds, theme } = req.body || {};
+  const { privateMode, showGuides, homeTitle, brandName, allowedModes, unlimitedThrottleSeconds, theme, autoBackup } = req.body || {};
   const patch = {};
   if (typeof privateMode === 'boolean') patch.privateMode = privateMode;
   if (typeof showGuides === 'boolean') patch.showGuides = showGuides;
@@ -962,10 +1004,16 @@ app.post('/api/settings', requireAdmin, (req, res) => {
   if (typeof theme === 'string') {
     patch.theme = theme.trim().toLowerCase();
   }
+  if (wantsAutoBackup && autoBackup && typeof autoBackup === 'object') {
+    patch.autoBackup = autoBackup;
+  }
   if (Object.keys(patch).length === 0) {
     return res.status(400).json({ error: 'no_valid_settings' });
   }
   const updated = updateConfig(patch);
+  if (patch.autoBackup) {
+    restartAutoBackupScheduler();
+  }
   if (patch.theme) {
     htmlCache.clear();
   }
@@ -1655,10 +1703,154 @@ Boot
 ==========================================================================
 */
 bootstrapAdminUser();
+restartAutoBackupScheduler();
 
 app.listen(PORT, () => {
   console.log(`Voux running at http://localhost:${PORT}`);
 });
+
+async function createAndStoreDbBackup(source = 'auto') {
+  ensureBackupDir();
+  const timestamp = buildBackupTimestamp(new Date());
+  const fileName = `voux-db-${timestamp}.db`;
+  const outputPath = path.join(backupDir, fileName);
+  await createDatabaseBackup(outputPath);
+  const stat = fs.statSync(outputPath);
+  const retention = sanitizeBackupRetention(getConfig().autoBackup?.retention);
+  pruneOldBackups(retention);
+  return {
+    fileName,
+    size: stat.size,
+    createdAt: stat.mtimeMs,
+    source
+  };
+}
+
+function restartAutoBackupScheduler() {
+  if (autoBackupTimer) {
+    clearInterval(autoBackupTimer);
+    autoBackupTimer = null;
+  }
+  autoBackupRunKey = '';
+  const schedule = getConfig().autoBackup || {};
+  if (!schedule || schedule.frequency === 'off') {
+    return;
+  }
+  autoBackupTimer = setInterval(() => {
+    maybeRunScheduledBackup().catch((error) => {
+      console.error('Automatic backup failed', error);
+    });
+  }, AUTO_BACKUP_TICK_MS);
+  // Run once on startup/reconfigure so we don't wait a full minute.
+  maybeRunScheduledBackup().catch((error) => {
+    console.error('Automatic backup failed', error);
+  });
+}
+
+async function maybeRunScheduledBackup(now = new Date()) {
+  const schedule = getConfig().autoBackup || {};
+  if (!schedule || schedule.frequency === 'off') {
+    return;
+  }
+  if (autoBackupBusy) {
+    return;
+  }
+  const [targetHour, targetMinute] = parseBackupTime(schedule.time);
+  if (now.getHours() !== targetHour || now.getMinutes() !== targetMinute) {
+    return;
+  }
+  if (schedule.frequency === 'weekly') {
+    const targetWeekday = sanitizeBackupWeekday(schedule.weekday);
+    if (now.getDay() !== targetWeekday) {
+      return;
+    }
+  }
+  const runKey = getBackupRunKey(schedule.frequency, now);
+  if (runKey === autoBackupRunKey) {
+    return;
+  }
+  autoBackupBusy = true;
+  try {
+    await createAndStoreDbBackup('auto');
+    autoBackupRunKey = runKey;
+  } finally {
+    autoBackupBusy = false;
+  }
+}
+
+function ensureBackupDir() {
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+}
+
+function buildBackupTimestamp(date) {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  const second = String(date.getSeconds()).padStart(2, '0');
+  return `${year}${month}${day}-${hour}${minute}${second}`;
+}
+
+function pruneOldBackups(retention = 7) {
+  const keep = sanitizeBackupRetention(retention);
+  const files = fs.readdirSync(backupDir)
+    .filter((file) => /^voux-db-\d{8}-\d{6}\.db$/i.test(file))
+    .map((file) => {
+      const fullPath = path.join(backupDir, file);
+      const stat = fs.statSync(fullPath);
+      return { file, fullPath, mtime: stat.mtimeMs };
+    })
+    .sort((a, b) => b.mtime - a.mtime);
+  files.slice(keep).forEach((entry) => {
+    try {
+      fs.unlinkSync(entry.fullPath);
+    } catch (error) {
+      console.warn('Failed to prune backup', entry.file, error.message);
+    }
+  });
+}
+
+function parseBackupTime(value) {
+  const raw = String(value || '').trim();
+  if (!/^\d{2}:\d{2}$/.test(raw)) {
+    return [3, 0];
+  }
+  const [hourRaw, minuteRaw] = raw.split(':').map((part) => Number(part));
+  const hour = Number.isFinite(hourRaw) ? Math.max(0, Math.min(23, Math.floor(hourRaw))) : 3;
+  const minute = Number.isFinite(minuteRaw) ? Math.max(0, Math.min(59, Math.floor(minuteRaw))) : 0;
+  return [hour, minute];
+}
+
+function sanitizeBackupWeekday(value) {
+  const weekday = Number(value);
+  if (!Number.isFinite(weekday)) return 0;
+  return Math.max(0, Math.min(6, Math.floor(weekday)));
+}
+
+function sanitizeBackupRetention(value) {
+  const retention = Number(value);
+  if (!Number.isFinite(retention)) return 7;
+  return Math.max(1, Math.min(30, Math.round(retention)));
+}
+
+function getBackupRunKey(frequency, date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  if (frequency === 'weekly') {
+    const dayOfWeek = date.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(date);
+    monday.setDate(date.getDate() + mondayOffset);
+    const mondayMonth = String(monday.getMonth() + 1).padStart(2, '0');
+    const mondayDay = String(monday.getDate()).padStart(2, '0');
+    return `weekly-${monday.getFullYear()}-${mondayMonth}-${mondayDay}`;
+  }
+  return `${frequency || 'daily'}-${year}-${month}-${day}`;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Security, session + bootstrap                                              */

@@ -34,6 +34,12 @@ const defaultConfig = {
   ),
   unlimitedThrottleSeconds: sanitizeThrottle(process.env.UNLIMITED_THROTTLE_SECONDS),
   theme: sanitizeTheme(process.env.THEME || 'default'),
+  autoBackup: sanitizeAutoBackup({
+    frequency: process.env.AUTO_BACKUP_FREQUENCY || 'off',
+    time: process.env.AUTO_BACKUP_TIME || '03:00',
+    weekday: process.env.AUTO_BACKUP_WEEKDAY,
+    retention: process.env.AUTO_BACKUP_RETENTION
+  }),
   tagCatalog: [],
   adminPermissions: {
     runtime: true,
@@ -92,6 +98,7 @@ function sanitizeConfig(raw) {
   if (typeof raw.theme === 'string') {
     safe.theme = sanitizeTheme(raw.theme);
   }
+  safe.autoBackup = sanitizeAutoBackup(raw.autoBackup || safe.autoBackup);
   safe.tagCatalog = Array.isArray(raw.tagCatalog) ? sanitizeTagCatalog(raw.tagCatalog) : [];
   if (raw && typeof raw.adminPermissions === 'object') {
     safe.adminPermissions = sanitizeAdminPermissions(raw.adminPermissions, defaultConfig.adminPermissions);
@@ -176,6 +183,42 @@ function sanitizeThrottle(value) {
 function sanitizeTheme(value) {
   const key = String(value || '').trim().toLowerCase();
   return ALLOWED_THEMES.has(key) ? key : 'default';
+}
+
+function sanitizeAutoBackup(input) {
+  const raw = input && typeof input === 'object' ? input : {};
+  const frequency = ['off', 'daily', 'weekly'].includes(String(raw.frequency || '').toLowerCase())
+    ? String(raw.frequency || '').toLowerCase()
+    : 'off';
+  const time = sanitizeBackupTime(raw.time);
+  const weekdayRaw = Number(raw.weekday);
+  const weekday = Number.isFinite(weekdayRaw)
+    ? Math.max(0, Math.min(6, Math.floor(weekdayRaw)))
+    : 0;
+  const retentionRaw = Number(raw.retention);
+  const retention = Number.isFinite(retentionRaw)
+    ? Math.max(1, Math.min(30, Math.round(retentionRaw)))
+    : 7;
+  return {
+    frequency,
+    time,
+    weekday,
+    retention
+  };
+}
+
+function sanitizeBackupTime(value) {
+  const raw = String(value || '').trim();
+  if (!/^\d{2}:\d{2}$/.test(raw)) {
+    return '03:00';
+  }
+  const [h, m] = raw.split(':').map((part) => Number(part));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) {
+    return '03:00';
+  }
+  const hour = Math.max(0, Math.min(23, Math.floor(h)));
+  const minute = Math.max(0, Math.min(59, Math.floor(m)));
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
 function loadAllowedThemesFromThemeHelper() {

@@ -218,7 +218,74 @@
           <span><i class="ri-loop-right-fill"></i> Restore backup</span>
         </label>
       </div>
-      <p class="hint" id="backupStatus" aria-live="polite"></p>
+      <div class="auto-backup" id="autoBackupSection">
+        <button type="button" class="auto-backup__toggle" id="autoBackupToggle" aria-expanded="false">
+          <span class="auto-backup__title-wrap">
+            <strong>Automatic DB backups</strong>
+            <small class="hint" id="autoBackupSummary">Off</small>
+          </span>
+          <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+        </button>
+        <div class="auto-backup__body" id="autoBackupBody">
+          <div class="auto-backup__inner">
+            <p class="hint">Create <span class="code-inline">.db</span> snapshots on a schedule and keep only the latest backups.</p>
+            <p class="auto-backup__path" id="autoBackupPath" title="">
+              <span class="auto-backup__path-prefix">
+                <i class="ri-folder-5-fill" aria-hidden="true"></i>
+                <span class="auto-backup__path-label">Path:</span>
+              </span>
+              <span id="autoBackupPathValue"></span>
+            </p>
+            <div class="auto-backup__grid">
+              <div class="field">
+                <div class="field__label" id="autoBackupFrequencyLabel">Frequency</div>
+                <select id="autoBackupFrequency" aria-labelledby="autoBackupFrequencyLabel">
+                  <option value="off">Off</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
+              <div class="field">
+                <div class="field__label" id="autoBackupTimeLabel">Time</div>
+                <div class="auto-backup__time-wrap">
+                  <input type="time" id="autoBackupTime" aria-labelledby="autoBackupTimeLabel" value="03:00" />
+                  <i class="ri-time-line" aria-hidden="true"></i>
+                </div>
+              </div>
+              <div class="field hidden" id="autoBackupWeekdayField">
+                <div class="field__label" id="autoBackupWeekdayLabel">Day</div>
+                <select id="autoBackupWeekday" aria-labelledby="autoBackupWeekdayLabel">
+                  <option value="0">Sunday</option>
+                  <option value="1">Monday</option>
+                  <option value="2">Tuesday</option>
+                  <option value="3">Wednesday</option>
+                  <option value="4">Thursday</option>
+                  <option value="5">Friday</option>
+                  <option value="6">Saturday</option>
+                </select>
+              </div>
+              <div class="field">
+                <div class="field__label" id="autoBackupRetentionLabel">Keep last</div>
+                <input
+                  type="number"
+                  id="autoBackupRetention"
+                  aria-labelledby="autoBackupRetentionLabel"
+                  min="1"
+                  max="30"
+                  step="1"
+                  value="7"
+                  placeholder="7"
+                />
+              </div>
+            </div>
+            <div class="backup-actions">
+              <button type="button" id="saveAutoBackup"><i class="ri-save-line"></i> Save schedule</button>
+              <button type="button" class="ghost" id="runAutoBackupNow"><i class="ri-database-2-line"></i> Run DB backup now</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="hint hidden" id="backupStatus" aria-live="polite"></p>
     </section>
 
     <section class="card settings-card hidden" id="apiKeysCard">
