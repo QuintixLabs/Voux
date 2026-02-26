@@ -804,19 +804,113 @@ body.modal-open {
       color: var(--text-primary);
     }
 
+/* -------------------------------------------------------------------------- */
+/* Callouts (Notes)
+/* -------------------------------------------------------------------------- */
+/*
+
+Classes :
+
+- info
+- warning
+
+*/
+
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--border-primary);
+  border-radius: 8px;
+  padding: 0.62rem 0.78rem;
+  background: color-mix(in srgb, var(--bg-secondary) 93%, transparent);
+}
+
+.callout::before {
+  content: '\EE59';
+  font-family: 'remixicon';
+  font-size: 0.92rem;
+  line-height: 1;
+  margin-top: 0.1rem;
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.callout p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.callout__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.callout p strong,
+.callout p b {
+  color: var(--text-primary);
+}
+
+.callout[data-tone="info"] {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-secondary));
+}
+
+.callout[data-tone="warning"] {
+  border-left-color: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 10%, var(--bg-secondary));
+}
+
+.callout[data-tone="warning"]::before {
+  content: '\EA21';
+  color: #f59e0b;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Code Snippet (Top Menu with languages and stuff)                           */
+/* -------------------------------------------------------------------------- */
 .code-snippet {
   position: relative;
-  background: #101013;
+  background: var(--bg-primary);
   border: 1px solid var(--border-primary);
   border-radius: 10px;
-  padding: 0.9rem 1rem;
+  overflow: hidden;
+}
+
+.code-snippet__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.code-snippet__lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: default;
+  user-select: none;
+}
+
+.code-snippet__lang i {
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
 }
 
 .code-snippet pre {
   margin: 0;
-  padding: 0;
-  padding-right: 1.6rem;
-  background: #101013;
+  padding: 0.75rem 0.9rem;
+  background: var(--bg-primary);
   border: none;
   overflow-x: auto;
   white-space: pre-wrap;
@@ -824,30 +918,11 @@ body.modal-open {
   font-size: 0.95rem;
 }
 
-/* dashboard only embed code */
-.embed-code pre[class*="language-"],
-.embed-code code[class*="language-"] {
-  margin: 0 !important;
-  padding: 0 !important;
-  background: #101013 !important;
-  white-space: pre-wrap !important;
-  word-break: break-word !important;
-}
-
-/* same for here its dashboard only for 520px */
-@media (max-width: 520px) {
-    .embed-code pre[class*="language-"],
-    .embed-code code[class*="language-"] {
-      white-space: pre !important;   /* no wrap */
-      word-break: normal !important;
-      overflow-x: auto !important;   /* show scrollbar */
-    }
-  }
-
-    .copy-button {
-      position: absolute;
-      top: 0.6rem;
-      right: 0.6rem;
+/* -------------------------------------------------------------------------- */
+/* Copy Button                                                                */
+/* -------------------------------------------------------------------------- */
+.code-snippet .copy-button {
+      position: static;
       background: transparent;
       border: 1px solid var(--border-primary);
       color: var(--text-secondary);
@@ -861,15 +936,69 @@ body.modal-open {
       gap: 0.25rem;
     }
 
-    .copy-button i {
+.code-snippet .copy-button i {
       font-size: 0.8rem;
     }
 
-    .copy-button.copied {
+.code-snippet .copy-button.copied {
       background: rgba(16, 185, 129, 0.15);
       border-color: rgba(16, 185, 129, 0.5);
       color: #34d399;
     }
+
+/* -------------------------------------------------------------------------- */
+/* Embed Code aka Generate Counter                                            */
+/* -------------------------------------------------------------------------- */
+.embed-code pre[class*="language-"] {
+  margin: 0 !important;
+  padding: 0.75rem 0.95rem 0.75rem !important; /* Chrome Scrollbar Padding */
+  background: var(--bg-primary) !important;
+  overflow-x: auto !important;
+  white-space: pre !important;
+  word-break: normal !important;
+  font-size: 0.86rem !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+}
+
+.embed-code code[class*="language-"] {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: var(--bg-primary) !important;
+  display: block;
+  width: fit-content;
+  min-width: 100%;
+  white-space: inherit !important;
+  word-break: inherit !important;
+  /* overflow-wrap: inherit !important; */
+  font-size: inherit !important;
+}
+
+.embed-code pre[class*="language-"]::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.embed-code pre[class*="language-"]::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 0 0 2px 0;
+}
+
+.embed-code pre[class*="language-"]::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 100px;
+}
+
+.embed-code pre[class*="language-"]::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Firefox: move horizontal scrollbar slightly more at the bottom */
+@supports (-moz-appearance: none) {
+  .embed-code pre[class*="language-"] {
+    padding-bottom: 0.95rem !important;
+  }
+}
 
 .instructions code {
       font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;

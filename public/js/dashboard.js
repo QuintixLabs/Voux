@@ -5,8 +5,15 @@
 */
 
 /* -------------------------------------------------------------------------- */
+/* Imports                                                                    */
+/* -------------------------------------------------------------------------- */
+import { enhanceCodeSnippets, bindSnippetCopyButtons } from './shared/snippets.js';
+
+/* -------------------------------------------------------------------------- */
 /* DOM references                                                             */
 /* -------------------------------------------------------------------------- */
+
+/* auth + shell */
 const loginCard = document.querySelector('#loginCard');
 const dashboardCard = document.querySelector('#dashboardCard');
 const adminForm = document.querySelector('#admin-form');
@@ -15,6 +22,8 @@ const loginPasswordInput = document.querySelector('#loginPassword');
 const loginError = document.querySelector('#loginError');
 const loginStatus = document.querySelector('#loginStatus');
 const dashboardSubtitle = document.querySelector('#dashboardSubtitle');
+
+/* bulk actions */
 const selectionToolbar = document.querySelector('#selectionToolbar');
 const selectionCountEl = document.querySelector('#selectionCount');
 const selectAllBtn = document.querySelector('#selectAll');
@@ -22,6 +31,8 @@ const downloadSelectedBtn = document.querySelector('#downloadSelected');
 const addTagsSelectedBtn = document.querySelector('#addTagsSelected');
 const deleteSelectedBtn = document.querySelector('#deleteSelected');
 const clearSelectionBtn = document.querySelector('#clearSelection');
+
+/* counters list + paging */
 const adminControls = document.querySelector('#adminControls');
 const counterListEl = document.querySelector('#counterList');
 const deleteAllBtn = document.querySelector('#deleteAll');
@@ -33,6 +44,8 @@ const paginationInfo = document.querySelector('#paginationInfo');
 const counterTotalValue = document.querySelector('#counterTotalValue');
 const counterSearchInput = document.querySelector('#counterSearchInput');
 const counterSearchClear = document.querySelector('#counterSearchClear');
+
+/* create counter */
 const createForm = document.querySelector('#create-admin-form');
 const createLabelInput = document.querySelector('#adminLabel');
 const createNoteInput = document.querySelector('#adminNote');
@@ -47,10 +60,14 @@ const createCard = document.querySelector('#createCard');
 const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
 const adminPreview = document.querySelector('#adminPreview');
 const adminPreviewTarget = document.querySelector('#adminPreviewTarget');
+
+/* filters + ranges */
 const modeFilterSelect = document.querySelector('#modeFilter');
 const sortFilterSelect = document.querySelector('#sortFilter');
 const activityRangeControls = document.querySelector('#activityRangeControls');
 const adminThrottleHint = document.querySelector('#adminThrottleHint');
+
+/* tags */
 const tagFilterControls = document.querySelector('#tagFilterControls');
 const tagFilterButton = document.querySelector('#tagFilterButton');
 const tagFilterMenu = document.querySelector('#tagFilterMenu');
@@ -61,6 +78,8 @@ const createTagPicker = document.querySelector('#createTagPicker');
 const createTagManageBtn = document.querySelector('#createTagManage');
 const createTagCounterHint = document.querySelector('#createTagCounterHint');
 const tagFilterCountHint = document.querySelector('.tag-count-hint');
+
+/* owner scope */
 const topPaginationInfo = document.querySelector('#topPaginationInfo');
 const ownerFilterWrap = document.querySelector('#ownerFilterWrap');
 const ownerFilterToggle = document.querySelector('#ownerFilterToggle');
@@ -525,28 +544,8 @@ function init() {
   updateDeleteFilteredState();
   updateActivityRangeButtons();
   updateTagCounterHints();
-
-  document.querySelectorAll('.code-snippet .copy-button').forEach((button) => {
-    button.addEventListener('click', () => {
-      const block = button.closest('.code-snippet') || button.parentElement;
-      const code = block?.querySelector('code');
-      if (!code) return;
-      const text = code.textContent;
-      if (!text) return;
-      navigator.clipboard.writeText(text).then(() => {
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="ri-check-line"></i>';
-        button.classList.add('copied');
-        button.disabled = true;
-
-        setTimeout(() => {
-          button.innerHTML = originalHTML;
-          button.classList.remove('copied');
-          button.disabled = false;
-        }, 2000);
-      });
-    });
-  });
+  enhanceCodeSnippets();
+  bindSnippetCopyButtons('.code-snippet .copy-button');
 }
 
 /* -------------------------------------------------------------------------- */

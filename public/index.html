@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.8.0/fonts/remixicon.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
 
   <!-- Icons -->
@@ -155,14 +155,14 @@
       <div class="embed-snippet" data-embed-panel="script">
         <div class="code-snippet embed-code">
           <button class="copy-button"><i class="ri-file-copy-line"></i></button>
-          <pre><code class="language-markup" id="embedSnippetCode"></code></pre>
+          <pre><code class="language-html" id="embedSnippetCode"></code></pre>
         </div>
       </div>
 
       <div class="embed-snippet embed-snippet--dual hidden" data-embed-panel="svg">
         <div class="code-snippet embed-code">
           <button class="copy-button"><i class="ri-file-copy-line"></i></button>
-          <pre><code class="language-markup" id="embedSvgSnippetCode"></code></pre>
+          <pre><code class="language-html" id="embedSvgSnippetCode"></code></pre>
         </div>
       </div>
 
@@ -185,7 +185,7 @@
         <p>Styling your counter with <b>Voux</b> is super simple. All you need to do is wrap your counter script inside an element. We'll use a <span class="code-inline">&lt;span&gt;</span> in this example:</p>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i></button>
-          <pre><code class="language-markup">&lt;span class="counter-widget"&gt;
+          <pre><code class="language-html">&lt;span class="counter-widget"&gt;
   &lt;!---------------------replace this with urs---------------------&gt;
   &lt;script async src="https://your-domain/embed/abc123.js"&gt;&lt;/script&gt;
 &lt;/span&gt;</code></pre>
@@ -269,14 +269,14 @@ npm install --production   # for production installs</code></pre>
           <button class="copy-button"><i class="ri-file-copy-line"></i></button>
           <pre><code class="language-bash">cp .env.example .env</code></pre>
         </div>
-        <p>Open <span class="code-inline">.env</span> and set your settings. 
-        This is where you configure your admin login, site URL, port, and other options. 
-        You must set <span class="code-inline">ADMIN_USERNAME</span> + <span class="code-inline">ADMIN_PASSWORD</span> before running the server.
-        If you run <strong>Voux</strong> on a public domain, set
-        <span class="code-inline">PUBLIC_BASE_URL</span> to your full URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>) 
-        so embeds and previews use the correct HTTPS address.
-        If you want a development setup, add <span class="code-inline">DEV_MODE=development</span>. 
-        For more settings check <a href="https://voux-docs.vercel.app/docs/configuration/environment-variables" target="_blank">Documentation</a></p>
+
+        <div class="callout" data-tone="warning" role="note">
+          <div class="callout__content">
+            <p>Open <span class="code-inline">.env</span> and set your settings. This is where you configure your <strong>admin login</strong>, <strong>site URL</strong>, <strong>port</strong>, and <strong>other options</strong>. You must set <span class="code-inline">ADMIN_USERNAME</span> + <span class="code-inline">ADMIN_PASSWORD</span> before running the server.</p>
+            <br>
+            <p>If you run <strong>Voux</strong> on a public domain, set <span class="code-inline">PUBLIC_BASE_URL</span> to your full URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>) so embeds and previews use the correct <strong>HTTPS</strong> address. For more settings check <a href="https://voux-docs.vercel.app/docs/configuration/environment-variables" target="_blank">Documentation</a>.</p>
+          </div>
+        </div>
 
         <p><strong>4. Start Voux</strong></p>
         <p>Development (auto-reload) :</p>
@@ -298,7 +298,6 @@ npm install --production   # for production installs</code></pre>
         <a href="https://voux-docs.vercel.app/docs/getting-started/installation/manual-installation" target="_blank">Read the documentation</a>.
         </p>
 
-
         <hr>
         
         <p><span class="code-inline">🐋 Docker</span></p>
@@ -310,6 +309,7 @@ npm install --production   # for production installs</code></pre>
   -p 8787:8787 \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=change-this-password \
+  # -e PUBLIC_BASE_URL=https://your-domain.com \
   -v $(pwd)/data:/app/data \
   ghcr.io/quintixlabs/voux/voux:latest</code></pre>
         </div>
@@ -318,11 +318,14 @@ npm install --production   # for production installs</code></pre>
           <button class="copy-button"><i class="ri-file-copy-line"></i></button>
           <pre><code class="language-bash">docker compose up -d</code></pre>
         </div>
-        <ul class="self-host-list">
-          <li>Change <span class="code-inline">ADMIN_USERNAME</span> + <span class="code-inline">ADMIN_PASSWORD</span> to your own login (do not leave it as the example).</li>
-          <li>If deploying on a public domain, set <span class="code-inline">PUBLIC_BASE_URL</span> to your full site URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>).</li>
-          <li>Add more <span class="code-inline">-e VAR=value</span> flags for <a href="https://voux-docs.vercel.app/docs/configuration/environment-variables" target="_blank">more settings</a> if you need them.</li>
-        </ul>
+
+        <div class="callout" data-tone="warning" role="note">
+          <div class="callout__content">
+            <p>You must set <span class="code-inline">ADMIN_USERNAME</span> and <span class="code-inline">ADMIN_PASSWORD</span> to your own values. <strong>Do not leave the example credentials!</strong></p>
+            <br>
+            <p>If you run <strong>Voux</strong> on a public domain, set <span class="code-inline">PUBLIC_BASE_URL</span> to your full URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>) so embeds and previews use the correct <strong>HTTPS</strong> address. For more settings check <a href="https://voux-docs.vercel.app/docs/configuration/environment-variables" target="_blank">Documentation</a>.</p>
+          </div>
+        </div>
 
         <p>
         Need more details or advanced setup options?
@@ -338,8 +341,8 @@ npm install --production   # for production installs</code></pre>
   <div data-footer-root></div>
 
   <!-- Local scripts -->
-  <script src="/js/modal.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/state.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/shared/modal.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/shared/state.js?v=%APP_VERSION%" defer></script>
   <script src="/js/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/footer.js?v=%APP_VERSION%" defer></script>
   <script src="/js/theme.js?v=%APP_VERSION%" defer></script>

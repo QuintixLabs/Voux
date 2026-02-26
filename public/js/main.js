@@ -5,21 +5,34 @@
 */
 
 /* -------------------------------------------------------------------------- */
+/* Imports                                                                    */
+/* -------------------------------------------------------------------------- */
+import { enhanceCodeSnippets, bindSnippetCopyButtons } from './shared/snippets.js';
+
+/* -------------------------------------------------------------------------- */
 /* DOM references                                                             */
 /* -------------------------------------------------------------------------- */
+
+/* builder form */
 const form = document.querySelector('#create-form');
 const resultSection = document.querySelector('#result');
 const snippetCode = document.querySelector('#embedSnippetCode');
 const svgSnippetCode = document.querySelector('#embedSvgSnippetCode');
+
+/* embed tabs */
 const embedToggles = Array.from(document.querySelectorAll('.embed-toggle'));
 const embedPanels = Array.from(document.querySelectorAll('[data-embed-panel]'));
 const embedDescs = Array.from(document.querySelectorAll('[data-embed-desc]'));
 let embedMode = 'script';
+
+/* preview + cards */
 const previewTarget = document.querySelector('#previewTarget');
 const builderSection = document.querySelector('#builderSection');
 const privateDashboardCard = document.querySelector('#privateDashboardCard');
 const stylingCard = document.querySelector('#stylingCard');
 const selfHostCard = document.querySelector('#selfHostCard');
+
+/* mode + value inputs */
 const cooldownSelect = document.querySelector('#cooldownSelect');
 const startValueInput = document.querySelector('#startValue');
 let isPrivateMode = false;
@@ -260,27 +273,8 @@ function setFormState(disabled) {
 /* -------------------------------------------------------------------------- */
 /* Guide code copy                                                            */
 /* -------------------------------------------------------------------------- */
-document.querySelectorAll('.copy-button').forEach((button) => {
-  button.addEventListener('click', () => {
-    const block = button.closest('.code-snippet') || button.parentElement;
-    const code = block?.querySelector('code');
-    if (!code) return;
-    const text = code.textContent;
-
-    navigator.clipboard.writeText(text).then(() => {
-      const originalHTML = button.innerHTML;
-      button.innerHTML = '<i class="ri-check-line"></i>';
-      button.classList.add('copied');
-      button.disabled = true;
-
-      setTimeout(() => {
-        button.innerHTML = originalHTML;
-        button.classList.remove('copied');
-        button.disabled = false;
-      }, 2000);
-    });
-  });
-});
+enhanceCodeSnippets();
+bindSnippetCopyButtons('.copy-button');
 
 
 /* -------------------------------------------------------------------------- */
@@ -353,6 +347,9 @@ function getSelectedCooldown(selectEl) {
 /* Error messaging                                                            */
 /* -------------------------------------------------------------------------- */
 function buildCreateCounterErrorMessage(error, status) {
+  if (error && error.error === 'csrf_blocked') {
+    return 'Request blocked (CSRF). Open this instance from its configured URL and try again.';
+  }
   if (status === 401 || status === 403) {
     return 'This instance is private. Log in to create counters.';
   }

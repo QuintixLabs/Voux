@@ -7,13 +7,18 @@
 /* -------------------------------------------------------------------------- */
 /* DOM references                                                             */
 /* -------------------------------------------------------------------------- */
+/* display name */
 const profileDisplayText = document.getElementById('profileDisplayText');
 const profileDisplayEdit = document.getElementById('profileDisplayEdit');
+
+/* avatar */
 const profileAvatarButton = document.getElementById('profileAvatarButton');
 const profileAvatarFile = document.getElementById('profileAvatarFile');
 const profileAvatarPreview = document.getElementById('profileAvatarPreview');
 const profileAvatarFallback = document.getElementById('profileAvatarFallback');
 const profileAvatarRemove = document.getElementById('profileAvatarRemove');
+
+/* password modal */
 const profilePasswordReset = document.getElementById('profilePasswordReset');
 const profilePasswordModal = document.getElementById('profilePasswordModal');
 const profilePasswordMessage = document.getElementById('profilePasswordMessage');
@@ -23,6 +28,8 @@ const profilePasswordCurrentError = document.getElementById('profilePasswordCurr
 const profilePasswordNewError = document.getElementById('profilePasswordNewError');
 const profilePasswordSave = document.getElementById('profilePasswordSave');
 const profilePasswordCancel = document.getElementById('profilePasswordCancel');
+
+/* username modal */
 const profileUsernameEdit = document.getElementById('profileUsernameEdit');
 const profileUsernameText = document.getElementById('profileUsernameText');
 const profileUsernameModal = document.getElementById('profileUsernameModal');
@@ -32,6 +39,8 @@ const profileUsernameError = document.getElementById('profileUsernameError');
 const profileUsernameNewError = document.getElementById('profileUsernameNewError');
 const profileUsernameSave = document.getElementById('profileUsernameSave');
 const profileUsernameCancel = document.getElementById('profileUsernameCancel');
+
+/* display edit modal */
 const profileDisplayModal = document.getElementById('profileDisplayModal');
 const profileDisplayNew = document.getElementById('profileDisplayNew');
 const profileDisplayError = document.getElementById('profileDisplayError');

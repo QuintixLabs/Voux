@@ -7,11 +7,14 @@
 /* -------------------------------------------------------------------------- */
 /* DOM references                                                             */
 /* -------------------------------------------------------------------------- */
+/* core toggles */
 const togglePrivate = document.getElementById('togglePrivateMode');
 const toggleGuides = document.getElementById('toggleShowGuides');
 const statusLabel = document.getElementById('settingsStatus');
 const allowModeUniqueInput = document.getElementById('allowModeUnique');
 const allowModeUnlimitedInput = document.getElementById('allowModeUnlimited');
+
+/* backups */
 const downloadBackupBtn = document.getElementById('downloadBackup');
 const restoreFileInput = document.getElementById('restoreFile');
 const backupStatusLabel = document.getElementById('backupStatus');
@@ -29,6 +32,8 @@ const autoBackupRetentionInput = document.getElementById('autoBackupRetention');
 const autoBackupIncludeJsonInput = document.getElementById('autoBackupIncludeJson');
 const saveAutoBackupBtn = document.getElementById('saveAutoBackup');
 const runAutoBackupNowBtn = document.getElementById('runAutoBackupNow');
+
+/* api keys */
 const apiKeysCard = document.getElementById('apiKeysCard');
 const apiKeysList = document.getElementById('apiKeysList');
 const apiKeyForm = document.getElementById('apiKeyForm');
@@ -37,6 +42,8 @@ const apiKeyScopeSelect = document.getElementById('apiKeyScope');
 const apiKeyCountersField = document.getElementById('apiKeyCountersField');
 const apiKeyCountersInput = document.getElementById('apiKeyCounters');
 const apiKeyStatusLabel = document.getElementById('apiKeyStatus');
+
+/* branding + limits */
 const brandingForm = document.getElementById('brandingForm');
 const brandNameInputField = document.getElementById('brandNameInput');
 const homeTitleInputField = document.getElementById('homeTitleInput');
@@ -46,10 +53,14 @@ const resetBrandingBtn = document.getElementById('resetBranding');
 const throttleSelect = document.getElementById('throttleSelect');
 const purgeInactiveButton = document.getElementById('purgeInactiveButton');
 const inactiveHint = document.getElementById('inactiveHint');
+
+/* api key pagination */
 const apiKeysPagination = document.getElementById('apiKeysPagination');
 const apiKeysPrevBtn = document.getElementById('apiKeysPrev');
 const apiKeysNextBtn = document.getElementById('apiKeysNext');
 const apiKeysPageInfo = document.getElementById('apiKeysPageInfo');
+
+/* users */
 const usersCard = document.getElementById('usersCard');
 const usersList = document.getElementById('usersList');
 const usersFilterSelect = document.getElementById('usersFilter');
@@ -79,6 +90,8 @@ const userEditPassword = document.getElementById('userEditPassword');
 const userEditSave = document.getElementById('userEditSave');
 const userEditCancel = document.getElementById('userEditCancel');
 let activeUserEditor = null;
+
+/* admin permissions */
 const adminDefaultsOpen = document.getElementById('adminDefaultsOpen');
 const adminPermModal = document.getElementById('adminPermModal');
 const adminPermTitle = document.getElementById('adminPermTitle');

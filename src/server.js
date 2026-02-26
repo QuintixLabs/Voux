@@ -122,8 +122,36 @@ const CREATION_LIMIT_WINDOW_MS = Math.max(
     ? Number(process.env.COUNTER_CREATE_WINDOW_MS)
     : 60 * 1000
 );
-// tracks creation timestamps per IP
+const CREATION_TRACKER_IDLE_TTL_MS = Math.max(
+  CREATION_LIMIT_WINDOW_MS,
+  Number.isFinite(Number(process.env.COUNTER_CREATE_TRACKER_IDLE_TTL_MS))
+    ? Number(process.env.COUNTER_CREATE_TRACKER_IDLE_TTL_MS)
+    : 15 * 60 * 1000
+);
+const CREATION_TRACKER_MAX_ENTRIES = Math.max(
+  1000,
+  Number.isFinite(Number(process.env.COUNTER_CREATE_TRACKER_MAX_ENTRIES))
+    ? Number(process.env.COUNTER_CREATE_TRACKER_MAX_ENTRIES)
+    : 20000
+);
+const CREATION_TRACKER_CLEANUP_INTERVAL_MS = Math.max(
+  1000,
+  Number.isFinite(Number(process.env.COUNTER_CREATE_TRACKER_CLEANUP_INTERVAL_MS))
+    ? Number(process.env.COUNTER_CREATE_TRACKER_CLEANUP_INTERVAL_MS)
+    : 60 * 1000
+);
+const CREATION_TRACKER_EVICT_PERCENT = Math.min(
+  0.5,
+  Math.max(
+    0.01,
+    Number.isFinite(Number(process.env.COUNTER_CREATE_TRACKER_EVICT_PERCENT))
+      ? Number(process.env.COUNTER_CREATE_TRACKER_EVICT_PERCENT)
+      : 0.1
+  )
+);
+// tracks creation rate state per IP
 const creationTracker = new Map();
+let nextCreationTrackerMaintenanceAt = 0;
 
 /* activity + cleanup */
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -2108,11 +2136,10 @@ function checkCreationRate(ip, now = Date.now()) {
   if (!ip) {
     return { allowed: true, retryAfterSeconds: 0 };
   }
-  const entries = creationTracker.get(ip) || [];
-  const recent = entries.filter((ts) => now - ts < CREATION_LIMIT_WINDOW_MS);
-  creationTracker.set(ip, recent);
-  if (recent.length >= CREATION_LIMIT_COUNT) {
-    const oldest = recent[0];
+  maybeMaintainCreationTracker(now);
+  const entry = getCreationEntry(ip, now);
+  if (entry.timestamps.length >= CREATION_LIMIT_COUNT) {
+    const oldest = entry.timestamps[0];
     const retryAfterMs = CREATION_LIMIT_WINDOW_MS - (now - oldest);
     return {
       allowed: false,
@@ -2124,10 +2151,60 @@ function checkCreationRate(ip, now = Date.now()) {
 
 function recordCreationAttempt(ip, now = Date.now()) {
   if (!ip) return;
-  const entries = creationTracker.get(ip) || [];
-  const recent = entries.filter((ts) => now - ts < CREATION_LIMIT_WINDOW_MS);
-  recent.push(now);
-  creationTracker.set(ip, recent);
+  maybeMaintainCreationTracker(now);
+  const entry = getCreationEntry(ip, now);
+  entry.timestamps.push(now);
+  entry.lastSeen = now;
+  creationTracker.set(ip, entry);
+  enforceCreationTrackerMaxSize();
+}
+
+function getCreationEntry(ip, now) {
+  const existing = creationTracker.get(ip);
+  if (!existing) {
+    return { timestamps: [], lastSeen: now };
+  }
+  const timestamps = Array.isArray(existing.timestamps)
+    ? existing.timestamps.filter((ts) => now - ts < CREATION_LIMIT_WINDOW_MS)
+    : [];
+  const lastSeen = Number.isFinite(existing.lastSeen) ? existing.lastSeen : now;
+  return { timestamps, lastSeen };
+}
+
+function maybeMaintainCreationTracker(now) {
+  if (now < nextCreationTrackerMaintenanceAt && creationTracker.size <= CREATION_TRACKER_MAX_ENTRIES) {
+    return;
+  }
+  nextCreationTrackerMaintenanceAt = now + CREATION_TRACKER_CLEANUP_INTERVAL_MS;
+  pruneCreationTracker(now);
+  enforceCreationTrackerMaxSize();
+}
+
+function pruneCreationTracker(now) {
+  for (const [ip, rawEntry] of creationTracker.entries()) {
+    const entry = getCreationEntry(ip, now);
+    const isExpired = now - entry.lastSeen > CREATION_TRACKER_IDLE_TTL_MS;
+    if (isExpired && entry.timestamps.length === 0) {
+      creationTracker.delete(ip);
+      continue;
+    }
+    creationTracker.set(ip, entry);
+  }
+}
+
+function enforceCreationTrackerMaxSize() {
+  if (creationTracker.size <= CREATION_TRACKER_MAX_ENTRIES) {
+    return;
+  }
+  const entries = Array.from(creationTracker.entries())
+    .map(([ip, entry]) => ({ ip, lastSeen: Number(entry?.lastSeen) || 0 }))
+    .sort((a, b) => a.lastSeen - b.lastSeen);
+  const overflow = creationTracker.size - CREATION_TRACKER_MAX_ENTRIES;
+  const percentBatch = Math.ceil(CREATION_TRACKER_MAX_ENTRIES * CREATION_TRACKER_EVICT_PERCENT);
+  const deleteCount = Math.max(overflow, percentBatch);
+  for (let i = 0; i < deleteCount && i < entries.length; i += 1) {
+    creationTracker.delete(entries[i].ip);
+  }
 }
 
 /* -------------------------------------------------------------------------- */

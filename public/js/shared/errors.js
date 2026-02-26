@@ -17,6 +17,9 @@
     if (message === 'admin_permission_denied' || message === 'forbidden') {
       return "You don't have permission to do that.";
     }
+    if (message === 'csrf_blocked') {
+      return 'Request blocked (CSRF). Open this instance from its configured URL and try again.';
+    }
     return message || fallback;
   }
 
