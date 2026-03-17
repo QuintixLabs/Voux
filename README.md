@@ -64,14 +64,13 @@ npm install --production   # for production installs
 ```bash
 cp .env.example .env
 ```
+> [!IMPORTANT]
+> - Open `.env` and set your settings.
+> This is where you configure your **admin login**, **site URL**, **port**, and **other options**.
+> You must set `ADMIN_USERNAME` + `ADMIN_PASSWORD` before running the server.
+> - If you run **Voux** on a public domain, set `PUBLIC_BASE_URL` to your full URL (for example, [https://your-domain.com](https://your-domain.com)) <!-- so embeds and previews use the correct **HTTPS** address. -->
+> - If **Voux** is behind a **reverse proxy** or **tunnel** (for example `Nginx`, `Caddy`, `Cloudflare Tunnel`, etc.), also set: `TRUST_PROXY=1`
 
-Open `.env` and set your settings.
-This is where you configure your **admin login**, **site URL**, **port**, and **other options**.
-You must set `ADMIN_USERNAME` + `ADMIN_PASSWORD` before running the server.
-<br>
-<br>
-If you run **Voux** on a public domain, set `PUBLIC_BASE_URL` to your full URL (for example, [https://your-domain.com](https://your-domain.com)) so embeds and previews use the correct **HTTPS** address. 
-If you want a development setup, add `DEV_MODE=development`.
 For more settings check [Documentation](https://voux-docs.vercel.app/docs/configuration/environment-variables)
 
 ### 4. Start Voux
@@ -89,6 +88,8 @@ By default, both commands run at: [http://localhost:8787](http://localhost:8787)
 
 During development, set `NODE_ENV=development` in your `.env` to serve HTML/JS/CSS with `no-store` caching.
 
+#
+
 ### `🐋 Docker`
 
 Run Voux via Docker:
@@ -100,6 +101,7 @@ docker run -d \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=change-this-password \
   # -e PUBLIC_BASE_URL=https://your-domain.com \
+  # -e TRUST_PROXY=1 \
   -v $(pwd)/data:/app/data \
   ghcr.io/quintixlabs/voux/voux:latest
 ```
@@ -110,11 +112,14 @@ Or use our [docker-compose.yml](https://github.com/QuintixLabs/Voux/blob/master/
 docker compose up -d
 ```
 
-- Change `ADMIN_USERNAME` + `ADMIN_PASSWORD` to your own login (do not leave it as the example).
-- If deploying on a public domain, set `PUBLIC_BASE_URL` to your full site URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>).
-- Add more `-e VAR=value` flags for <a href="https://voux-docs.vercel.app/docs/configuration/environment-variables">more settings</a> if you need them.
+> [!IMPORTANT]
+> - Change `ADMIN_USERNAME` + `ADMIN_PASSWORD` to your own login (do not leave it as the example).
+> - If deploying on a public domain, set `PUBLIC_BASE_URL` to your full site URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>).
+> - If **Voux** is behind a **reverse proxy** or **tunnel** (for example `Nginx`, `Caddy`, `Cloudflare Tunnel`, etc.), also set: `TRUST_PROXY=1`
 
-<p>Need more details or advanced setup options? <a href="https://voux-docs.vercel.app/docs/getting-started/installation/docker" target="_blank">Read the documentation</a>.</p>
+For more settings check [Documentation](https://voux-docs.vercel.app/docs/configuration/environment-variables)
+
+<!-- <p>Need more details or advanced setup options? <a href="https://voux-docs.vercel.app/docs/getting-started/installation/docker" target="_blank">Read the documentation</a>.</p> -->
 
 <!---
 ## 🔧 Configuration
