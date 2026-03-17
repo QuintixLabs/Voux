@@ -8,5 +8,6 @@ services:
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=change-this-password
       # - PUBLIC_BASE_URL=https://your-domain.com
+      # - TRUST_PROXY: "1"
     volumes:
       - ./data:/app/data
