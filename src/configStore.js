@@ -1,5 +1,5 @@
 /*
-  configStore.js
+  src/configStore.js
 
   Loads, stores, and updates runtime config (private mode, branding, allowed modes, tags).
 */
@@ -16,7 +16,7 @@ const crypto = require('crypto');
 /* ========================================================================== */
 const DATA_DIR = path.resolve(__dirname, '..', 'data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
-const THEME_HELPER_PATH = path.resolve(__dirname, '..', 'public', 'js', 'theme.js');
+const THEME_HELPER_PATH = resolveThemeHelperPath();
 const ALLOWED_THEMES = loadAllowedThemesFromThemeHelper();
 
 const defaultConfig = {
@@ -53,6 +53,19 @@ const defaultConfig = {
 };
 
 let config = loadConfig();
+
+function resolveThemeHelperPath() {
+  const candidates = [
+    path.resolve(__dirname, '..', 'public', 'js', 'appearance', 'theme.js'),
+    path.resolve(__dirname, '..', 'public', 'js', 'theme.js')
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return candidates[0];
+}
 
 /* ========================================================================== */
 /* Config lifecycle                                                           */

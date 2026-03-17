@@ -244,7 +244,7 @@ alt="Voux counter"&gt;</code></pre>
         <div class="code-snippet">
           <button class="copy-button"><i class="ri-file-copy-line"></i></button>
           <pre><code class="language-bash">git clone https://github.com/QuintixLabs/Voux.git
-cd voux</code></pre>
+cd Voux</code></pre>
         </div>
 
         <p>Make sure you are running <span class="code-inline">Node.js 22</span>. If you use <a href="https://github.com/Schniz/fnm" target="_blank">fnm</a>. :</p>
@@ -274,7 +274,8 @@ npm install --production   # for production installs</code></pre>
           <div class="callout__content">
             <p>Open <span class="code-inline">.env</span> and set your settings. This is where you configure your <strong>admin login</strong>, <strong>site URL</strong>, <strong>port</strong>, and <strong>other options</strong>. You must set <span class="code-inline">ADMIN_USERNAME</span> + <span class="code-inline">ADMIN_PASSWORD</span> before running the server.</p>
             <br>
-            <p>If you run <strong>Voux</strong> on a public domain, set <span class="code-inline">PUBLIC_BASE_URL</span> to your full URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>) so embeds and previews use the correct <strong>HTTPS</strong> address. For more settings check <a href="https://voux-docs.vercel.app/docs/configuration/environment-variables" target="_blank">Documentation</a>.</p>
+            <p>If you run <strong>Voux</strong> on a public domain, set <span class="code-inline">PUBLIC_BASE_URL</span> to your full URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>)</p>
+            <p>If <strong>Voux</strong> is behind a <strong>reverse proxy</strong> or <strong>tunnel</strong> (for example <span class="code-inline">Nginx</span>, <span class="code-inline">Caddy</span>, <span class="code-inline">Cloudflare Tunnel</span>, etc.), also set: <span class="code-inline">TRUST_PROXY=1</span></p>
           </div>
         </div>
 
@@ -310,6 +311,7 @@ npm install --production   # for production installs</code></pre>
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=change-this-password \
   # -e PUBLIC_BASE_URL=https://your-domain.com \
+  # -e TRUST_PROXY=1 \
   -v $(pwd)/data:/app/data \
   ghcr.io/quintixlabs/voux/voux:latest</code></pre>
         </div>
@@ -323,7 +325,8 @@ npm install --production   # for production installs</code></pre>
           <div class="callout__content">
             <p>You must set <span class="code-inline">ADMIN_USERNAME</span> and <span class="code-inline">ADMIN_PASSWORD</span> to your own values. <strong>Do not leave the example credentials!</strong></p>
             <br>
-            <p>If you run <strong>Voux</strong> on a public domain, set <span class="code-inline">PUBLIC_BASE_URL</span> to your full URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>) so embeds and previews use the correct <strong>HTTPS</strong> address. For more settings check <a href="https://voux-docs.vercel.app/docs/configuration/environment-variables" target="_blank">Documentation</a>.</p>
+            <p>If you run <strong>Voux</strong> on a public domain, set <span class="code-inline">PUBLIC_BASE_URL</span> to your full URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>)</p>
+            <p>If <strong>Voux</strong> is behind a <strong>reverse proxy</strong> or <strong>tunnel</strong> (for example <span class="code-inline">Nginx</span>, <span class="code-inline">Caddy</span>, <span class="code-inline">Cloudflare Tunnel</span>, etc.), also set: <span class="code-inline">TRUST_PROXY=1</span></p>
           </div>
         </div>
 
@@ -341,13 +344,13 @@ npm install --production   # for production installs</code></pre>
   <div data-footer-root></div>
 
   <!-- Local scripts -->
-  <script src="/js/shared/modal.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/shared/state.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/nav.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/footer.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/theme.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/main.js?v=%APP_VERSION%" type="module"></script>
-  <script src="/js/brand.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/utils/modal.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/utils/state.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/layout/nav.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/layout/footer.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/appearance/theme.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/home/index.js?v=%APP_VERSION%" type="module"></script>
+  <script src="/js/appearance/brand.js?v=%APP_VERSION%" defer></script>
 
   <!-- External libraries (scripts) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>

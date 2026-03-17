@@ -1,5 +1,5 @@
 /*
-  ip.js
+  src/utils/ip.js
 
   Extracts client IP from proxy headers and socket info.
 */

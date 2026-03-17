@@ -77,6 +77,11 @@ html::-webkit-scrollbar-thumb:hover {
   padding: 5rem 1.5rem 4rem;
 }
 
+body[data-page="dashboard"].dashboard-initializing .page,
+body[data-page="dashboard"].dashboard-initializing [data-footer-root] {
+  visibility: hidden;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Responsive layout                                                          */
 /* -------------------------------------------------------------------------- */
@@ -1730,13 +1735,15 @@ Classes :
   border-radius: 8px !important;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease !important;
   font-family: 'Inter', sans-serif !important;
+  letter-spacing: 0 !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
 }
 
 .pcr-app .pcr-interaction .pcr-type:hover,
 .pcr-app .pcr-interaction .pcr-save:hover,
 .pcr-app .pcr-interaction .pcr-clear:hover {
   border-color: var(--border-hover) !important;
-  color: var(--text-primary) !important;
   background: var(--bg-tertiary) !important;
   
 }
@@ -1999,7 +2006,7 @@ Classes :
   align-items: flex-start;
   gap: 0.45rem;
   flex-wrap: nowrap;
-  width: fit-content;
+  width: auto;
   max-width: min(360px, 90vw);
   padding: 0.55rem 0.9rem 0.75rem;
   background: linear-gradient(180deg, rgba(14, 32, 28, 0.92) 0%, rgba(20, 46, 40, 0.78) 100%);
@@ -2011,14 +2018,17 @@ Classes :
   opacity: 0;
   transform: translateY(8px);
   transition: opacity 0.2s ease, transform 0.2s ease;
-  word-break: break-word;
   pointer-events: auto;
   backdrop-filter: blur(2px) saturate(115%);
 }
 
-.toast span {
+.toast__message {
+  flex: 0 1 auto;
+  max-width: 100%;
   min-width: 0;
   margin-top: 0.13rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .toast--action {
@@ -2177,6 +2187,7 @@ Classes :
   flex-direction: column;
   gap: 0.75rem;
 }
+
 
 .counter-list .hint {
   word-break: break-word;
@@ -2713,10 +2724,6 @@ Classes :
 
     [data-footer-root] {
       min-height: 220px;
-    }
-
-    body[data-page="dashboard"].dashboard-footer-hidden [data-footer-root] {
-      display: none;
     }
 
     body[data-page="settings"].settings-footer-hidden [data-footer-root] {
@@ -3915,7 +3922,7 @@ Classes :
   color: var(--text-primary);
   background: var(--bg-tertiary);
   border: 1px solid var(--border-primary);
-  border-radius: 100px;
+  border-radius: 5.5px;
   padding: 0rem 0.55rem;
 }
 

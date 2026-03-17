@@ -1,5 +1,5 @@
 /*
-  requireAdmin.js
+  src/middleware/requireAdmin.js
 
   Auth helpers for sessions, users, and API keys.
 */
@@ -18,7 +18,7 @@ const {
   checkLoginBlock,
   recordLoginFailure,
   clearLoginFailures
-} = require('../utils/loginLimiter');
+} = require('../services/loginLimiter');
 
 /* ========================================================================== */
 /* Constants                                                                  */

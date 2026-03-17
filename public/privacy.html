@@ -82,29 +82,29 @@
     </header>
 
     <section class="card">
-      <h2>What gets saved</h2>
+      <h2>1. What gets saved</h2>
       <p>The SQLite file keeps counter IDs, labels, values, and the visitor IP address with a last visit timestamp. IPs are stored in both counting modes. Nothing leaves your machine.</p>
     </section>
 
     <section class="card">
-      <h2>Unique visit mode</h2>
+      <h2>2. Unique visit mode</h2>
       <p>If you pick "Unique visitors" <span data-brand-inline>Voux</span> stores visitor IPs and uses them to make sure each IP is only counted once. 
       If the same IP visits again, the counter does not go up.</p>
     </section>
 
         <section class="card">
-      <h2>Every-visit mode</h2>
+      <h2>3. Every-visit mode</h2>
       <p>If you pick "Every-visit" <span data-brand-inline>Voux</span> always stores visitor IPs. With a <span class="code-inline">0s</span> throttle, every page load is counted, 
       even from the same IP. If a throttle is set (for example <span class="code-inline">10s</span>), the same IP can only increase the counter once per throttle window.</p>
     </section>
 
     <section class="card">
-      <h2>Cookies and tracking</h2>
+      <h2>4. Cookies and tracking</h2>
       <p>The embed script doesn't set cookies or load third-party trackers. If you add any extras on your own site, explain them in your own policy.</p>
     </section>
 
     <section class="card">
-      <h2>You control retention</h2>
+      <h2>5. You control retention</h2>
       <p>You decide how long to keep the database, who can access it, and what legal notices you show. If you let others embed counters, make sure your policy covers how their data is handled.</p>
     </section>
 
@@ -114,10 +114,10 @@
   <div data-footer-root></div>
 
   <!-- Local scripts -->
-  <script src="/js/theme.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/nav.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/footer.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/brand.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/appearance/theme.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/layout/nav.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/layout/footer.js?v=%APP_VERSION%" defer></script>
+  <script src="/js/appearance/brand.js?v=%APP_VERSION%" defer></script>
 </body>
 
 </html>
