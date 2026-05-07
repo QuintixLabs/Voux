@@ -20,7 +20,7 @@ body:
         required: true
       - label: "I will keep my instance updated every week."
         required: true
-      - label: "I understand that running a public instance takes time and work, and I need to keep it in good shape, like using a monitoring system."
+      - label: "I understand that running a public instance takes time and work, and I need to keep it in good shape, like using a monitoring system (e.g. [Better Stack](https://betterstack.com), [Upptime](https://github.com/upptime/upptime), [Uptime Kuma](https://github.com/louislam/uptime-kuma))."
         required: true
       - label: "I promise to keep **at least 90%** uptime each month. If I expect a long downtime, I will request a removal."
         required: true
