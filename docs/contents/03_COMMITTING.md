@@ -30,6 +30,6 @@ If it helps, include the issue number:
 ## Before pushing
 
 - Make sure it works locally
-- Run any checks/tests if needed
-- Keep commits focused (don’t mix unrelated stuff)
+- Run `npm run lint` and `npm run format`
+- Keep commits focused (don't mix unrelated stuff)
 - Push with a clear message

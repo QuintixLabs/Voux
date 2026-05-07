@@ -55,8 +55,8 @@ Create your env:
 ```bash
 cp .env.example .env
 ```
-> [!WARNING]  
-> Set `ADMIN_USERNAME` + `ADMIN_PASSWORD` (don't leave the example values). If you are developing, set `DEV_MODE=development` in `.env` so **HTML/JS/CSS** are served with no cache and changes show on reload.
+> [!IMPORTANT]  
+> Set `DEV_MODE=development` in `.env` so **HTML/JS/CSS** are served with no cache and changes show on reload.
 
 Start dev server:
 ```bash
