@@ -5,8 +5,6 @@ services:
     ports:
       - "8787:8787"
     environment:
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=change-this-password
       # - PUBLIC_BASE_URL=https://your-domain.com
       # - TRUST_PROXY: "1"
     volumes:
