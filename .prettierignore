@@ -1,0 +1,18 @@
+# Misc
+node_modules/
+data/
+.env
+.env.*
+package-lock.json
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# File types
+*.md
+*.yml
+*.yaml
+*.json
+*.html
+*.css
