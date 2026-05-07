@@ -50,13 +50,21 @@ function attachNoteMarkdownPasteBehavior(textarea) {
       textarea.selectionEnd
     );
     const url = event.clipboardData?.getData('text/plain') || '';
+
     if (!selected || !isHttpUrl(url)) return;
     event.preventDefault();
     const replacement = `[${selected}](${url.trim()})`;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    textarea.setRangeText(replacement, start, end, 'end');
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.focus();
+    const inserted =
+      typeof document.execCommand === 'function' &&
+      document.execCommand('insertText', false, replacement);
+
+    if (!inserted) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      textarea.setRangeText(replacement, start, end, 'end');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   });
 }
 
