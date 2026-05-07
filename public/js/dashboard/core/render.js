@@ -29,7 +29,12 @@ function createDashboardRender(deps) {
       case 'today':
         return counter.hitsToday ?? 0;
       case '30d':
-        return counter.activity?.total30d ?? counter.activity?.total7d ?? counter.hitsToday ?? 0;
+        return (
+          counter.activity?.total30d ??
+          counter.activity?.total7d ??
+          counter.hitsToday ??
+          0
+        );
       case '7d':
       default:
         return counter.activity?.total7d ?? counter.hitsToday ?? 0;
@@ -110,7 +115,9 @@ function createDashboardRender(deps) {
           button._copyTimeout = null;
         }, 1400);
       }
-      showToast(format === 'svg' ? 'Copied SVG embed.' : 'Copied script embed.');
+      showToast(
+        format === 'svg' ? 'Copied SVG embed.' : 'Copied script embed.'
+      );
     } catch {
       window.alert('Unable to copy snippet');
     }
@@ -152,9 +159,10 @@ function createDashboardRender(deps) {
     if (!selectEl) return;
     const options = Array.from(selectEl.options);
     let firstAllowed = null;
-    const label = state.throttleSeconds > 0
-      ? `Every visit (${state.throttleSeconds}s)`
-      : 'Every visit';
+    const label =
+      state.throttleSeconds > 0
+        ? `Every visit (${state.throttleSeconds}s)`
+        : 'Every visit';
     options.forEach((option) => {
       const mode = option.value === 'unlimited' ? 'unlimited' : 'unique';
       const isAllowed = isModeAllowed(mode, allowed);

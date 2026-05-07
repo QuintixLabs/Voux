@@ -7,18 +7,23 @@
 
 require('dotenv').config();
 
-/* core */
+/* -------------------------------------------------------------------------- */
+/* Core modules                                                                */
+/* -------------------------------------------------------------------------- */
 const express = require('express');
 const path = require('path');
-const fs = require('fs'); /* loads files and templates */
+const fs = require('fs');
 const {
   configureApp,
   registerPageRoutes,
   registerStaticAndErrorHandlers
 } = require('./app');
 
-/* db */
+/* -------------------------------------------------------------------------- */
+/* Database API                                                                */
+/* -------------------------------------------------------------------------- */
 const {
+  // Counter writes and reads
   createCounter,
   listCountersPage,
   getCounter,
@@ -34,6 +39,8 @@ const {
   countCounters,
   getLastHitTimestamp,
   getCounterDailyTrend,
+
+  // Counter import and export
   exportDailyActivity,
   exportDailyActivityFor,
   importDailyActivity,
@@ -43,20 +50,28 @@ const {
   exportCountersByIds,
   importCounters,
   importCountersForOwner,
+
+  // Counter parsing and tags
   parseRequestedMode,
   describeModeLabel,
   removeTagAssignments,
-  createDatabaseBackup,
   listTagCatalog,
   addTagToCatalog,
   updateTagInCatalog,
   removeTagFromCatalog,
   mergeTagCatalog,
   filterTagIds,
+
+  // Counter backup and runtime state
+  createDatabaseBackup,
+  setUnlimitedThrottle,
+
+  // API keys
   createApiKey,
   listApiKeys,
   deleteApiKey,
-  setUnlimitedThrottle,
+
+  // Users and auth
   listUsers,
   createUser,
   updateUser,
@@ -72,13 +87,14 @@ const {
   recordUserLogin
 } = require('./db');
 
-/* config */
-const {
-  getConfig,
-  updateConfig
-} = require('./configStore');
+/* -------------------------------------------------------------------------- */
+/* Runtime config                                                              */
+/* -------------------------------------------------------------------------- */
+const { getConfig, updateConfig } = require('./configStore');
 
-/* middleware */
+/* -------------------------------------------------------------------------- */
+/* Middleware                                                                  */
+/* -------------------------------------------------------------------------- */
 const requireAdmin = require('./middleware/requireAdmin');
 const createCsrfGuard = require('./middleware/csrf');
 const {
@@ -99,29 +115,33 @@ const {
   getSessionToken
 } = require('./middleware/requireAdmin');
 
-/* utils */
+/* -------------------------------------------------------------------------- */
+/* Services and route wiring                                                   */
+/* -------------------------------------------------------------------------- */
 const getClientIp = require('./utils/ip');
-const createCounterCreationLimiter = require('./services/counterCreationLimiter');
-const createBackupService = require('./services/backups');
-const createAvatarService = require('./services/avatars');
-const createPermissionsService = require('./services/permissions');
-const createCounterRequestService = require('./services/counterRequest');
-const createCounterStatsService = require('./services/counterStats');
-const createCounterResponseService = require('./services/counterResponse');
+const createCounterCreationLimiter = require('./services/counters/creationLimiter');
+const createBackupService = require('./services/system/backups');
+const createAvatarService = require('./services/system/avatars');
+const createPermissionsService = require('./services/system/permissions');
+const createCounterRequestService = require('./services/counters/request');
+const createCounterStatsService = require('./services/counters/stats');
+const createCounterResponseService = require('./services/counters/response');
 const registerAllRoutes = require('./routes');
 const buildRouteDeps = require('./routes/deps');
 
-/* basic settings */
+/* -------------------------------------------------------------------------- */
+/* Runtime constants                                                           */
+/* -------------------------------------------------------------------------- */
 const PORT = process.env.PORT || 8787;
 
-/* pagination */
+/* Pagination */
 const DEFAULT_PAGE_SIZE = Number(process.env.ADMIN_PAGE_SIZE) || 5;
 const DEFAULT_USERS_PAGE_SIZE = Math.max(
   1,
   Math.min(Number(process.env.USERS_PAGE_SIZE) || 4, 50)
 );
 
-/* rate limiting: counter creation */
+/* Counter creation rate limiting */
 const CREATION_LIMIT_COUNT = Math.max(
   1,
   Number.isFinite(Number(process.env.COUNTER_CREATE_LIMIT))
@@ -138,12 +158,14 @@ const creationLimiter = createCounterCreationLimiter({
   limitCount: CREATION_LIMIT_COUNT,
   limitWindowMs: CREATION_LIMIT_WINDOW_MS,
   idleTtlMs: Number(process.env.COUNTER_CREATE_TRACKER_IDLE_TTL_MS),
-  cleanupIntervalMs: Number(process.env.COUNTER_CREATE_TRACKER_CLEANUP_INTERVAL_MS),
+  cleanupIntervalMs: Number(
+    process.env.COUNTER_CREATE_TRACKER_CLEANUP_INTERVAL_MS
+  ),
   maxEntries: Number(process.env.COUNTER_CREATE_TRACKER_MAX_ENTRIES),
   evictPercent: Number(process.env.COUNTER_CREATE_TRACKER_EVICT_PERCENT)
 });
 
-/* activity + cleanup */
+/* Activity and cleanup */
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ACTIVITY_WINDOW_DAYS = 30;
 const INACTIVE_THRESHOLD_DAYS = Math.max(
@@ -154,17 +176,18 @@ const INACTIVE_THRESHOLD_DAYS = Math.max(
 );
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-/* validation limits */
+/* Validation limits */
 const LABEL_LIMIT = 80;
 const NOTE_LIMIT = 200;
 const START_VALUE_DIGIT_LIMIT = 18;
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
-/* sessions */
+/* Session config */
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const REMEMBER_DEVICE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const SESSION_COOKIE = 'voux_session';
 
-/* throttling config */
+/* Runtime throttle config */
 setUnlimitedThrottle((getConfig().unlimitedThrottleSeconds || 0) * 1000);
 
 const app = express();
@@ -177,15 +200,21 @@ configureApp(app, {
   getBaseUrl
 });
 
-/* static files + html */
-// Web-served static root (example absolute path: /mnt/c/Users/lain/Downloads/Voux/public).
+/* -------------------------------------------------------------------------- */
+/* Paths and filesystem roots                                                  */
+/* -------------------------------------------------------------------------- */
+
+// Web-served static root
 const staticDir = path.join(__dirname, '..', 'public');
 const dataDir = path.join(__dirname, '..', 'data');
-// User-uploaded files root (example absolute path: /mnt/c/Users/lain/Downloads/Voux/data/uploads).
+// User-uploaded files root
 const uploadsDir = path.join(dataDir, 'uploads');
 const avatarUploadsDir = path.join(uploadsDir, 'avatars');
 const notFoundPage = path.join(staticDir, '404.html');
 
+/* -------------------------------------------------------------------------- */
+/* Service adapters                                                            */
+/* -------------------------------------------------------------------------- */
 const { resolveAvatarUrl } = createAvatarService({
   fs,
   path,
@@ -211,32 +240,26 @@ const {
   filterTagIds
 });
 
-const {
-  formatActivityTrend,
-  buildInactiveStatus,
-  toSafeNumber
-} = createCounterStatsService({
-  weekdayLabels,
-  activityWindowDays: ACTIVITY_WINDOW_DAYS,
-  inactiveThresholdDays: INACTIVE_THRESHOLD_DAYS,
-  dayMs: DAY_MS
-});
+const { formatActivityTrend, buildInactiveStatus, toSafeNumber } =
+  createCounterStatsService({
+    weekdayLabels,
+    activityWindowDays: ACTIVITY_WINDOW_DAYS,
+    inactiveThresholdDays: INACTIVE_THRESHOLD_DAYS,
+    dayMs: DAY_MS
+  });
 
-const {
-  serializeCounter,
-  serializeCounterWithStats,
-  serializeUser
-} = createCounterResponseService({
-  normalizeCounterValue,
-  describeModeLabel,
-  listTagCatalog,
-  toSafeNumber,
-  getLastHitTimestamp,
-  getCounterDailyTrend,
-  formatActivityTrend,
-  buildInactiveStatus,
-  activityWindowDays: ACTIVITY_WINDOW_DAYS
-});
+const { serializeCounter, serializeCounterWithStats, serializeUser } =
+  createCounterResponseService({
+    normalizeCounterValue,
+    describeModeLabel,
+    listTagCatalog,
+    toSafeNumber,
+    getLastHitTimestamp,
+    getCounterDailyTrend,
+    formatActivityTrend,
+    buildInactiveStatus,
+    activityWindowDays: ACTIVITY_WINDOW_DAYS
+  });
 
 const {
   getOwnerId,
@@ -263,15 +286,17 @@ const backupService = createBackupService({
   normalizeCounterForExport
 });
 
-/* html cache + env */
+/* -------------------------------------------------------------------------- */
+/* HTML cache and environment                                                  */
+/* -------------------------------------------------------------------------- */
 const htmlCache = new Map();
-const IS_DEV = String(process.env.DEV_MODE || process.env.NODE_ENV || '').toLowerCase() === 'development';
+const IS_DEV =
+  String(process.env.DEV_MODE || process.env.NODE_ENV || '').toLowerCase() ===
+  'development';
 
-/*
-==========================================================================
-Routes: Health + Config
-==========================================================================
-*/
+/* -------------------------------------------------------------------------- */
+/* Health and public config routes                                             */
+/* -------------------------------------------------------------------------- */
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, timestamp: Date.now() });
 });
@@ -280,15 +305,19 @@ app.get('/api/config', (req, res) => {
   const runtimeConfig = getConfig();
   const defaultMode = getDefaultMode(runtimeConfig);
   res.json({
-    // Public-safe config only. 
+    // Public-safe config only.
     // Admin permissions/overrides should never be exposed here.
     // even tho its nun harmful there's no reason to expose admin-related data publicly :/
     privateMode: Boolean(runtimeConfig.privateMode),
     showGuides: Boolean(runtimeConfig.showGuides),
-    allowedModes: runtimeConfig.allowedModes || { unique: true, unlimited: true },
+    allowedModes: runtimeConfig.allowedModes || {
+      unique: true,
+      unlimited: true
+    },
     brandName: runtimeConfig.brandName || 'Voux',
     homeTitle: runtimeConfig.homeTitle || '',
-    unlimitedThrottleSeconds: Number(runtimeConfig.unlimitedThrottleSeconds) || 0,
+    unlimitedThrottleSeconds:
+      Number(runtimeConfig.unlimitedThrottleSeconds) || 0,
     theme: runtimeConfig.theme || 'default',
     version: getAppVersion(),
     adminPageSize: DEFAULT_PAGE_SIZE,
@@ -299,7 +328,11 @@ app.get('/api/config', (req, res) => {
   });
 });
 
+/* -------------------------------------------------------------------------- */
+/* Route dependencies                                                          */
+/* -------------------------------------------------------------------------- */
 const routeDeps = buildRouteDeps({
+  // Auth and access
   requireAdmin,
   requireAuth,
   requireAuthOrKey,
@@ -307,6 +340,24 @@ const routeDeps = buildRouteDeps({
   hasAdminPermission,
   hasCounterAccess,
   getOwnerId,
+  getEffectiveAdminPermissions,
+  checkLoginBlock,
+  setRetryAfter,
+  rateLimitPayload,
+  getUserByUsername,
+  verifyPassword,
+  recordLoginFailure,
+  clearLoginFailures,
+  createSession,
+  SESSION_TTL_MS,
+  REMEMBER_DEVICE_TTL_MS,
+  recordUserLogin,
+  setSessionCookie,
+  deleteSession,
+  getSessionToken,
+  clearSessionCookie,
+
+  // Runtime config
   getConfig,
   updateConfig,
   normalizeAllowedModesPatch,
@@ -318,15 +369,19 @@ const routeDeps = buildRouteDeps({
   DEFAULT_PAGE_SIZE,
   INACTIVE_THRESHOLD_DAYS,
   DAY_MS,
+
+  // Users and profile
   serializeUser,
-  getEffectiveAdminPermissions,
   listUsers,
   createUser,
   updateUser,
   deleteUser,
+  countUsers,
   countAdmins,
   getUserById,
   resolveAvatarUrl,
+
+  // Counter list queries
   normalizeModeFilter,
   normalizeSort,
   normalizeInactiveFilter,
@@ -336,6 +391,8 @@ const routeDeps = buildRouteDeps({
   listCountersPage,
   isKnownOwner,
   serializeCounterWithStats,
+
+  // Counter import and export
   exportCounters,
   exportDailyActivityFor,
   exportDailyActivity,
@@ -349,6 +406,8 @@ const routeDeps = buildRouteDeps({
   importDailyActivity,
   importDailyActivityFor,
   seedLastHitsFromDaily,
+
+  // Counter writes and embeds
   getCounter,
   deleteCounter,
   updateCounterValue,
@@ -373,36 +432,24 @@ const routeDeps = buildRouteDeps({
   recordCreationAttempt,
   getBaseUrl,
   serializeCounter,
+  deleteInactiveCountersOlderThan,
+  isPreviewRequest,
+  recordHit,
+  normalizeCounterValue,
+
+  // Tags and API keys
   addTagToCatalog,
   updateTagInCatalog,
   removeTagFromCatalog,
   removeTagAssignments,
   listApiKeys,
   createApiKey,
-  deleteApiKey,
-  deleteInactiveCountersOlderThan,
-  isPreviewRequest,
-  recordHit,
-  normalizeCounterValue,
-  checkLoginBlock,
-  setRetryAfter,
-  rateLimitPayload,
-  getUserByUsername,
-  verifyPassword,
-  recordLoginFailure,
-  clearLoginFailures,
-  createSession,
-  SESSION_TTL_MS,
-  recordUserLogin,
-  setSessionCookie,
-  deleteSession,
-  getSessionToken,
-  clearSessionCookie
+  deleteApiKey
 });
 
 registerAllRoutes(app, routeDeps);
 
-registerPageRoutes(app, serveHtml);
+registerPageRoutes(app, serveHtml, { countUsers });
 registerStaticAndErrorHandlers(app, {
   express,
   uploadsDir,
@@ -412,20 +459,26 @@ registerStaticAndErrorHandlers(app, {
   notFoundPage
 });
 
-/*
-==========================================================================
-Boot
-==========================================================================
-*/
+/* -------------------------------------------------------------------------- */
+/* Boot                                                                       */
+/* -------------------------------------------------------------------------- */
 bootstrapAdminUser();
 backupService.init();
 
 app.listen(PORT, () => {
-  console.log(`Voux running at http://localhost:${PORT}`);
+  // sum colors (yes i love colors sorry)
+  const aqua = '\x1b[36m';
+  const royalBlue = '\x1b[38;2;55;117;220m';
+  const reset = '\x1b[0m';
+
+  console.log('───────────────────────────────────────');
+  console.log(
+    `${royalBlue}[Voux]${reset} Running at ${aqua}http://localhost:${PORT}${reset}`
+  );
 });
 
 /* -------------------------------------------------------------------------- */
-/* Security, session + bootstrap                                              */
+/* URL, session, and bootstrap helpers                                         */
 /* -------------------------------------------------------------------------- */
 function getBaseUrl(req) {
   if (process.env.PUBLIC_BASE_URL) {
@@ -445,9 +498,11 @@ function getBaseUrl(req) {
   return `${protocol}://${host}`;
 }
 
-function setSessionCookie(res, token, req) {
+function setSessionCookie(res, token, req, ttlMs = SESSION_TTL_MS) {
   const secure = shouldUseSecureCookie(req);
-  const maxAgeSeconds = Math.floor(SESSION_TTL_MS / 1000);
+  const maxAgeSeconds = Math.floor(
+    Math.max(1, Number(ttlMs) || SESSION_TTL_MS) / 1000
+  );
   const cookie = [
     `${SESSION_COOKIE}=${encodeURIComponent(token)}`,
     'Path=/',
@@ -475,7 +530,9 @@ function bootstrapAdminUser() {
   const username = process.env.ADMIN_USERNAME;
   const password = process.env.ADMIN_PASSWORD;
   if (!username || !password) {
-    console.warn('No users exist. Set ADMIN_USERNAME and ADMIN_PASSWORD to bootstrap the first admin.');
+    console.warn(
+      'No users exist. Set ADMIN_USERNAME and ADMIN_PASSWORD to bootstrap the first admin.'
+    );
     return;
   }
   try {
@@ -487,7 +544,7 @@ function bootstrapAdminUser() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Rate limiting                                                              */
+/* Rate limiting helpers                                                      */
 /* -------------------------------------------------------------------------- */
 function checkCreationRate(ip, now = Date.now()) {
   return creationLimiter.check(ip, now);
@@ -498,7 +555,7 @@ function recordCreationAttempt(ip, now = Date.now()) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* HTML + templates                                                           */
+/* HTML and template helpers                                                  */
 /* -------------------------------------------------------------------------- */
 function injectVersion(html) {
   if (!html) return html;
@@ -511,7 +568,9 @@ function injectVersion(html) {
 
 function injectTheme(html) {
   if (!html) return html;
-  const rawTheme = String(getConfig()?.theme || 'default').trim().toLowerCase();
+  const rawTheme = String(getConfig()?.theme || 'default')
+    .trim()
+    .toLowerCase();
   const theme = rawTheme.replace(/[^a-z0-9_-]/g, '') || 'default';
   return html.replace(/<html\b([^>]*)>/i, (match, attrs) => {
     if (/data-theme=/.test(attrs)) return match;
@@ -519,7 +578,7 @@ function injectTheme(html) {
   });
 }
 
-// Reads and caches HTML templates with version tokens applied
+// Read and cache HTML templates with version tokens applied
 function loadHtmlTemplate(filename) {
   if (!IS_DEV && htmlCache.has(filename)) {
     return htmlCache.get(filename);
@@ -550,7 +609,7 @@ function serveHtml(filename, status = 200) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Versioning                                                                 */
+/* Version helpers                                                            */
 /* -------------------------------------------------------------------------- */
 function getVersion() {
   try {

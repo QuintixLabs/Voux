@@ -39,7 +39,10 @@
 
   function storeConfig(data) {
     try {
-      localStorage.setItem(CONFIG_KEY, JSON.stringify({ ts: Date.now(), data }));
+      localStorage.setItem(
+        CONFIG_KEY,
+        JSON.stringify({ ts: Date.now(), data })
+      );
     } catch {}
   }
 
@@ -94,11 +97,18 @@
   /* Session cache helpers                                                    */
   /* ------------------------------------------------------------------------ */
   async function fetchSession(force = false) {
-    if (!force && sessionCache && Date.now() - sessionCacheTs < SESSION_TTL_MS) {
+    if (
+      !force &&
+      sessionCache &&
+      Date.now() - sessionCacheTs < SESSION_TTL_MS
+    ) {
       return sessionCache;
     }
     if (sessionInFlight) return sessionInFlight;
-    sessionInFlight = fetch('/api/session', { credentials: 'include', cache: 'no-store' })
+    sessionInFlight = fetch('/api/session', {
+      credentials: 'include',
+      cache: 'no-store'
+    })
       .then((res) => {
         if (!res.ok) {
           if (res.status === 401) {

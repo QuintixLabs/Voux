@@ -20,11 +20,11 @@ async function injectFooter() {
       }
     })();
     const sessionPromise = hasSessionHint
-      ? (window.VouxState?.getSession
-          ? window.VouxState.getSession()
-          : fetch('/api/session', { credentials: 'include', cache: 'no-store' })
-              .then((res) => (res.ok ? res.json() : null))
-              .catch(() => null))
+      ? window.VouxState?.getSession
+        ? window.VouxState.getSession()
+        : fetch('/api/session', { credentials: 'include', cache: 'no-store' })
+            .then((res) => (res.ok ? res.json() : null))
+            .catch(() => null)
       : Promise.resolve(null);
 
     const footerMarkup = await fetch('/footer.html').then((res) => {
@@ -37,7 +37,10 @@ async function injectFooter() {
       hydrateFooter(root, null, null);
     });
 
-    const [config, session] = await Promise.all([configPromise, sessionPromise]);
+    const [config, session] = await Promise.all([
+      configPromise,
+      sessionPromise
+    ]);
     roots.forEach((root) => {
       hydrateFooter(root, config, session?.user || null);
     });
@@ -59,7 +62,9 @@ function hydrateFooter(root, config, user) {
   const versionEl = root.querySelector('[data-footer-version]');
   if (versionEl) {
     const version = config?.version;
-    versionEl.textContent = version ? `Powered by Voux • v${version}` : 'Powered by Voux • v?.?.?';
+    versionEl.textContent = version
+      ? `Powered by Voux • v${version}`
+      : 'Powered by Voux • v?.?.?';
   }
   const updateEl = root.querySelector('[data-footer-update]');
   if (updateEl) {
@@ -89,8 +94,12 @@ function normalizeVersionLabel(version) {
 
 function compareVersions(a, b) {
   const strip = (value) => String(value || '').replace(/^v/i, '');
-  const partsA = strip(a).split('.').map((part) => parseInt(part, 10) || 0);
-  const partsB = strip(b).split('.').map((part) => parseInt(part, 10) || 0);
+  const partsA = strip(a)
+    .split('.')
+    .map((part) => parseInt(part, 10) || 0);
+  const partsB = strip(b)
+    .split('.')
+    .map((part) => parseInt(part, 10) || 0);
   const maxLen = Math.max(partsA.length, partsB.length);
   for (let i = 0; i < maxLen; i += 1) {
     const left = partsA[i] || 0;
@@ -104,7 +113,9 @@ function compareVersions(a, b) {
 async function checkForUpdates(updateEl, currentVersion) {
   if (!updateEl || !currentVersion) return;
   try {
-    const res = await fetch('https://api.github.com/repos/QuintixLabs/voux/releases/latest');
+    const res = await fetch(
+      'https://api.github.com/repos/QuintixLabs/voux/releases/latest'
+    );
     if (!res.ok) return;
     const data = await res.json().catch(() => ({}));
     const latest = data?.tag_name || data?.name || '';
@@ -112,7 +123,8 @@ async function checkForUpdates(updateEl, currentVersion) {
     if (compareVersions(latest, currentVersion) > 0) {
       const label = `New version available · ${normalizeVersionLabel(latest)}`;
       updateEl.dataset.tooltip = label;
-      updateEl.dataset.updateUrl = 'https://github.com/QuintixLabs/voux/releases/latest';
+      updateEl.dataset.updateUrl =
+        'https://github.com/QuintixLabs/voux/releases/latest';
       updateEl.classList.remove('hidden');
       setupUpdateTooltip(updateEl);
     }
@@ -130,7 +142,9 @@ function setupUpdateTooltip(updateEl) {
     tooltip.className = 'footer__update-tooltip';
     updateEl.appendChild(tooltip);
   }
-  tooltip.href = updateEl.dataset.updateUrl || 'https://github.com/QuintixLabs/voux/releases/latest';
+  tooltip.href =
+    updateEl.dataset.updateUrl ||
+    'https://github.com/QuintixLabs/voux/releases/latest';
   tooltip.target = '_blank';
   tooltip.rel = 'noopener';
   tooltip.textContent = updateEl.dataset.tooltip || 'New version available';

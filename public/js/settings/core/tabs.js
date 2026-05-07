@@ -11,23 +11,25 @@ function createSettingsTabsManager(deps) {
   const { settingsTabs, settingsTabButtons } = deps;
   let settingsTabsReady = false;
 
-/* -------------------------------------------------------------------------- */
-/* Card visibility                                                            */
-/* -------------------------------------------------------------------------- */
-function showSettingsCards(cardsList) {
+  /* -------------------------------------------------------------------------- */
+  /* Card visibility                                                            */
+  /* -------------------------------------------------------------------------- */
+  function showSettingsCards(cardsList) {
     document.querySelectorAll('.settings-card').forEach((card) => {
       card.classList.add('hidden');
     });
-    const cards = Array.isArray(cardsList) ? cardsList : Array.from(document.querySelectorAll('.settings-card'));
+    const cards = Array.isArray(cardsList)
+      ? cardsList
+      : Array.from(document.querySelectorAll('.settings-card'));
     cards.filter(Boolean).forEach((card) => {
       card.classList.remove('hidden');
     });
   }
 
-/* -------------------------------------------------------------------------- */
-/* Tab setup                                                                  */
-/* -------------------------------------------------------------------------- */
-function initSettingsTabs(allowedIds = []) {
+  /* -------------------------------------------------------------------------- */
+  /* Tab setup                                                                  */
+  /* -------------------------------------------------------------------------- */
+  function initSettingsTabs(allowedIds = []) {
     if (!settingsTabs || !settingsTabButtons.length) {
       showSettingsCards();
       return;
@@ -39,7 +41,9 @@ function initSettingsTabs(allowedIds = []) {
       const allowed = targetId === 'all' || allowedSet.has(targetId);
       button.classList.toggle('hidden', !allowed);
     });
-    const firstVisible = settingsTabButtons.find((button) => !button.classList.contains('hidden'));
+    const firstVisible = settingsTabButtons.find(
+      (button) => !button.classList.contains('hidden')
+    );
     if (firstVisible) {
       activateSettingsTab(firstVisible.dataset.target, allowedIds);
     } else {
@@ -60,14 +64,19 @@ function initSettingsTabs(allowedIds = []) {
   function activateSettingsTab(targetId, allowedIds = []) {
     if (!targetId) return;
     if (targetId === 'all') {
-      const cards = allowedIds.map((id) => document.getElementById(id)).filter(Boolean);
+      const cards = allowedIds
+        .map((id) => document.getElementById(id))
+        .filter(Boolean);
       showSettingsCards(cards);
     } else {
       const targetCard = document.getElementById(targetId);
       showSettingsCards([targetCard]);
     }
     settingsTabButtons.forEach((button) => {
-      button.classList.toggle('settings-tab--active', button.dataset.target === targetId);
+      button.classList.toggle(
+        'settings-tab--active',
+        button.dataset.target === targetId
+      );
     });
   }
 
@@ -77,6 +86,4 @@ function initSettingsTabs(allowedIds = []) {
   };
 }
 
-export {
-  createSettingsTabsManager
-};
+export { createSettingsTabsManager };

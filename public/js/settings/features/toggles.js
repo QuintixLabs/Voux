@@ -22,10 +22,14 @@ function createTogglesManager(deps) {
 
   let statusTimeout = null;
 
-/* -------------------------------------------------------------------------- */
-/* Settings toggle updates                                                    */
-/* -------------------------------------------------------------------------- */
-async function handleToggleChange(patch, successMessage = 'Updated', control) {
+  /* -------------------------------------------------------------------------- */
+  /* Settings toggle updates                                                    */
+  /* -------------------------------------------------------------------------- */
+  async function handleToggleChange(
+    patch,
+    successMessage = 'Updated',
+    control
+  ) {
     try {
       setStatus('');
       if (control) control.disabled = true;
@@ -50,10 +54,10 @@ async function handleToggleChange(patch, successMessage = 'Updated', control) {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Status label helpers                                                       */
-/* -------------------------------------------------------------------------- */
-function setStatus(text) {
+  /* -------------------------------------------------------------------------- */
+  /* Status label helpers                                                       */
+  /* -------------------------------------------------------------------------- */
+  function setStatus(text) {
     if (statusLabel) statusLabel.textContent = text || '';
   }
 
@@ -64,10 +68,10 @@ function setStatus(text) {
     }, 1200);
   }
 
-/* -------------------------------------------------------------------------- */
-/* Allowed mode constraints                                                   */
-/* -------------------------------------------------------------------------- */
-function handleAllowedModesChange(sourceInput) {
+  /* -------------------------------------------------------------------------- */
+  /* Allowed mode constraints                                                   */
+  /* -------------------------------------------------------------------------- */
+  function handleAllowedModesChange(sourceInput) {
     const allowed = {
       unique: allowModeUniqueInput?.checked !== false,
       unlimited: allowModeUnlimitedInput?.checked !== false
@@ -77,7 +81,11 @@ function handleAllowedModesChange(sourceInput) {
       showToast('Keep at least one mode enabled!', 'danger');
       return;
     }
-    handleToggleChange({ allowedModes: allowed }, 'Allowed modes updated', sourceInput);
+    handleToggleChange(
+      { allowedModes: allowed },
+      'Allowed modes updated',
+      sourceInput
+    );
   }
 
   return {
@@ -87,6 +95,4 @@ function handleAllowedModesChange(sourceInput) {
   };
 }
 
-export {
-  createTogglesManager
-};
+export { createTogglesManager };

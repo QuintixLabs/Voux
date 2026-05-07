@@ -1,5 +1,5 @@
 /*
-  src/db/sessions.js
+  src/db/auth/sessions.js
 
   Session create/find/delete helpers and user session cleanup.
 */
@@ -14,10 +14,18 @@ function createSessionsApi(db, helpers, cryptoApi, usersApi) {
     INSERT INTO sessions (id, user_id, token_hash, created_at, expires_at)
     VALUES (@id, @user_id, @token_hash, @created_at, @expires_at)
   `);
-  const getSessionByHashStmt = db.prepare('SELECT id, user_id, token_hash, created_at, expires_at FROM sessions WHERE token_hash = ?');
-  const deleteSessionByHashStmt = db.prepare('DELETE FROM sessions WHERE token_hash = ?');
-  const deleteSessionsByUserStmt = db.prepare('DELETE FROM sessions WHERE user_id = ?');
-  const clearUserCountersStmt = db.prepare('UPDATE counters SET owner_id = NULL WHERE owner_id = ?');
+  const getSessionByHashStmt = db.prepare(
+    'SELECT id, user_id, token_hash, created_at, expires_at FROM sessions WHERE token_hash = ?'
+  );
+  const deleteSessionByHashStmt = db.prepare(
+    'DELETE FROM sessions WHERE token_hash = ?'
+  );
+  const deleteSessionsByUserStmt = db.prepare(
+    'DELETE FROM sessions WHERE user_id = ?'
+  );
+  const clearUserCountersStmt = db.prepare(
+    'UPDATE counters SET owner_id = NULL WHERE owner_id = ?'
+  );
 
   function deleteUser(id) {
     const result = usersApi._stmts.deleteUserStmt.run(id);
@@ -47,7 +55,10 @@ function createSessionsApi(db, helpers, cryptoApi, usersApi) {
     if (!token) return null;
     const row = getSessionByHashStmt.get(hashToken(token));
     if (!row) return null;
-    const expiresAt = typeof row.expires_at === 'bigint' ? Number(row.expires_at) : row.expires_at;
+    const expiresAt =
+      typeof row.expires_at === 'bigint'
+        ? Number(row.expires_at)
+        : row.expires_at;
     if (expiresAt && expiresAt < Date.now()) {
       deleteSessionByHashStmt.run(hashToken(token));
       return null;

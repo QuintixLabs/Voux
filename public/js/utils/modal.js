@@ -27,7 +27,9 @@
   /* ------------------------------------------------------------------------ */
   function handleGlobalModalKeys(event) {
     if (event.defaultPrevented) return;
-    const activeOverlay = document.querySelector(`.${OVERLAY_CLASS}.${OPEN_CLASS}`);
+    const activeOverlay = document.querySelector(
+      `.${OVERLAY_CLASS}.${OPEN_CLASS}`
+    );
     if (!activeOverlay) return;
     const allowEscape = activeOverlay.dataset.modalAllowEscape !== 'false';
     const allowEnter = activeOverlay.dataset.modalAllowEnter !== 'false';
@@ -40,7 +42,9 @@
         return;
       }
       const escapeSelector = activeOverlay.dataset.modalEscape;
-      const escapeTarget = escapeSelector ? activeOverlay.querySelector(escapeSelector) : null;
+      const escapeTarget = escapeSelector
+        ? activeOverlay.querySelector(escapeSelector)
+        : null;
       escapeTarget?.click();
       return;
     }
@@ -55,7 +59,9 @@
         return;
       }
       const enterSelector = activeOverlay.dataset.modalEnter;
-      const enterTarget = enterSelector ? activeOverlay.querySelector(enterSelector) : null;
+      const enterTarget = enterSelector
+        ? activeOverlay.querySelector(enterSelector)
+        : null;
       if (enterTarget && !enterTarget.disabled) {
         enterTarget.click();
       }
@@ -126,7 +132,11 @@
       messageEl.textContent = '';
       messageParts.forEach((part) => {
         if (part == null) return;
-        if (typeof part === 'string' || typeof part === 'number' || typeof part === 'boolean') {
+        if (
+          typeof part === 'string' ||
+          typeof part === 'number' ||
+          typeof part === 'boolean'
+        ) {
           messageEl.appendChild(document.createTextNode(String(part)));
           return;
         }
@@ -181,7 +191,15 @@
   /* ------------------------------------------------------------------------ */
   /* Modal open/close                                                         */
   /* ------------------------------------------------------------------------ */
-  function openModal({ title, message, messageParts, buttons, allowClose = true, allowHtml = false, input }) {
+  function openModal({
+    title,
+    message,
+    messageParts,
+    buttons,
+    allowClose = true,
+    allowHtml = false,
+    input
+  }) {
     ensureElements();
     dismissible = allowClose;
     ensureGlobalKeys();
@@ -198,7 +216,8 @@
     buttons.forEach((btn) => {
       const buttonEl = document.createElement('button');
       buttonEl.type = 'button';
-      buttonEl.className = `modal__button ${btn.variant ? `modal__button--${btn.variant}` : ''}`.trim();
+      buttonEl.className =
+        `modal__button ${btn.variant ? `modal__button--${btn.variant}` : ''}`.trim();
       buttonEl.textContent = btn.label;
       buttonEl.addEventListener('click', () => {
         closeModal(btn.value);

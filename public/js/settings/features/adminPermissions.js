@@ -37,12 +37,18 @@ function createAdminPermissionsManager(deps) {
   let activeAdminPermUser = null;
   let listenersBound = false;
 
-/* -------------------------------------------------------------------------- */
-/* Permissions UI visibility                                                  */
-/* -------------------------------------------------------------------------- */
-function getAllowedSettingsCards(perms) {
+  /* -------------------------------------------------------------------------- */
+  /* Permissions UI visibility                                                  */
+  /* -------------------------------------------------------------------------- */
+  function getAllowedSettingsCards(perms) {
     if (!perms) {
-      return ['settingsPanel', 'brandingCard', 'backupCard', 'apiKeysCard', 'usersCard'];
+      return [
+        'settingsPanel',
+        'brandingCard',
+        'backupCard',
+        'apiKeysCard',
+        'usersCard'
+      ];
     }
     const allowed = [];
     if (perms.runtime) allowed.push('settingsPanel');
@@ -57,7 +63,9 @@ function getAllowedSettingsCards(perms) {
     if (adminDefaultsOpen) {
       adminDefaultsOpen.classList.toggle('hidden', !isOwner);
     }
-    const allowedIds = isOwner ? getAllowedSettingsCards(null) : getAllowedSettingsCards(perms);
+    const allowedIds = isOwner
+      ? getAllowedSettingsCards(null)
+      : getAllowedSettingsCards(perms);
     initSettingsTabs(allowedIds);
     if (purgeInactiveButton) {
       const canDanger = isOwner || (perms && perms.danger);
@@ -84,7 +92,8 @@ function getAllowedSettingsCards(perms) {
       toggle.className = 'admin-toggle';
       toggle.dataset.perm = item.key;
       toggle.setAttribute('aria-pressed', values[item.key] ? 'true' : 'false');
-      toggle.innerHTML = '<span class="admin-toggle__track"><span class="admin-toggle__thumb"></span></span>';
+      toggle.innerHTML =
+        '<span class="admin-toggle__track"><span class="admin-toggle__thumb"></span></span>';
       toggle.addEventListener('click', () => {
         const next = toggle.getAttribute('aria-pressed') !== 'true';
         toggle.setAttribute('aria-pressed', next ? 'true' : 'false');
@@ -96,10 +105,10 @@ function getAllowedSettingsCards(perms) {
     });
   }
 
-/* -------------------------------------------------------------------------- */
-/* Permissions API                                                            */
-/* -------------------------------------------------------------------------- */
-async function loadAdminPermissions() {
+  /* -------------------------------------------------------------------------- */
+  /* Permissions API                                                            */
+  /* -------------------------------------------------------------------------- */
+  async function loadAdminPermissions() {
     if (!getActiveUser()?.isOwner) return;
     try {
       const res = await authFetch('/api/admin-permissions');
@@ -133,7 +142,9 @@ async function loadAdminPermissions() {
         adminDefaultsPending = false;
         saveAdminDefaults();
       }
-      await showAlert(normalizeAuthMessage(null, 'Failed to update admin permissions.'));
+      await showAlert(
+        normalizeAuthMessage(null, 'Failed to update admin permissions.')
+      );
       return;
     }
     await res.json().catch(() => ({}));
@@ -146,10 +157,10 @@ async function loadAdminPermissions() {
     showToast('Admin permissions updated.');
   }
 
-/* -------------------------------------------------------------------------- */
-/* Permissions modals                                                         */
-/* -------------------------------------------------------------------------- */
-async function openAdminDefaults() {
+  /* -------------------------------------------------------------------------- */
+  /* Permissions modals                                                         */
+  /* -------------------------------------------------------------------------- */
+  async function openAdminDefaults() {
     if (!adminPermModal || !adminPermGrid || !getActiveUser()?.isOwner) return;
     if (!adminPermissionsDefaults) {
       await loadAdminPermissions();
@@ -157,7 +168,8 @@ async function openAdminDefaults() {
     adminPermMode = 'defaults';
     activeAdminPermUser = null;
     if (adminPermTitle) adminPermTitle.textContent = 'Admin defaults';
-    if (adminPermMessage) adminPermMessage.textContent = 'Default permissions for all admins.';
+    if (adminPermMessage)
+      adminPermMessage.textContent = 'Default permissions for all admins.';
     if (adminPermReset) adminPermReset.classList.add('hidden');
     const defaults = adminPermissionsDefaults || {};
     renderPermissionsGrid(adminPermGrid, { ...defaults });
@@ -170,12 +182,16 @@ async function openAdminDefaults() {
     if (!adminPermModal || !adminPermGrid) return;
     adminPermMode = 'user';
     activeAdminPermUser = user;
-    const label = user.displayName ? `${user.displayName} (${user.username})` : user.username;
+    const label = user.displayName
+      ? `${user.displayName} (${user.username})`
+      : user.username;
     if (adminPermTitle) adminPermTitle.textContent = 'Admin permissions';
-    if (adminPermMessage) adminPermMessage.textContent = `Permissions for ${label}.`;
+    if (adminPermMessage)
+      adminPermMessage.textContent = `Permissions for ${label}.`;
     if (adminPermReset) adminPermReset.classList.remove('hidden');
     const defaults = adminPermissionsDefaults || {};
-    const override = (adminPermissionsOverrides && adminPermissionsOverrides[user.id]) || null;
+    const override =
+      (adminPermissionsOverrides && adminPermissionsOverrides[user.id]) || null;
     const current = { ...defaults, ...(override || {}) };
     renderPermissionsGrid(adminPermGrid, current);
     adminPermModal.classList.add('modal-overlay--open');
@@ -192,18 +208,23 @@ async function openAdminDefaults() {
     activeAdminPermUser = null;
   }
 
-/* -------------------------------------------------------------------------- */
-/* Save/reset handlers                                                        */
-/* -------------------------------------------------------------------------- */
-async function handleReset() {
+  /* -------------------------------------------------------------------------- */
+  /* Save/reset handlers                                                        */
+  /* -------------------------------------------------------------------------- */
+  async function handleReset() {
     if (!activeAdminPermUser) return;
-    const res = await authFetch(`/api/admin-permissions/${activeAdminPermUser.id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ override: {} })
-    });
+    const res = await authFetch(
+      `/api/admin-permissions/${activeAdminPermUser.id}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ override: {} })
+      }
+    );
     if (!res.ok) {
-      await showAlert(normalizeAuthMessage(null, 'Failed to reset permissions.'));
+      await showAlert(
+        normalizeAuthMessage(null, 'Failed to reset permissions.')
+      );
       return;
     }
     adminPermissionsOverrides = (await res.json()).overrides || {};
@@ -215,7 +236,8 @@ async function handleReset() {
     } catch {
       // ignore: keep current defaults if refresh fails
     }
-    const label = activeAdminPermUser.displayName || activeAdminPermUser.username || 'user';
+    const label =
+      activeAdminPermUser.displayName || activeAdminPermUser.username || 'user';
     closeAdminPermissions();
     onUsersChanged?.();
     showToast(`Permissions reset for ${label}`);
@@ -237,13 +259,18 @@ async function handleReset() {
       return;
     }
     if (!activeAdminPermUser) return;
-    const res = await authFetch(`/api/admin-permissions/${activeAdminPermUser.id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ override: values })
-    });
+    const res = await authFetch(
+      `/api/admin-permissions/${activeAdminPermUser.id}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ override: values })
+      }
+    );
     if (!res.ok) {
-      await showAlert(normalizeAuthMessage(null, 'Failed to update permissions.'));
+      await showAlert(
+        normalizeAuthMessage(null, 'Failed to update permissions.')
+      );
       return;
     }
     adminPermissionsOverrides = (await res.json()).overrides || {};
@@ -252,10 +279,10 @@ async function handleReset() {
     showToast('Permissions updated.');
   }
 
-/* -------------------------------------------------------------------------- */
-/* Event wiring                                                               */
-/* -------------------------------------------------------------------------- */
-function setup() {
+  /* -------------------------------------------------------------------------- */
+  /* Event wiring                                                               */
+  /* -------------------------------------------------------------------------- */
+  function setup() {
     if (listenersBound) return;
     listenersBound = true;
     adminDefaultsOpen?.addEventListener('click', () => {
@@ -281,6 +308,4 @@ function setup() {
   };
 }
 
-export {
-  createAdminPermissionsManager
-};
+export { createAdminPermissionsManager };

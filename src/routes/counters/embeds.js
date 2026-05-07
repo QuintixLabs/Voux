@@ -1,5 +1,5 @@
 /*
-  src/routes/embeds.js
+  src/routes/counters/embeds.js
 
   Counter embed endpoints.
 */
@@ -49,13 +49,17 @@ function registerEmbedRoutes(app, deps) {
     if (isPreview) {
       const counter = getCounter(req.params.id);
       if (!counter) {
-        return res.send(`console.warn(${JSON.stringify(`Counter "${String(req.params.id || '')}" not found`)});`);
+        return res.send(
+          `console.warn(${JSON.stringify(`Counter "${String(req.params.id || '')}" not found`)});`
+        );
       }
       result = { counter, incremented: false };
     } else {
       result = recordHit(req.params.id, getClientIp(req));
       if (!result) {
-        return res.send(`console.warn(${JSON.stringify(`Counter "${String(req.params.id || '')}" not found`)});`);
+        return res.send(
+          `console.warn(${JSON.stringify(`Counter "${String(req.params.id || '')}" not found`)});`
+        );
       }
     }
 
@@ -91,13 +95,17 @@ function registerEmbedRoutes(app, deps) {
     const isGitHubCamo = ua.includes('github-camo') || ua.includes('github');
 
     const renderErrorSvg = (message) => {
-      const safe = String(message || 'Counter not found').replace(/[<>&'"]/g, (char) => ({
-        '<': '&lt;',
-        '>': '&gt;',
-        '&': '&amp;',
-        "'": '&apos;',
-        '"': '&quot;'
-      }[char]));
+      const safe = String(message || 'Counter not found').replace(
+        /[<>&'"]/g,
+        (char) =>
+          ({
+            '<': '&lt;',
+            '>': '&gt;',
+            '&': '&amp;',
+            "'": '&apos;',
+            '"': '&quot;'
+          })[char]
+      );
       return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="320" height="48" viewBox="0 0 320 48">
   <style>
@@ -130,23 +138,35 @@ function registerEmbedRoutes(app, deps) {
     }
 
     const { counter } = result;
-    const labelRaw = typeof counter.label === 'string' ? counter.label.trim() : '';
+    const labelRaw =
+      typeof counter.label === 'string' ? counter.label.trim() : '';
     const valueRaw = normalizeCounterValue(counter.value);
-    const valueFormatted = String(valueRaw).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    const label = labelRaw.replace(/[<>&'"]/g, (char) => ({
-      '<': '&lt;',
-      '>': '&gt;',
-      '&': '&amp;',
-      "'": '&apos;',
-      '"': '&quot;'
-    }[char]));
-    const valueText = valueFormatted.replace(/[<>&'"]/g, (char) => ({
-      '<': '&lt;',
-      '>': '&gt;',
-      '&': '&amp;',
-      "'": '&apos;',
-      '"': '&quot;'
-    }[char]));
+    const valueFormatted = String(valueRaw).replace(
+      /\B(?=(\d{3})+(?!\d))/g,
+      ','
+    );
+    const label = labelRaw.replace(
+      /[<>&'"]/g,
+      (char) =>
+        ({
+          '<': '&lt;',
+          '>': '&gt;',
+          '&': '&amp;',
+          "'": '&apos;',
+          '"': '&quot;'
+        })[char]
+    );
+    const valueText = valueFormatted.replace(
+      /[<>&'"]/g,
+      (char) =>
+        ({
+          '<': '&lt;',
+          '>': '&gt;',
+          '&': '&amp;',
+          "'": '&apos;',
+          '"': '&quot;'
+        })[char]
+    );
     const queryValue = (key) => {
       const raw = req.query[key];
       return Array.isArray(raw) ? raw[0] : raw;
@@ -177,7 +197,11 @@ function registerEmbedRoutes(app, deps) {
     const parseAlign = (raw) => {
       if (!raw) return 'left';
       const normalized = String(raw).trim().toLowerCase();
-      if (normalized === 'center' || normalized === 'right' || normalized === 'left') {
+      if (
+        normalized === 'center' ||
+        normalized === 'right' ||
+        normalized === 'left'
+      ) {
         return normalized;
       }
       return 'left';
@@ -185,7 +209,10 @@ function registerEmbedRoutes(app, deps) {
 
     const showLabel = parseBool(queryValue('label'), true);
     const inlineLabel = parseBool(queryValue('inline'), false);
-    const wrapEnabled = parseBool(queryValue('wrap'), inlineLabel ? false : true);
+    const wrapEnabled = parseBool(
+      queryValue('wrap'),
+      inlineLabel ? false : true
+    );
     const align = parseAlign(queryValue('align'));
     const baseColor = parseHexColor(queryValue('color'), '#8A8F98');
     const valueColor = parseHexColor(queryValue('valueColor'), baseColor);
@@ -193,21 +220,40 @@ function registerEmbedRoutes(app, deps) {
     const bgColor = parseHexColor(queryValue('bg'), 'transparent');
     const baseSize = parseSize(queryValue('size'), 20);
     const valueSize = parseSize(queryValue('sizeValue'), baseSize);
-    const labelSize = parseSize(queryValue('sizeLabel'), Math.max(10, Math.round(baseSize * 0.6)));
+    const labelSize = parseSize(
+      queryValue('sizeLabel'),
+      Math.max(10, Math.round(baseSize * 0.6))
+    );
     const labelFontSize = labelSize;
-    const radius = Math.max(0, Math.min(24, Math.round(Number(queryValue('radius')) || 0)));
+    const radius = Math.max(
+      0,
+      Math.min(24, Math.round(Number(queryValue('radius')) || 0))
+    );
     const maxWidthRaw = Math.round(Number(queryValue('maxWidth')) || 0);
-    const maxWidthDefault = wrapEnabled ? Math.round(360 * (valueSize / 20)) : 900;
-    const maxWidth = Math.max(160, Math.min(900, maxWidthRaw > 0 ? maxWidthRaw : maxWidthDefault));
-    const padX = Math.max(4, Math.min(64, Math.round(Number(queryValue('padX')) || 10)));
-    const padY = Math.max(4, Math.min(64, Math.round(Number(queryValue('padY')) || 8)));
-    const anchor = align === 'center' ? 'middle' : align === 'right' ? 'end' : 'start';
+    const maxWidthDefault = wrapEnabled
+      ? Math.round(360 * (valueSize / 20))
+      : 900;
+    const maxWidth = Math.max(
+      160,
+      Math.min(900, maxWidthRaw > 0 ? maxWidthRaw : maxWidthDefault)
+    );
+    const padX = Math.max(
+      4,
+      Math.min(64, Math.round(Number(queryValue('padX')) || 10))
+    );
+    const padY = Math.max(
+      4,
+      Math.min(64, Math.round(Number(queryValue('padY')) || 8))
+    );
+    const anchor =
+      align === 'center' ? 'middle' : align === 'right' ? 'end' : 'start';
 
     const hasLabel = Boolean(label) && showLabel;
     const inlineLabelText = hasLabel && inlineLabel ? label : label;
-    const inlineText = hasLabel && inlineLabel
-      ? `${inlineLabelText}${inlineLabelText ? ' ' : ''}${valueText}`
-      : valueText;
+    const inlineText =
+      hasLabel && inlineLabel
+        ? `${inlineLabelText}${inlineLabelText ? ' ' : ''}${valueText}`
+        : valueText;
     const labelLine = hasLabel && !inlineLabel ? label : '';
 
     const wrapText = (text, maxChars) => {
@@ -248,7 +294,12 @@ function registerEmbedRoutes(app, deps) {
     if (hasLabel && !inlineLabel) {
       labelLines = wrapText(labelLine, maxLabelChars);
       valueLines = wrapText(valueText, maxValueChars);
-    } else if (hasLabel && inlineLabel && wrapEnabled && inlineText.length > maxValueChars) {
+    } else if (
+      hasLabel &&
+      inlineLabel &&
+      wrapEnabled &&
+      inlineText.length > maxValueChars
+    ) {
       inlineSplit = true;
       labelLines = wrapText(inlineLabelText, maxLabelChars);
       valueLines = wrapText(valueText, maxValueChars);
@@ -265,12 +316,19 @@ function registerEmbedRoutes(app, deps) {
       160,
       Math.min(maxWidth, padX * 2 + Math.round(longestLine * valueCharWidth))
     );
-    const labelBlockHeight = labelLines.length ? labelLines.length * labelLineHeight + 6 : 0;
+    const labelBlockHeight = labelLines.length
+      ? labelLines.length * labelLineHeight + 6
+      : 0;
     const valueBlockHeight = valueLines.length * valueLineHeight - 2;
     const height = padY * 2 + labelBlockHeight + valueBlockHeight;
     const labelY = padY + labelFontSize;
     const valueY = padY + labelBlockHeight + valueSize;
-    const textX = align === 'center' ? Math.round(width / 2) : align === 'right' ? width - padX : padX;
+    const textX =
+      align === 'center'
+        ? Math.round(width / 2)
+        : align === 'right'
+          ? width - padX
+          : padX;
 
     const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -299,7 +357,10 @@ function registerEmbedRoutes(app, deps) {
 </svg>`;
 
     if (isGitHubCamo && counter.count_mode === 'unlimited') {
-      res.set('Cache-Control', 'max-age=0, no-cache, no-store, must-revalidate');
+      res.set(
+        'Cache-Control',
+        'max-age=0, no-cache, no-store, must-revalidate'
+      );
     } else if (!isGitHubCamo) {
       res.set('Cache-Control', 'no-store');
     }

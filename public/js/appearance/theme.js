@@ -13,11 +13,13 @@
     'blush',
     'forest',
     'ember',
-    'crimson',
+    'crimson'
   ];
 
   function sanitize(theme) {
-    const key = String(theme || '').trim().toLowerCase();
+    const key = String(theme || '')
+      .trim()
+      .toLowerCase();
     if (!key) return 'default';
     return THEMES.includes(key) ? key : 'default';
   }

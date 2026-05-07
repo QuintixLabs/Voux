@@ -1,5 +1,5 @@
 /*
-  src/services/backups.js
+  src/services/system/backups.js
 
   Automatic + manual database backup service.
 */
@@ -205,7 +205,10 @@ function createBackupService(options = {}) {
     const target = path.resolve(targetPath);
     const base = path.resolve(basePath);
     const relative = path.relative(base, target);
-    return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+    return (
+      relative === '' ||
+      (!relative.startsWith('..') && !path.isAbsolute(relative))
+    );
   }
 
   function buildBackupTimestamp(date) {
@@ -250,10 +253,12 @@ function createBackupService(options = {}) {
 
   function pruneOldBackups(retention = 7, type = 'db') {
     const keep = sanitizeBackupRetention(retention);
-    const pattern = type === 'json'
-      ? /^voux-export-\d{8}-\d{6}\.json$/i
-      : /^voux-db-\d{8}-\d{6}\.db$/i;
-    const files = fs.readdirSync(backupDir)
+    const pattern =
+      type === 'json'
+        ? /^voux-export-\d{8}-\d{6}\.json$/i
+        : /^voux-db-\d{8}-\d{6}\.db$/i;
+    const files = fs
+      .readdirSync(backupDir)
       .filter((file) => pattern.test(file))
       .map((file) => {
         const fullPath = path.join(backupDir, file);
@@ -276,8 +281,12 @@ function createBackupService(options = {}) {
       return [3, 0];
     }
     const [hourRaw, minuteRaw] = raw.split(':').map((part) => Number(part));
-    const hour = Number.isFinite(hourRaw) ? Math.max(0, Math.min(23, Math.floor(hourRaw))) : 3;
-    const minute = Number.isFinite(minuteRaw) ? Math.max(0, Math.min(59, Math.floor(minuteRaw))) : 0;
+    const hour = Number.isFinite(hourRaw)
+      ? Math.max(0, Math.min(23, Math.floor(hourRaw)))
+      : 3;
+    const minute = Number.isFinite(minuteRaw)
+      ? Math.max(0, Math.min(59, Math.floor(minuteRaw)))
+      : 0;
     return [hour, minute];
   }
 

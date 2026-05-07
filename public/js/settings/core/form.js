@@ -20,10 +20,10 @@ function createSettingsFormManager(deps) {
     applyAutoBackupPath
   } = deps;
 
-/* -------------------------------------------------------------------------- */
-/* Settings fetch                                                             */
-/* -------------------------------------------------------------------------- */
-async function fetchSettings() {
+  /* -------------------------------------------------------------------------- */
+  /* Settings fetch                                                             */
+  /* -------------------------------------------------------------------------- */
+  async function fetchSettings() {
     const res = await authFetch('/api/settings');
     if (!res.ok) throw new Error('Unauthorized');
     const data = await res.json();
@@ -36,14 +36,20 @@ async function fetchSettings() {
     };
   }
 
-/* -------------------------------------------------------------------------- */
-/* Settings form apply                                                        */
-/* -------------------------------------------------------------------------- */
-function populateForm(config, options = {}) {
+  /* -------------------------------------------------------------------------- */
+  /* Settings form apply                                                        */
+  /* -------------------------------------------------------------------------- */
+  function populateForm(config, options = {}) {
     if (togglePrivate) togglePrivate.checked = Boolean(config.privateMode);
     if (toggleGuides) toggleGuides.checked = Boolean(config.showGuides);
-    if (allowModeUniqueInput) allowModeUniqueInput.checked = config.allowedModes ? config.allowedModes.unique !== false : true;
-    if (allowModeUnlimitedInput) allowModeUnlimitedInput.checked = config.allowedModes ? config.allowedModes.unlimited !== false : true;
+    if (allowModeUniqueInput)
+      allowModeUniqueInput.checked = config.allowedModes
+        ? config.allowedModes.unique !== false
+        : true;
+    if (allowModeUnlimitedInput)
+      allowModeUnlimitedInput.checked = config.allowedModes
+        ? config.allowedModes.unlimited !== false
+        : true;
 
     applyBrandingFromConfig(config);
 
@@ -56,7 +62,8 @@ function populateForm(config, options = {}) {
         option.value = safe;
         const seconds = Number(safe);
         const labelSeconds = Number.isFinite(seconds) ? seconds : 0;
-        const pretty = labelSeconds === 1 ? '1 second' : `${labelSeconds} seconds`;
+        const pretty =
+          labelSeconds === 1 ? '1 second' : `${labelSeconds} seconds`;
         option.textContent = `Throttle to ${pretty} per visitor`;
         option.dataset.custom = 'true';
         throttleSelect.appendChild(option);
@@ -74,6 +81,4 @@ function populateForm(config, options = {}) {
   };
 }
 
-export {
-  createSettingsFormManager
-};
+export { createSettingsFormManager };

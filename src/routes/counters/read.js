@@ -29,8 +29,16 @@ function registerCounterReadRoutes(app, deps) {
   app.get('/api/counters', requireAuth, (req, res) => {
     const auth = authenticateRequest(req);
     let ownerId = auth?.type === 'user' ? auth.user.id : null;
-    const tagOwnerId = auth?.type === 'user' ? auth.user.id : auth?.type === 'admin' ? auth.user.id : null;
-    if (auth?.type === 'admin' && String(req.query.owner || '').toLowerCase() === 'me') {
+    const tagOwnerId =
+      auth?.type === 'user'
+        ? auth.user.id
+        : auth?.type === 'admin'
+          ? auth.user.id
+          : null;
+    if (
+      auth?.type === 'admin' &&
+      String(req.query.owner || '').toLowerCase() === 'me'
+    ) {
       ownerId = auth.user.id;
     }
 
@@ -51,15 +59,29 @@ function registerCounterReadRoutes(app, deps) {
     const searchQuery = extractSearchQuery(req.query.q ?? req.query.search);
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const pageSizeRaw = parseInt(req.query.pageSize, 10);
-    const pageSize = Math.max(1, Math.min(pageSizeRaw || DEFAULT_PAGE_SIZE, 100));
+    const pageSize = Math.max(
+      1,
+      Math.min(pageSizeRaw || DEFAULT_PAGE_SIZE, 100)
+    );
 
-    const inactiveBefore = inactiveOnly ? Date.now() - INACTIVE_THRESHOLD_DAYS * DAY_MS : null;
+    const inactiveBefore = inactiveOnly
+      ? Date.now() - INACTIVE_THRESHOLD_DAYS * DAY_MS
+      : null;
     const totalOverall = countCounters(null, null, null, null, ownerId);
     const totalMatching =
       searchQuery || modeFilter || tagFilter.length || inactiveOnly
-        ? countCounters(searchQuery, modeFilter, tagFilter, inactiveBefore, ownerId)
+        ? countCounters(
+            searchQuery,
+            modeFilter,
+            tagFilter,
+            inactiveBefore,
+            ownerId
+          )
         : totalOverall;
-    const totalPages = Math.max(1, Math.ceil(Math.max(totalMatching, 1) / pageSize));
+    const totalPages = Math.max(
+      1,
+      Math.ceil(Math.max(totalMatching, 1) / pageSize)
+    );
     const safePage = Math.min(page, totalPages);
     const offset = (safePage - 1) * pageSize;
 
@@ -85,13 +107,15 @@ function registerCounterReadRoutes(app, deps) {
     ).map((counter) => {
       const ownerKnown = isKnownOwner(counter.owner_id);
       const isAdmin = auth?.type === 'admin';
-      const isOwner = Boolean(counter.owner_id && auth?.user?.id === counter.owner_id);
+      const isOwner = Boolean(
+        counter.owner_id && auth?.user?.id === counter.owner_id
+      );
       const canAdminTag = isAdmin && (!counter.owner_id || !ownerKnown);
       const canEditTags = Boolean(isOwner || canAdminTag);
       const canShowTags = Boolean(
         tagOwnerId &&
-          ((counter.owner_id && counter.owner_id === tagOwnerId) ||
-            (isAdmin && (!counter.owner_id || !ownerKnown)))
+        ((counter.owner_id && counter.owner_id === tagOwnerId) ||
+          (isAdmin && (!counter.owner_id || !ownerKnown)))
       );
       const payload = serializeCounterWithStats(counter, {
         includeNote: true,
@@ -102,7 +126,9 @@ function registerCounterReadRoutes(app, deps) {
       return {
         ...payload,
         canEditTags,
-        ownerUsername: counter.owner_id ? resolveOwnerLabel(counter.owner_id) : ''
+        ownerUsername: counter.owner_id
+          ? resolveOwnerLabel(counter.owner_id)
+          : ''
       };
     });
 

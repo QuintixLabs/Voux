@@ -80,7 +80,4 @@ function toggleGuideCards(cards, shouldShow) {
   });
 }
 
-export {
-  initGuideExpanders,
-  toggleGuideCards
-};
+export { initGuideExpanders, toggleGuideCards };

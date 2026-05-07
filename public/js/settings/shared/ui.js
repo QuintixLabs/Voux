@@ -26,7 +26,10 @@ function ensureToastSupport() {
     const toast = document.createElement('div');
     toast.className = `toast toast--${variant}`;
     const icon = document.createElement('i');
-    icon.className = variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line';
+    icon.className =
+      variant === 'success'
+        ? 'ri-checkbox-circle-line'
+        : 'ri-error-warning-line';
     icon.setAttribute('aria-hidden', 'true');
     const text = document.createElement('span');
     text.className = 'toast__message';
@@ -78,11 +81,15 @@ function ensureToastSupport() {
     toast._resumeToast = resumeTimer;
 
     const pauseAll = () => {
-      container.querySelectorAll('.toast').forEach((node) => node._pauseToast?.());
+      container
+        .querySelectorAll('.toast')
+        .forEach((node) => node._pauseToast?.());
     };
 
     const resumeAll = () => {
-      container.querySelectorAll('.toast').forEach((node) => node._resumeToast?.());
+      container
+        .querySelectorAll('.toast')
+        .forEach((node) => node._resumeToast?.());
     };
 
     toast.addEventListener('mouseenter', pauseAll);
@@ -124,7 +131,10 @@ async function assertSession(res) {
     throw error;
   }
   if (res?.status === 403) {
-    const payload = await res.clone().json().catch(() => ({}));
+    const payload = await res
+      .clone()
+      .json()
+      .catch(() => ({}));
     if (payload?.error === 'csrf_blocked') {
       const error = new Error('csrf_blocked');
       error.code = 'csrf_blocked';
@@ -149,8 +159,12 @@ function modalConfirmWithInput(options) {
   if (modalApi()?.confirmWithInput) {
     return modalApi().confirmWithInput(options);
   }
-  const entered = window.prompt(options?.promptMessage || 'Type DELETE to confirm');
-  return Promise.resolve(entered && entered.trim() === (options?.inputMatch || 'DELETE'));
+  const entered = window.prompt(
+    options?.promptMessage || 'Type DELETE to confirm'
+  );
+  return Promise.resolve(
+    entered && entered.trim() === (options?.inputMatch || 'DELETE')
+  );
 }
 
 export {

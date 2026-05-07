@@ -1,5 +1,5 @@
 /*
-  src/routes/profile.js
+  src/routes/auth/profile.js
 
   Logged-in profile routes.
 */
@@ -27,7 +27,10 @@ function registerProfileRoutes(app, deps) {
     }
     const ownerId = getOwnerId();
     const user = serializeUser(auth.user, ownerId);
-    const adminPermissions = auth.type === 'admin' ? getEffectiveAdminPermissions(auth.user?.id) : null;
+    const adminPermissions =
+      auth.type === 'admin'
+        ? getEffectiveAdminPermissions(auth.user?.id)
+        : null;
     return res.json({ user, adminPermissions });
   });
 
@@ -39,18 +42,27 @@ function registerProfileRoutes(app, deps) {
     if (!auth || auth.type === 'key') {
       return res.status(401).json({ error: 'unauthorized' });
     }
-    const { displayName, avatarUrl, currentPassword, newPassword, username } = req.body || {};
+    const { displayName, avatarUrl, currentPassword, newPassword, username } =
+      req.body || {};
     if (username !== undefined && !String(username || '').trim()) {
       return res.status(400).json({ error: 'username_required' });
     }
-    if (username !== undefined && String(username).trim().toLowerCase() === auth.user.username) {
+    if (
+      username !== undefined &&
+      String(username).trim().toLowerCase() === auth.user.username
+    ) {
       return res.status(400).json({ error: 'username_unchanged' });
     }
     let password = null;
     const userRow = getUserByUsername(auth.user.username);
-    const usernameChange = username !== undefined && String(username).trim().toLowerCase() !== auth.user.username;
+    const usernameChange =
+      username !== undefined &&
+      String(username).trim().toLowerCase() !== auth.user.username;
     if (usernameChange || newPassword) {
-      if (!userRow || !verifyPassword(userRow.password_hash, currentPassword || '')) {
+      if (
+        !userRow ||
+        !verifyPassword(userRow.password_hash, currentPassword || '')
+      ) {
         return res.status(401).json({ error: 'invalid_credentials' });
       }
     }
@@ -60,7 +72,11 @@ function registerProfileRoutes(app, deps) {
       }
       password = String(newPassword);
     }
-    const avatarResult = resolveAvatarUrl(auth.user.id, avatarUrl, userRow?.avatar_url);
+    const avatarResult = resolveAvatarUrl(
+      auth.user.id,
+      avatarUrl,
+      userRow?.avatar_url
+    );
     if (avatarResult.error) {
       return res.status(400).json({ error: avatarResult.error });
     }

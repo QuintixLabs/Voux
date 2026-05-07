@@ -18,5 +18,7 @@ if (!fs.existsSync(dbPath)) {
 
 const db = new Database(dbPath);
 const result = db.prepare('DELETE FROM hits').run();
-console.log(`Removed ${result.changes} IP entr${result.changes === 1 ? 'y' : 'ies'} from the hits table.`);
+console.log(
+  `Removed ${result.changes} IP entr${result.changes === 1 ? 'y' : 'ies'} from the hits table.`
+);
 db.close();

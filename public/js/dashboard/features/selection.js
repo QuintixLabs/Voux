@@ -31,10 +31,10 @@ function createDashboardSelection(deps) {
     slugifyFilename
   } = deps;
 
-/* -------------------------------------------------------------------------- */
-/* Selection state updates                                                    */
-/* -------------------------------------------------------------------------- */
-function toggleSelection(counterId, selected, row) {
+  /* -------------------------------------------------------------------------- */
+  /* Selection state updates                                                    */
+  /* -------------------------------------------------------------------------- */
+  function toggleSelection(counterId, selected, row) {
     if (!counterId) return;
     if (selected && !canDangerOnCounter(state.counterCache?.get(counterId))) {
       return;
@@ -93,11 +93,13 @@ function toggleSelection(counterId, selected, row) {
     document.body.classList.toggle('selection-active', active);
   }
 
-/* -------------------------------------------------------------------------- */
-/* Bulk download/tag/delete actions                                           */
-/* -------------------------------------------------------------------------- */
-async function handleDownloadSelected() {
-    const ids = Array.from(state.selectedIds).filter((id) => canDangerOnCounter(state.counterCache?.get(id)));
+  /* -------------------------------------------------------------------------- */
+  /* Bulk download/tag/delete actions                                           */
+  /* -------------------------------------------------------------------------- */
+  async function handleDownloadSelected() {
+    const ids = Array.from(state.selectedIds).filter((id) =>
+      canDangerOnCounter(state.counterCache?.get(id))
+    );
     if (!ids.length) {
       await showAlert('Select at least one counter.');
       return;
@@ -112,7 +114,9 @@ async function handleDownloadSelected() {
 
   async function handleAddTagsSelected() {
     const ids = Array.from(state.selectedIds);
-    const allowedIds = ids.filter((id) => canDangerOnCounter(state.counterCache?.get(id)));
+    const allowedIds = ids.filter((id) =>
+      canDangerOnCounter(state.counterCache?.get(id))
+    );
     const skippedCount = ids.length - allowedIds.length;
     if (!ids.length) {
       await showAlert('Select at least one counter.');
@@ -145,7 +149,9 @@ async function handleDownloadSelected() {
     let skipped = 0;
     let lastError = null;
     const updatedIds = [];
-    const nextTagObjects = state.tags.filter((tag) => selectedTags.includes(tag.id));
+    const nextTagObjects = state.tags.filter((tag) =>
+      selectedTags.includes(tag.id)
+    );
     for (const id of allowedIds) {
       try {
         await updateCounterMetadataRequest(id, { tags: selectedTags });
@@ -156,7 +162,10 @@ async function handleDownloadSelected() {
           cached.tags = nextTagObjects.slice();
         }
       } catch (error) {
-        if (error?.message === 'forbidden' || error?.message === 'admin_permission_denied') {
+        if (
+          error?.message === 'forbidden' ||
+          error?.message === 'admin_permission_denied'
+        ) {
           skipped += 1;
         } else {
           lastError = error;
@@ -182,7 +191,9 @@ async function handleDownloadSelected() {
             reverted += 1;
             const cached = state.counterCache?.get(id);
             if (cached) {
-              cached.tags = state.tags.filter((tag) => previous.includes(tag.id));
+              cached.tags = state.tags.filter((tag) =>
+                previous.includes(tag.id)
+              );
             }
           } catch {
             failed += 1;
@@ -190,30 +201,38 @@ async function handleDownloadSelected() {
         }
         await refreshCounters(state.page);
         if (reverted) {
-          showToast(`Reverted tags for ${reverted} counter${reverted === 1 ? '' : 's'}`);
+          showToast(
+            `Reverted tags for ${reverted} counter${reverted === 1 ? '' : 's'}`
+          );
         }
         if (failed) {
-          showToast(`Could not revert ${failed} counter${failed === 1 ? '' : 's'}`, 'danger');
+          showToast(
+            `Could not revert ${failed} counter${failed === 1 ? '' : 's'}`,
+            'danger'
+          );
         }
       });
     }
     if (lastError) {
       await showAlert(normalizeAuthMessage(lastError, 'Failed to update tags'));
-    } else if (!updated && (skipped + skippedCount)) {
+    } else if (!updated && skipped + skippedCount) {
       showToast(
         `${skipped + skippedCount} counter${skipped + skippedCount === 1 ? '' : 's'} skipped (no permission).`
       );
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Single/bulk JSON export                                                    */
-/* -------------------------------------------------------------------------- */
-async function handleDownloadSingle(id, label, button) {
+  /* -------------------------------------------------------------------------- */
+  /* Single/bulk JSON export                                                    */
+  /* -------------------------------------------------------------------------- */
+  async function handleDownloadSingle(id, label, button) {
     if (!id) return;
     if (button) button.disabled = true;
     try {
-      await downloadCountersByIds([id], `counter-${slugifyFilename(label || id)}`);
+      await downloadCountersByIds(
+        [id],
+        `counter-${slugifyFilename(label || id)}`
+      );
     } finally {
       if (button) button.disabled = false;
     }
@@ -239,9 +258,15 @@ async function handleDownloadSingle(id, label, button) {
       }
       const payload = await res.json();
       triggerJsonDownload(payload, filenamePrefix || 'counters');
-      showToast(ids.length === 1 ? `Exported ${ids[0]}` : `Exported ${ids.length} counters`);
+      showToast(
+        ids.length === 1
+          ? `Exported ${ids[0]}`
+          : `Exported ${ids.length} counters`
+      );
     } catch (error) {
-      await showAlert(normalizeAuthMessage(error, 'Failed to download counters'));
+      await showAlert(
+        normalizeAuthMessage(error, 'Failed to download counters')
+      );
     }
   }
 
@@ -249,7 +274,9 @@ async function handleDownloadSingle(id, label, button) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const safePrefix = slugifyFilename(filenamePrefix || 'counters');
     const link = document.createElement('a');
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: 'application/json'
+    });
     const url = URL.createObjectURL(blob);
     link.href = url;
     link.download = `${safePrefix}-${timestamp}.json`;
@@ -265,7 +292,9 @@ async function handleDownloadSingle(id, label, button) {
       await showAlert('Select at least one counter.');
       return;
     }
-    const allowedIds = ids.filter((id) => canDangerOnCounter(state.counterCache?.get(id)));
+    const allowedIds = ids.filter((id) =>
+      canDangerOnCounter(state.counterCache?.get(id))
+    );
     const skippedCount = ids.length - allowedIds.length;
     if (!allowedIds.length) {
       await showAlert("You don't have permission to do that.");
@@ -313,14 +342,17 @@ async function handleDownloadSingle(id, label, button) {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Select-all flow                                                            */
-/* -------------------------------------------------------------------------- */
-function handleSelectAll() {
+  /* -------------------------------------------------------------------------- */
+  /* Select-all flow                                                            */
+  /* -------------------------------------------------------------------------- */
+  function handleSelectAll() {
     const ids = state.latestCounters.map((counter) => counter.id);
-    const allowedIds = ids.filter((id) => canDangerOnCounter(state.counterCache?.get(id)));
+    const allowedIds = ids.filter((id) =>
+      canDangerOnCounter(state.counterCache?.get(id))
+    );
     const skippedCount = ids.length - allowedIds.length;
-    const allSelected = allowedIds.length && allowedIds.every((id) => state.selectedIds.has(id));
+    const allSelected =
+      allowedIds.length && allowedIds.every((id) => state.selectedIds.has(id));
     if (allSelected) {
       allowedIds.forEach((id) => state.selectedIds.delete(id));
     } else {
@@ -328,7 +360,9 @@ function handleSelectAll() {
     }
     refreshSelectionState();
     if (skippedCount) {
-      showToast(`${skippedCount} counter${skippedCount === 1 ? '' : 's'} skipped (no permission).`);
+      showToast(
+        `${skippedCount} counter${skippedCount === 1 ? '' : 's'} skipped (no permission).`
+      );
     }
   }
 

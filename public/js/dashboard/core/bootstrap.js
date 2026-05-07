@@ -48,19 +48,6 @@ function createDashboardBootstrapHelpers(deps) {
     });
   }
 
-  function limitStartValueInput(input) {
-    if (!input) return;
-    const enforceDigits = () => {
-      const digitsOnly = (input.value || '').replace(/[^\d]/g, '');
-      const trimmed = digitsOnly.slice(0, START_VALUE_DIGIT_LIMIT);
-      if (trimmed !== input.value) {
-        input.value = trimmed;
-      }
-    };
-    enforceDigits();
-    input.addEventListener('input', enforceDigits);
-  }
-
   function canDangerOnCounter(counter) {
     if (!state.isAdmin) return true;
     if (state.user?.adminPermissions?.danger === true) return true;
@@ -69,7 +56,9 @@ function createDashboardBootstrapHelpers(deps) {
 
   function readStartValue(input) {
     if (!input) return '0';
-    const digits = (input.value || '').replace(/[^\d]/g, '').slice(0, START_VALUE_DIGIT_LIMIT);
+    const digits = (input.value || '')
+      .replace(/[^\d]/g, '')
+      .slice(0, START_VALUE_DIGIT_LIMIT);
     return digits || '0';
   }
 
@@ -103,13 +92,30 @@ function initDashboardBootstrap(deps) {
   const {
     state,
     START_VALUE_DIGIT_LIMIT,
-    createStartInput,
+
+    // Login controls
     adminForm,
+    loginCard,
+    loginUsernameInput,
+    loginPasswordInput,
+    hasSessionHint,
+    onLoginSubmit,
+    setLoginPending,
+    revealLoginCard,
+    hideLoginError,
+
+    // Counter creation controls
+    createForm,
+    createStartInput,
+    createTagPicker,
+    createTagManageBtn,
+    setEmbedMode,
+    embedToggles,
+    handleCreateCounter,
+
+    // Counter filters + pagination
     prevPageBtn,
     nextPageBtn,
-    deleteAllBtn,
-    deleteFilteredBtn,
-    createForm,
     modeFilterSelect,
     sortFilterSelect,
     ownerFilterToggle,
@@ -117,25 +123,7 @@ function initDashboardBootstrap(deps) {
     counterSearchInput,
     counterSearchClear,
     activityRangeControls,
-    selectAllBtn,
-    downloadSelectedBtn,
-    addTagsSelectedBtn,
-    deleteSelectedBtn,
-    clearSelectionBtn,
-    embedToggles,
-    tagFilterButton,
-    tagFilterControls,
-    clearTagFilterBtn,
-    tagFilterCreateBtn,
-    createTagManageBtn,
-    createTagPicker,
-    loginCard,
-    hasSessionHint,
-    onLoginSubmit,
     handlePageNavigation,
-    handleDeleteAll,
-    handleDeleteFiltered,
-    handleCreateCounter,
     handleModeFilterChange,
     handleSortChange,
     handleOwnerFilterToggle,
@@ -144,13 +132,31 @@ function initDashboardBootstrap(deps) {
     handleSearchClear,
     handleActivityRangeClick,
     handlePaginationHotkeys,
+    toggleSearchClear,
+    updateDeleteFilteredState,
+    updateActivityRangeButtons,
+
+    // Bulk counter actions
+    deleteAllBtn,
+    deleteFilteredBtn,
+    selectAllBtn,
+    downloadSelectedBtn,
+    addTagsSelectedBtn,
+    deleteSelectedBtn,
+    clearSelectionBtn,
+    handleDeleteAll,
+    handleDeleteFiltered,
     handleSelectAll,
     handleDownloadSelected,
     handleAddTagsSelected,
     handleDeleteSelected,
     clearSelection,
-    handleDocumentClick,
-    handleGlobalKeydown,
+
+    // Tag filter controls
+    tagFilterButton,
+    tagFilterControls,
+    clearTagFilterBtn,
+    tagFilterCreateBtn,
     handleTagFilterToggle,
     handleTagFilterLabelClick,
     clearTagFilterSelection,
@@ -158,17 +164,15 @@ function initDashboardBootstrap(deps) {
     registerTagSelector,
     renderTagFilterList,
     updateTagFilterButton,
-    toggleSearchClear,
-    setLoginPending,
-    revealLoginCard,
+    updateTagCounterHints,
+
+    // Global dashboard handlers
+    handleDocumentClick,
+    handleGlobalKeydown,
     fetchConfig,
     checkSession,
-    updateDeleteFilteredState,
-    updateActivityRangeButtons,
-    updateTagCounterHints,
     enhanceCodeSnippets,
-    bindSnippetCopyButtons,
-    setEmbedMode
+    bindSnippetCopyButtons
   } = deps;
 
   function limitStartValueInput(input) {
@@ -186,7 +190,13 @@ function initDashboardBootstrap(deps) {
 
   function init() {
     if (deleteAllBtn) deleteAllBtn.disabled = true;
+
+    // Login wiring
     adminForm?.addEventListener('submit', onLoginSubmit);
+    loginUsernameInput?.addEventListener('input', hideLoginError);
+    loginPasswordInput?.addEventListener('input', hideLoginError);
+
+    // Pagination controls
     prevPageBtn?.addEventListener('click', () => {
       if (state.page > 1) {
         handlePageNavigation(state.page - 1);
@@ -197,9 +207,18 @@ function initDashboardBootstrap(deps) {
         handlePageNavigation(state.page + 1);
       }
     });
-    deleteAllBtn?.addEventListener('click', handleDeleteAll);
-    deleteFilteredBtn?.addEventListener('click', handleDeleteFiltered);
+    window.addEventListener('keydown', handlePaginationHotkeys);
+
+    // Counter creation controls
     createForm?.addEventListener('submit', handleCreateCounter);
+    embedToggles.forEach((toggle) => {
+      toggle.addEventListener('click', () =>
+        setEmbedMode(toggle.dataset.embed || 'script')
+      );
+    });
+    limitStartValueInput(createStartInput);
+
+    // Counter filters.
     modeFilterSelect?.addEventListener('change', handleModeFilterChange);
     sortFilterSelect?.addEventListener('change', handleSortChange);
     ownerFilterToggle?.addEventListener('click', handleOwnerFilterToggle);
@@ -208,17 +227,17 @@ function initDashboardBootstrap(deps) {
     counterSearchInput?.addEventListener('search', handleSearchInput);
     counterSearchClear?.addEventListener('click', handleSearchClear);
     activityRangeControls?.addEventListener('click', handleActivityRangeClick);
-    window.addEventListener('keydown', handlePaginationHotkeys);
+
+    // Bulk actions
+    deleteAllBtn?.addEventListener('click', handleDeleteAll);
+    deleteFilteredBtn?.addEventListener('click', handleDeleteFiltered);
     selectAllBtn?.addEventListener('click', handleSelectAll);
     downloadSelectedBtn?.addEventListener('click', handleDownloadSelected);
     addTagsSelectedBtn?.addEventListener('click', handleAddTagsSelected);
     deleteSelectedBtn?.addEventListener('click', handleDeleteSelected);
-    embedToggles.forEach((toggle) => {
-      toggle.addEventListener('click', () => setEmbedMode(toggle.dataset.embed || 'script'));
-    });
     clearSelectionBtn?.addEventListener('click', () => clearSelection());
-    document.addEventListener('click', handleDocumentClick);
-    document.addEventListener('keydown', handleGlobalKeydown);
+
+    // Tag controls
     tagFilterButton?.addEventListener('click', handleTagFilterToggle);
     const tagFilterLabel = tagFilterControls?.querySelector('span');
     tagFilterLabel?.addEventListener('click', handleTagFilterLabelClick);
@@ -227,7 +246,9 @@ function initDashboardBootstrap(deps) {
       event.stopPropagation();
       handleTagCreate('filter');
     });
-    createTagManageBtn?.addEventListener('click', () => handleTagCreate('create'));
+    createTagManageBtn?.addEventListener('click', () =>
+      handleTagCreate('create')
+    );
     if (createTagPicker) {
       registerTagSelector(createTagPicker, {
         getSelected: () => state.createTags.slice(),
@@ -239,15 +260,43 @@ function initDashboardBootstrap(deps) {
     }
     renderTagFilterList();
     updateTagFilterButton();
+    updateTagCounterHints();
+
+    // Global document handlers
+    document.addEventListener('click', handleDocumentClick);
+    document.addEventListener('keydown', handleGlobalKeydown);
+    document.addEventListener('click', () => {
+      document
+        .querySelectorAll('.counter-copy__menu.is-open')
+        .forEach((menu) => {
+          menu.classList.remove('is-open');
+        });
+    });
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted && hasSessionHint()) {
+        checkSession();
+      }
+    });
+
+    // Initial UI state
     toggleSearchClear();
-    limitStartValueInput(deps.createStartInput);
+    updateDeleteFilteredState();
+    updateActivityRangeButtons();
+    enhanceCodeSnippets();
+    bindSnippetCopyButtons('.code-snippet .copy-button');
+
+    // Session bootstrap
     if (hasSessionHint()) {
       setLoginPending(true, 'Checking your session...');
     } else {
       revealLoginCard();
     }
     setTimeout(() => {
-      if (!state.user && !hasSessionHint() && loginCard?.classList.contains('hidden')) {
+      if (
+        !state.user &&
+        !hasSessionHint() &&
+        loginCard?.classList.contains('hidden')
+      ) {
         revealLoginCard();
       }
     }, 150);
@@ -259,23 +308,6 @@ function initDashboardBootstrap(deps) {
         console.warn('Admin init failed', err);
         revealLoginCard();
       });
-    updateDeleteFilteredState();
-    updateActivityRangeButtons();
-    updateTagCounterHints();
-    enhanceCodeSnippets();
-    bindSnippetCopyButtons('.code-snippet .copy-button');
-
-    window.addEventListener('pageshow', (event) => {
-      if (event.persisted && hasSessionHint()) {
-        checkSession();
-      }
-    });
-
-    document.addEventListener('click', () => {
-      document.querySelectorAll('.counter-copy__menu.is-open').forEach((menu) => {
-        menu.classList.remove('is-open');
-      });
-    });
   }
 
   return init();

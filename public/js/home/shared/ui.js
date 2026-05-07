@@ -36,7 +36,10 @@ function buildCreateCounterErrorMessage(error, status) {
     return error.message.trim();
   }
   if (error && error.error === 'rate_limited') {
-    const wait = typeof error.retryAfterSeconds === 'number' ? error.retryAfterSeconds : null;
+    const wait =
+      typeof error.retryAfterSeconds === 'number'
+        ? error.retryAfterSeconds
+        : null;
     if (wait) {
       const pretty = wait === 1 ? '1 second' : `${wait} seconds`;
       return `Too many new counters at once. Try again in ${pretty}.`;
@@ -52,7 +55,4 @@ function buildCreateCounterErrorMessage(error, status) {
   return 'Failed to create counter. Please try again.';
 }
 
-export {
-  showAlert,
-  buildCreateCounterErrorMessage
-};
+export { showAlert, buildCreateCounterErrorMessage };

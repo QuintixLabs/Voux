@@ -4,6 +4,11 @@
   Counter row rendering and in-place patch updates.
 */
 
+import {
+  applyNoteMarkdown,
+  attachNoteMarkdownPasteBehavior
+} from '../../utils/markdown.js';
+
 /* -------------------------------------------------------------------------- */
 /* Counters manager                                                           */
 /* -------------------------------------------------------------------------- */
@@ -16,7 +21,6 @@ function createDashboardCounters(deps) {
     formatNumber,
     formatLastHit,
     extractTagIds,
-    applyTagStyles,
     buildTagBadges,
     resolveActivityLevel,
     canDangerOnCounter,
@@ -41,10 +45,10 @@ function createDashboardCounters(deps) {
     cleanupTagSelectors
   } = deps;
 
-/* -------------------------------------------------------------------------- */
-/* Row render pipeline                                                        */
-/* -------------------------------------------------------------------------- */
-function renderCounterList(counters = state.latestCounters) {
+  /* -------------------------------------------------------------------------- */
+  /* Row render pipeline                                                        */
+  /* -------------------------------------------------------------------------- */
+  function renderCounterList(counters = state.latestCounters) {
     if (!counterListEl) return;
     cleanupTagSelectors();
     const list = Array.isArray(counters) ? counters : [];
@@ -55,7 +59,11 @@ function renderCounterList(counters = state.latestCounters) {
       empty.className = 'hint';
       empty.textContent = state.searchQuery
         ? `No counters match "${truncateQuery(state.searchQuery)}".`
-        : 'No counters yet.';
+        : state.tagFilter.length ||
+            state.modeFilter !== 'all' ||
+            state.inactiveOnly
+          ? 'No counters match the current filters.'
+          : 'No counters yet.';
       counterListEl.appendChild(empty);
       return;
     }
@@ -78,7 +86,9 @@ function renderCounterList(counters = state.latestCounters) {
       const selectInput = document.createElement('input');
       selectInput.type = 'checkbox';
       selectInput.checked = isSelected;
-      selectInput.addEventListener('change', (event) => toggleSelection(counter.id, event.target.checked, row));
+      selectInput.addEventListener('change', (event) =>
+        toggleSelection(counter.id, event.target.checked, row)
+      );
       selectWrapper.appendChild(selectInput);
       if (!canSelect) {
         selectWrapper.classList.add('hidden');
@@ -107,16 +117,20 @@ function renderCounterList(counters = state.latestCounters) {
       copyMenu.className = 'counter-copy__menu';
       const copyScript = document.createElement('button');
       copyScript.type = 'button';
-      copyScript.innerHTML = '<i class="ri-code-s-slash-line" aria-hidden="true"></i><span>Copy script</span>';
+      copyScript.innerHTML =
+        '<i class="ri-code-s-slash-line" aria-hidden="true"></i><span>Copy script</span>';
       const copySvg = document.createElement('button');
       copySvg.type = 'button';
-      copySvg.innerHTML = '<i class="ri-image-line" aria-hidden="true"></i><span>Copy SVG</span>';
+      copySvg.innerHTML =
+        '<i class="ri-image-line" aria-hidden="true"></i><span>Copy SVG</span>';
       copyMenu.append(copyScript, copySvg);
       copyBtn.addEventListener('click', (event) => {
         event.stopPropagation();
-        document.querySelectorAll('.counter-copy__menu.is-open').forEach((menu) => {
-          if (menu !== copyMenu) menu.classList.remove('is-open');
-        });
+        document
+          .querySelectorAll('.counter-copy__menu.is-open')
+          .forEach((menu) => {
+            if (menu !== copyMenu) menu.classList.remove('is-open');
+          });
         copyMenu.classList.toggle('is-open');
       });
       copyScript.addEventListener('click', (event) => {
@@ -200,26 +214,38 @@ function renderCounterList(counters = state.latestCounters) {
       noteInput.maxLength = 200;
       noteInput.placeholder = 'Optional note';
       noteInput.value = counter.note || '';
+      attachNoteMarkdownPasteBehavior(noteInput);
 
       const fieldsWrapper = document.createElement('div');
       fieldsWrapper.className = 'counter-edit__fields';
       fieldsWrapper.append(
-        buildEditField('Label <span class="optional-tag">Optional</span>', labelInput, { allowHtml: true }),
+        buildEditField(
+          'Label <span class="optional-tag">Optional</span>',
+          labelInput,
+          { allowHtml: true }
+        ),
         buildEditField('Value', valueInput),
-        buildEditField('Note <span class="optional-tag">Optional</span>', noteInput, { allowHtml: true })
+        buildEditField(
+          'Note <span class="optional-tag">Optional</span>',
+          noteInput,
+          { allowHtml: true }
+        )
       );
       let editTags = extractTagIds(counter.tags);
       let canEditTags = counter.canEditTags !== false;
       const tagField = document.createElement('div');
       tagField.className = 'counter-edit__field counter-edit__field--tags';
       const tagHead = document.createElement('div');
-      tagHead.className = 'counter-edit__field-label counter-edit__field-label--actions';
+      tagHead.className =
+        'counter-edit__field-label counter-edit__field-label--actions';
       const tagLabelText = document.createElement('span');
-      tagLabelText.innerHTML = 'Tags <span class="optional-tag">Optional</span>';
+      tagLabelText.innerHTML =
+        'Tags <span class="optional-tag">Optional</span>';
       const tagInlineBtn = document.createElement('button');
       tagInlineBtn.type = 'button';
       tagInlineBtn.className = 'ghost tag-inline-button';
-      tagInlineBtn.innerHTML = '<i class="ri-price-tag-3-line" aria-hidden="true"></i><span>New tag</span>';
+      tagInlineBtn.innerHTML =
+        '<i class="ri-price-tag-3-line" aria-hidden="true"></i><span>New tag</span>';
       tagInlineBtn.addEventListener('click', () => handleTagCreate('edit'));
       tagHead.append(tagLabelText, tagInlineBtn);
       const tagSelector = document.createElement('div');
@@ -227,7 +253,8 @@ function renderCounterList(counters = state.latestCounters) {
       const tagDisabledHint = document.createElement('p');
       tagDisabledHint.className = 'tag-disabled-hint hidden';
       const ownerLabel = counter.ownerUsername || 'someone else';
-      tagDisabledHint.textContent = 'Tags are disabled because this counter is owned by ';
+      tagDisabledHint.textContent =
+        'Tags are disabled because this counter is owned by ';
       const ownerStrong = document.createElement('strong');
       ownerStrong.textContent = ownerLabel;
       tagDisabledHint.append(ownerStrong, document.createTextNode('.'));
@@ -266,7 +293,10 @@ function renderCounterList(counters = state.latestCounters) {
         editBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
         if (open) {
           labelInput.focus();
-          labelInput.setSelectionRange(labelInput.value.length, labelInput.value.length);
+          labelInput.setSelectionRange(
+            labelInput.value.length,
+            labelInput.value.length
+          );
         }
         changeEditPanelCount(open ? 1 : -1);
       };
@@ -280,7 +310,9 @@ function renderCounterList(counters = state.latestCounters) {
 
       const submitEdit = async () => {
         const nextLabel = labelInput.value.trim();
-        const rawValue = (valueInput.value || '').replace(/[^\d]/g, '').slice(0, START_VALUE_DIGIT_LIMIT);
+        const rawValue = (valueInput.value || '')
+          .replace(/[^\d]/g, '')
+          .slice(0, START_VALUE_DIGIT_LIMIT);
         if (!/^\d+$/.test(rawValue || '0')) {
           await showAlert('Use digits only when setting a value.');
           return;
@@ -302,7 +334,9 @@ function renderCounterList(counters = state.latestCounters) {
           await refreshCounters(state.page);
           showToast(`Updated ${counter.id}`);
         } catch (error) {
-          await showAlert(normalizeAuthMessage(error, 'Failed to update counter'));
+          await showAlert(
+            normalizeAuthMessage(error, 'Failed to update counter')
+          );
         } finally {
           editSave.disabled = false;
         }
@@ -341,9 +375,11 @@ function renderCounterList(counters = state.latestCounters) {
         }
       });
 
-      const dangerAllowed = !state.isAdmin || state.user?.adminPermissions?.danger === true;
+      const dangerAllowed =
+        !state.isAdmin || state.user?.adminPermissions?.danger === true;
       const canEditOthers = state.isAdmin && dangerAllowed;
-      const isOwnerCounter = counter.ownerId && counter.ownerId === state.user?.id;
+      const isOwnerCounter =
+        counter.ownerId && counter.ownerId === state.user?.id;
       if (!state.isAdmin || isOwnerCounter || canEditOthers) {
         actions.append(editBtn);
       }
@@ -351,18 +387,30 @@ function renderCounterList(counters = state.latestCounters) {
       const downloadBtn = document.createElement('button');
       downloadBtn.type = 'button';
       downloadBtn.className = 'ghost counter-download-btn';
-      downloadBtn.innerHTML = '<i class="ri-download-2-line"></i><span> Download</span>';
-      downloadBtn.addEventListener('click', () => handleDownloadSingle(counter.id, counter.label || counter.id, downloadBtn));
+      downloadBtn.innerHTML =
+        '<i class="ri-download-2-line"></i><span> Download</span>';
+      downloadBtn.addEventListener('click', () =>
+        handleDownloadSingle(
+          counter.id,
+          counter.label || counter.id,
+          downloadBtn
+        )
+      );
       if (!state.isAdmin || isOwnerCounter || canEditOthers) {
         actions.append(downloadBtn);
       }
 
-      const canDelete = dangerAllowed || (state.isAdmin && state.ownerOnly && counter.ownerId === state.user?.id);
+      const canDelete =
+        dangerAllowed ||
+        (state.isAdmin &&
+          state.ownerOnly &&
+          counter.ownerId === state.user?.id);
       if (canDelete) {
         const deleteBtn = document.createElement('button');
         deleteBtn.type = 'button';
         deleteBtn.className = 'danger ghost counter-delete-btn';
-        deleteBtn.innerHTML = '<i class="ri-delete-bin-line" aria-hidden="true"></i><span> Delete</span>';
+        deleteBtn.innerHTML =
+          '<i class="ri-delete-bin-line" aria-hidden="true"></i><span> Delete</span>';
         deleteBtn.addEventListener('click', () => removeCounter(counter.id));
         actions.append(deleteBtn);
       }
@@ -372,14 +420,16 @@ function renderCounterList(counters = state.latestCounters) {
       if (tagsLine) {
         meta.append(tagsLine);
       }
-      const statusLine = buildStatusBadges(counter, { forceInactive: state.debugInactive });
+      const statusLine = buildStatusBadges(counter, {
+        forceInactive: state.debugInactive
+      });
       if (statusLine) {
         meta.append(statusLine);
       }
       if (counter.note) {
         const note = document.createElement('div');
         note.className = 'counter-meta__note';
-        note.textContent = counter.note;
+        applyNoteMarkdown(note, counter.note);
         meta.append(note);
       }
       meta.append(value, mode, stats);
@@ -397,10 +447,10 @@ function renderCounterList(counters = state.latestCounters) {
     updateSelectionToolbar();
   }
 
-/* -------------------------------------------------------------------------- */
-/* Row section builders                                                       */
-/* -------------------------------------------------------------------------- */
-function buildEditField(labelText, control, options = {}) {
+  /* -------------------------------------------------------------------------- */
+  /* Row section builders                                                       */
+  /* -------------------------------------------------------------------------- */
+  function buildEditField(labelText, control, options = {}) {
     const wrapper = document.createElement('label');
     wrapper.className = 'counter-edit__field';
     const title = document.createElement('span');
@@ -423,7 +473,9 @@ function buildEditField(labelText, control, options = {}) {
     if (isInactive) {
       const badge = document.createElement('span');
       badge.className = 'counter-status__badge counter-status__badge--inactive';
-      badge.textContent = forceInactive ? 'Inactive (preview)' : info.label || 'Inactive';
+      badge.textContent = forceInactive
+        ? 'Inactive (preview)'
+        : info.label || 'Inactive';
       badges.push(badge);
     }
     if (!badges.length) return null;
@@ -434,7 +486,11 @@ function buildEditField(labelText, control, options = {}) {
   }
 
   function buildActivityBlock(activity) {
-    if (!activity || !Array.isArray(activity.trend) || activity.trend.length === 0) {
+    if (
+      !activity ||
+      !Array.isArray(activity.trend) ||
+      activity.trend.length === 0
+    ) {
       return null;
     }
     const wrapper = document.createElement('div');
@@ -518,7 +574,10 @@ function buildEditField(labelText, control, options = {}) {
       dayLabel.textContent = day.label || '';
       bar.tabIndex = 0;
       bar.setAttribute('role', 'button');
-      bar.setAttribute('aria-label', `${day.label || 'Day'} has ${formatNumber(day.hits)} hits`);
+      bar.setAttribute(
+        'aria-label',
+        `${day.label || 'Day'} has ${formatNumber(day.hits)} hits`
+      );
       bar._tooltipData = { label: day.label, hits: day.hits };
       const handleEnter = () => {
         if (tooltipAnchor === bar) {
@@ -577,20 +636,29 @@ function buildEditField(labelText, control, options = {}) {
       if (labelEl) {
         labelEl.textContent = day.label || '';
       }
-      bar.setAttribute('aria-label', `${day.label || 'Day'} has ${formatNumber(day.hits)} hits`);
+      bar.setAttribute(
+        'aria-label',
+        `${day.label || 'Day'} has ${formatNumber(day.hits)} hits`
+      );
     }
-    if (activityState.tooltip && activityState.activeBar && activityState.activeBar._tooltipData) {
-      if (activityState.tooltip.classList.contains('activity-tooltip--visible')) {
+    if (
+      activityState.tooltip &&
+      activityState.activeBar &&
+      activityState.activeBar._tooltipData
+    ) {
+      if (
+        activityState.tooltip.classList.contains('activity-tooltip--visible')
+      ) {
         const info = activityState.activeBar._tooltipData;
         activityState.tooltip.textContent = `${info.label || 'Day'}: ${formatNumber(info.hits)} hits`;
       }
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Incremental row patching                                                   */
-/* -------------------------------------------------------------------------- */
-function canPatchCounters(previous = [], next = []) {
+  /* -------------------------------------------------------------------------- */
+  /* Incremental row patching                                                   */
+  /* -------------------------------------------------------------------------- */
+  function canPatchCounters(previous = [], next = []) {
     if (!counterListEl) return false;
     if (!Array.isArray(previous) || !Array.isArray(next)) return false;
     if (previous.length !== next.length) return false;
@@ -606,7 +674,9 @@ function canPatchCounters(previous = [], next = []) {
     if (!counterListEl) return false;
     for (let i = 0; i < counters.length; i += 1) {
       const counter = counters[i];
-      const row = counterListEl.querySelector(`.counter-row[data-counter-id="${counter.id}"]`);
+      const row = counterListEl.querySelector(
+        `.counter-row[data-counter-id="${counter.id}"]`
+      );
       if (!row) {
         return false;
       }
@@ -683,11 +753,15 @@ function canPatchCounters(previous = [], next = []) {
     const meta = row.querySelector('.counter-meta');
     if (!meta) return;
     const existing = row.querySelector('.counter-status');
-    const newStatus = buildStatusBadges(counter, { forceInactive: state.debugInactive });
+    const newStatus = buildStatusBadges(counter, {
+      forceInactive: state.debugInactive
+    });
     if (existing && newStatus) {
       existing.replaceWith(newStatus);
     } else if (!existing && newStatus) {
-      const noteOrValue = row.querySelector('.counter-meta__note, .counter-meta__value');
+      const noteOrValue = row.querySelector(
+        '.counter-meta__note, .counter-meta__value'
+      );
       if (noteOrValue && noteOrValue.parentElement) {
         noteOrValue.parentElement.insertBefore(newStatus, noteOrValue);
       } else {
@@ -704,11 +778,11 @@ function canPatchCounters(previous = [], next = []) {
     let noteEl = row.querySelector('.counter-meta__note');
     if (counter.note) {
       if (noteEl) {
-        noteEl.textContent = counter.note;
+        applyNoteMarkdown(noteEl, counter.note);
       } else {
         noteEl = document.createElement('div');
         noteEl.className = 'counter-meta__note';
-        noteEl.textContent = counter.note;
+        applyNoteMarkdown(noteEl, counter.note);
         const valueEl = row.querySelector('.counter-meta__value');
         if (valueEl && valueEl.parentElement) {
           valueEl.parentElement.insertBefore(noteEl, valueEl);
@@ -725,7 +799,9 @@ function canPatchCounters(previous = [], next = []) {
     const meta = row.querySelector('.counter-meta');
     if (!meta) return;
     const activityEl = row.querySelector('.counter-activity');
-    const isHovered = activityEl && (activityEl.matches(':hover') || activityEl.querySelector(':hover'));
+    const isHovered =
+      activityEl &&
+      (activityEl.matches(':hover') || activityEl.querySelector(':hover'));
     const newActivity = buildActivityBlock(counter.activity);
     if (activityEl && isHovered) {
       updateActivityBlockData(activityEl, counter.activity);
@@ -764,10 +840,10 @@ function canPatchCounters(previous = [], next = []) {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Mode select helpers                                                        */
-/* -------------------------------------------------------------------------- */
-function refreshModeControls() {
+  /* -------------------------------------------------------------------------- */
+  /* Mode select helpers                                                        */
+  /* -------------------------------------------------------------------------- */
+  function refreshModeControls() {
     if (!adminCooldownSelect) return;
     applyAllowedModesToSelect(adminCooldownSelect, state.allowedModes);
   }

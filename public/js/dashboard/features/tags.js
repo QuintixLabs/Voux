@@ -15,7 +15,10 @@ function applyTagStyles(element, color, options = {}) {
   element.style.setProperty('--tag-color', normalized);
   const shouldApplyText = options.textContrast !== false;
   if (shouldApplyText) {
-    element.style.setProperty('--tag-text-color', getTagContrastColor(normalized));
+    element.style.setProperty(
+      '--tag-text-color',
+      getTagContrastColor(normalized)
+    );
   } else {
     element.style.removeProperty('--tag-text-color');
   }
@@ -43,7 +46,4 @@ function buildTagBadges(tags) {
   return wrapper;
 }
 
-export {
-  applyTagStyles,
-  buildTagBadges
-};
+export { applyTagStyles, buildTagBadges };

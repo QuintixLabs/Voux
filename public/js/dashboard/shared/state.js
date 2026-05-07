@@ -46,7 +46,9 @@ export const state = {
   tags: [],
   tagFilter: [],
   createTags: [],
-  debugInactive: new URLSearchParams(window.location.search).has('debugInactive')
+  debugInactive: new URLSearchParams(window.location.search).has(
+    'debugInactive'
+  )
 };
 
 export const tagSelectorRegistry = new Set();
@@ -75,7 +77,10 @@ export function hasSessionHint() {
 
 export function saveOwnerFilterPreference(value) {
   try {
-    window.localStorage.setItem(OWNER_FILTER_STORAGE_KEY, value ? 'true' : 'false');
+    window.localStorage.setItem(
+      OWNER_FILTER_STORAGE_KEY,
+      value ? 'true' : 'false'
+    );
   } catch {
     // ignore
   }

@@ -1,12 +1,15 @@
 /*
-  src/services/counterCreationLimiter.js
+  src/services/counters/creationLimiter.js
 
   In-memory limiter for POST /api/counters creation bursts.
 */
 
 function createCounterCreationLimiter(options = {}) {
   const limitCount = Math.max(1, Number(options.limitCount) || 5);
-  const limitWindowMs = Math.max(1000, Number(options.limitWindowMs) || 60 * 1000);
+  const limitWindowMs = Math.max(
+    1000,
+    Number(options.limitWindowMs) || 60 * 1000
+  );
   const idleTtlMs = Math.max(
     limitWindowMs,
     Number(options.idleTtlMs) || 15 * 60 * 1000
@@ -32,7 +35,9 @@ function createCounterCreationLimiter(options = {}) {
     const timestamps = Array.isArray(existing.timestamps)
       ? existing.timestamps.filter((ts) => now - ts < limitWindowMs)
       : [];
-    const lastSeen = Number.isFinite(existing.lastSeen) ? existing.lastSeen : now;
+    const lastSeen = Number.isFinite(existing.lastSeen)
+      ? existing.lastSeen
+      : now;
     return { timestamps, lastSeen };
   }
 

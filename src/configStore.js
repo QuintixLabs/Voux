@@ -32,7 +32,9 @@ const defaultConfig = {
     'Voux · Simple Free & Open Source Hit Counter for Blogs and Websites',
     120
   ),
-  unlimitedThrottleSeconds: sanitizeThrottle(process.env.UNLIMITED_THROTTLE_SECONDS),
+  unlimitedThrottleSeconds: sanitizeThrottle(
+    process.env.UNLIMITED_THROTTLE_SECONDS
+  ),
   theme: sanitizeTheme(process.env.THEME || 'default'),
   autoBackup: sanitizeAutoBackup({
     frequency: process.env.AUTO_BACKUP_FREQUENCY || 'off',
@@ -107,15 +109,22 @@ function sanitizeConfig(raw) {
     safe.homeTitle = sanitizeText(raw.homeTitle, defaultConfig.homeTitle, 120);
   }
   if (Number.isFinite(Number(raw.unlimitedThrottleSeconds))) {
-    safe.unlimitedThrottleSeconds = sanitizeThrottle(raw.unlimitedThrottleSeconds);
+    safe.unlimitedThrottleSeconds = sanitizeThrottle(
+      raw.unlimitedThrottleSeconds
+    );
   }
   if (typeof raw.theme === 'string') {
     safe.theme = sanitizeTheme(raw.theme);
   }
   safe.autoBackup = sanitizeAutoBackup(raw.autoBackup || safe.autoBackup);
-  safe.tagCatalog = Array.isArray(raw.tagCatalog) ? sanitizeTagCatalog(raw.tagCatalog) : [];
+  safe.tagCatalog = Array.isArray(raw.tagCatalog)
+    ? sanitizeTagCatalog(raw.tagCatalog)
+    : [];
   if (raw && typeof raw.adminPermissions === 'object') {
-    safe.adminPermissions = sanitizeAdminPermissions(raw.adminPermissions, defaultConfig.adminPermissions);
+    safe.adminPermissions = sanitizeAdminPermissions(
+      raw.adminPermissions,
+      defaultConfig.adminPermissions
+    );
   }
   if (raw && typeof raw.adminPermissionOverrides === 'object') {
     safe.adminPermissionOverrides = sanitizeAdminPermissionOverrides(
@@ -166,11 +175,16 @@ module.exports = {
 /* Sanitizers                                                                 */
 /* ========================================================================== */
 function normalizeAllowedModes(envValue) {
-  const normalized = String(envValue || '').trim().toLowerCase();
+  const normalized = String(envValue || '')
+    .trim()
+    .toLowerCase();
   if (!normalized) {
     return { unique: true, unlimited: true };
   }
-  const parts = normalized.split(',').map((part) => part.trim()).filter(Boolean);
+  const parts = normalized
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
   const allowed = {
     unique: parts.includes('unique'),
     unlimited: parts.includes('unlimited')
@@ -195,13 +209,17 @@ function sanitizeThrottle(value) {
 }
 
 function sanitizeTheme(value) {
-  const key = String(value || '').trim().toLowerCase();
+  const key = String(value || '')
+    .trim()
+    .toLowerCase();
   return ALLOWED_THEMES.has(key) ? key : 'default';
 }
 
 function sanitizeAutoBackup(input) {
   const raw = input && typeof input === 'object' ? input : {};
-  const frequency = ['off', 'daily', 'weekly'].includes(String(raw.frequency || '').toLowerCase())
+  const frequency = ['off', 'daily', 'weekly'].includes(
+    String(raw.frequency || '').toLowerCase()
+  )
     ? String(raw.frequency || '').toLowerCase()
     : 'off';
   const time = sanitizeBackupTime(raw.time);
@@ -240,8 +258,20 @@ function toBoolean(value, fallback = false) {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase();
-    if (normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'on') return true;
-    if (normalized === 'false' || normalized === '0' || normalized === 'no' || normalized === 'off') return false;
+    if (
+      normalized === 'true' ||
+      normalized === '1' ||
+      normalized === 'yes' ||
+      normalized === 'on'
+    )
+      return true;
+    if (
+      normalized === 'false' ||
+      normalized === '0' ||
+      normalized === 'no' ||
+      normalized === 'off'
+    )
+      return false;
   }
   return fallback;
 }
@@ -285,7 +315,9 @@ function sanitizeTagCatalog(list) {
 
 function sanitizeColor(value) {
   if (typeof value !== 'string') return '#4c6ef5';
-  const normalized = value.trim().startsWith('#') ? value.trim() : `#${value.trim()}`;
+  const normalized = value.trim().startsWith('#')
+    ? value.trim()
+    : `#${value.trim()}`;
   if (/^#[0-9a-fA-F]{6}$/.test(normalized)) {
     return normalized.toLowerCase();
   }
@@ -296,7 +328,10 @@ function sanitizeAdminPermissions(input, fallback = {}) {
   const safe = {};
   const keys = Object.keys(fallback || {});
   keys.forEach((key) => {
-    const raw = input && Object.prototype.hasOwnProperty.call(input, key) ? input[key] : fallback[key];
+    const raw =
+      input && Object.prototype.hasOwnProperty.call(input, key)
+        ? input[key]
+        : fallback[key];
     safe[key] = raw !== false;
   });
   return safe;
@@ -315,7 +350,9 @@ function sanitizeAdminPermissionOverrides(overrides = {}, fallback = {}) {
 /* Tag catalog                                                                */
 /* ========================================================================== */
 function listTagCatalog() {
-  return Array.isArray(config.tagCatalog) ? config.tagCatalog.map((tag) => ({ ...tag })) : [];
+  return Array.isArray(config.tagCatalog)
+    ? config.tagCatalog.map((tag) => ({ ...tag }))
+    : [];
 }
 
 function addTagToCatalog({ name, color }) {
@@ -323,7 +360,11 @@ function addTagToCatalog({ name, color }) {
   if (!normalizedName) {
     throw new Error('name_required');
   }
-  if (listTagCatalog().some((tag) => tag.name.toLowerCase() === normalizedName.toLowerCase())) {
+  if (
+    listTagCatalog().some(
+      (tag) => tag.name.toLowerCase() === normalizedName.toLowerCase()
+    )
+  ) {
     throw new Error('tag_exists');
   }
   const newTag = {
@@ -353,7 +394,9 @@ function updateTagInCatalog(tagId, { name, color } = {}) {
       throw new Error('name_required');
     }
     const collision = catalog.some(
-      (tag) => tag.id !== normalizedId && tag.name.toLowerCase() === normalizedName.toLowerCase()
+      (tag) =>
+        tag.id !== normalizedId &&
+        tag.name.toLowerCase() === normalizedName.toLowerCase()
     );
     if (collision) {
       throw new Error('tag_exists');

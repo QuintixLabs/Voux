@@ -58,5 +58,4 @@
       document.title = fallbackBrand;
     }
   }
-
 })();

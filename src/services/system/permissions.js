@@ -1,15 +1,11 @@
 /*
-  src/services/permissions.js
+  src/services/system/permissions.js
 
   Owner/admin permission helpers used by route handlers.
 */
 
 function createPermissionsService(deps) {
-  const {
-    getConfig,
-    getOwnerUser,
-    getUserById
-  } = deps;
+  const { getConfig, getOwnerUser, getUserById } = deps;
 
   function getOwnerId() {
     const owner = getOwnerUser();

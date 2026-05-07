@@ -4,19 +4,25 @@
   Admin settings page logic: toggles, backups, and API key management.
 */
 
-
 /* -------------------------------------------------------------------------- */
 /* Imports                                                                    */
 /* -------------------------------------------------------------------------- */
 import {
+  // General toggles UI
   togglePrivate,
   toggleGuides,
   statusLabel,
   allowModeUniqueInput,
   allowModeUnlimitedInput,
+  throttleSelect,
+  purgeInactiveButton,
+  inactiveHint,
+
+  // Backup UI
   downloadBackupBtn,
   restoreFileInput,
   backupStatusLabel,
+  backupDesc,
   autoBackupSection,
   autoBackupToggle,
   autoBackupSummary,
@@ -31,6 +37,8 @@ import {
   autoBackupIncludeJsonInput,
   saveAutoBackupBtn,
   runAutoBackupNowBtn,
+
+  // API keys UI
   apiKeysCard,
   apiKeysList,
   apiKeyForm,
@@ -39,19 +47,20 @@ import {
   apiKeyCountersField,
   apiKeyCountersInput,
   apiKeyStatusLabel,
+  apiKeysPagination,
+  apiKeysPrevBtn,
+  apiKeysNextBtn,
+  apiKeysPageInfo,
+
+  // Branding UI
   brandingForm,
   brandNameInputField,
   homeTitleInputField,
   themeSelect,
   brandingStatusLabel,
   resetBrandingBtn,
-  throttleSelect,
-  purgeInactiveButton,
-  inactiveHint,
-  apiKeysPagination,
-  apiKeysPrevBtn,
-  apiKeysNextBtn,
-  apiKeysPageInfo,
+
+  // Users UI
   usersCard,
   usersList,
   usersFilterSelect,
@@ -61,8 +70,6 @@ import {
   usersPrevBtn,
   usersNextBtn,
   usersPageInfo,
-  settingsTabs,
-  settingsTabButtons,
   userForm,
   userNameInput,
   userDisplayInput,
@@ -79,6 +86,8 @@ import {
   userEditPassword,
   userEditSave,
   userEditCancel,
+
+  // Admin permissions UI
   adminDefaultsOpen,
   adminPermModal,
   adminPermTitle,
@@ -87,54 +96,72 @@ import {
   adminPermSave,
   adminPermCancel,
   adminPermReset,
-  backupCard,
-  backupDesc
+
+  // Tabs UI
+  settingsTabs,
+  settingsTabButtons
 } from './shared/dom.js';
+
 import {
+  // Pagination state
   usersPager,
   apiKeyPager,
+
+  // Branding defaults
   DEFAULT_BRAND_NAME,
   DEFAULT_HOME_TITLE,
-  DEFAULT_THROTTLE_SECONDS,
-  themeHelper,
   ALLOWED_THEMES,
+  themeHelper,
+
+  // Runtime defaults
+  DEFAULT_THROTTLE_SECONDS,
+
+  // Admin permissions state
   ADMIN_PERMISSION_ITEMS,
+
+  // Backup state
   AUTO_BACKUP_WEEKDAYS
 } from './shared/state.js';
+
 import {
+  // Toasts and dialogs
   showToast,
   showAlert,
-  normalizeAuthMessage,
-  assertSession,
   modalConfirm,
-  modalConfirmWithInput
+  modalConfirmWithInput,
+
+  // Auth response helpers
+  normalizeAuthMessage,
+  assertSession
 } from './shared/ui.js';
+
+// Settings features
 import { createApiKeysManager } from './features/apiKeys.js';
 import { createUsersManager } from './features/users.js';
 import { createBackupManager } from './features/backup.js';
 import { createAdminPermissionsManager } from './features/adminPermissions.js';
 import { createBrandingManager } from './features/branding.js';
 import { createRuntimeManager } from './features/runtime.js';
+import { createTogglesManager } from './features/toggles.js';
+
+// Settings core
 import { createSettingsTabsManager } from './core/tabs.js';
 import { createSessionManager } from './core/session.js';
-import { createTogglesManager } from './features/toggles.js';
 import { createSettingsFormManager } from './core/form.js';
 
-/* -------------------------------------------------------------------------- */
-/* Defaults                                                                   */
-/* -------------------------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* State                                                                      */
-/* -------------------------------------------------------------------------- */
 let activeUser = null;
 
+// Tabs manager
 const tabsManager = createSettingsTabsManager({
   settingsTabs,
   settingsTabButtons
 });
 
+/* -------------------------------------------------------------------------- */
+/* API keys manager                                                           */
+/* -------------------------------------------------------------------------- */
 const apiKeysManager = createApiKeysManager({
+  // API keys UI
   apiKeyPager,
   apiKeysCard,
   apiKeysList,
@@ -148,17 +175,25 @@ const apiKeysManager = createApiKeysManager({
   apiKeysPrevBtn,
   apiKeysNextBtn,
   apiKeysPageInfo,
+
+  // API keys requests + feedback
   authFetch,
   assertSession,
   showToast,
   showAlert,
   normalizeAuthMessage,
   modalConfirm,
+
+  // API keys formatting
   formatTimestamp,
   escapeHtml
 });
 
+/* -------------------------------------------------------------------------- */
+/* Users manager                                                              */
+/* -------------------------------------------------------------------------- */
 const usersManager = createUsersManager({
+  // Users UI
   usersPager,
   usersCard,
   usersList,
@@ -185,17 +220,26 @@ const usersManager = createUsersManager({
   userEditPassword,
   userEditSave,
   userEditCancel,
+
+  // Users requests + feedback
   authFetch,
   assertSession,
   showToast,
   showAlert,
   normalizeAuthMessage,
   modalConfirm,
+
+  // Users state bridges
   getActiveUser: () => activeUser,
-  onOpenAdminPermissions: (user) => adminPermissionsManager.openAdminPermissions(user)
+  onOpenAdminPermissions: (user) =>
+    adminPermissionsManager.openAdminPermissions(user)
 });
 
+/* -------------------------------------------------------------------------- */
+/* Backup manager                                                             */
+/* -------------------------------------------------------------------------- */
 const backupManager = createBackupManager({
+  // Backup UI
   downloadBackupBtn,
   restoreFileInput,
   backupStatusLabel,
@@ -213,17 +257,25 @@ const backupManager = createBackupManager({
   autoBackupIncludeJsonInput,
   saveAutoBackupBtn,
   runAutoBackupNowBtn,
+
+  // Backup config state
   AUTO_BACKUP_WEEKDAYS,
+  applyConfigUpdate,
+
+  // Backup requests + feedback
   authFetch,
   assertSession,
   showToast,
   showAlert,
   normalizeAuthMessage,
-  modalConfirm,
-  applyConfigUpdate
+  modalConfirm
 });
 
+/* -------------------------------------------------------------------------- */
+/* Admin permissions manager                                                  */
+/* -------------------------------------------------------------------------- */
 const adminPermissionsManager = createAdminPermissionsManager({
+  // Admin permissions UI
   adminDefaultsOpen,
   adminPermModal,
   adminPermTitle,
@@ -234,53 +286,84 @@ const adminPermissionsManager = createAdminPermissionsManager({
   adminPermReset,
   purgeInactiveButton,
   ADMIN_PERMISSION_ITEMS,
+
+  // Admin permissions requests + feedback
   authFetch,
   showToast,
   showAlert,
   normalizeAuthMessage,
+
+  // Admin permissions state bridges
   initSettingsTabs: (allowedIds) => tabsManager.initSettingsTabs(allowedIds),
   getActiveUser: () => activeUser,
   onUsersChanged: () => usersManager.loadUsers(true),
   fetchSettings: (...args) => formManager.fetchSettings(...args)
 });
 
+/* -------------------------------------------------------------------------- */
+/* Branding manager                                                           */
+/* -------------------------------------------------------------------------- */
 const brandingManager = createBrandingManager({
+  // Branding UI
   brandingForm,
   brandNameInputField,
   homeTitleInputField,
   themeSelect,
   brandingStatusLabel,
   resetBrandingBtn,
+
+  // Branding defaults
   DEFAULT_BRAND_NAME,
   DEFAULT_HOME_TITLE,
   ALLOWED_THEMES,
+
+  // Branding requests + feedback
   authFetch,
   assertSession,
   showToast,
   showAlert,
   normalizeAuthMessage,
   modalConfirm,
+
+  // Branding helpers
   applyConfigUpdate,
   applyThemeClass
 });
 
+/* -------------------------------------------------------------------------- */
+/* Form manager                                                               */
+/* -------------------------------------------------------------------------- */
 const formManager = createSettingsFormManager({
+  // Form requests
   authFetch,
+
+  // Runtime toggles UI
   togglePrivate,
   toggleGuides,
   allowModeUniqueInput,
   allowModeUnlimitedInput,
   throttleSelect,
-  applyBrandingFromConfig: (...args) => brandingManager.applyBrandingFromConfig(...args),
+
+  // Form apply helpers
+  applyBrandingFromConfig: (...args) =>
+    brandingManager.applyBrandingFromConfig(...args),
   applyAutoBackupForm: (...args) => backupManager.applyAutoBackupForm(...args),
   applyAutoBackupPath: (...args) => backupManager.applyAutoBackupPath(...args)
 });
 
+/* -------------------------------------------------------------------------- */
+/* Runtime manager                                                            */
+/* -------------------------------------------------------------------------- */
 const runtimeManager = createRuntimeManager({
+  // Runtime UI
   throttleSelect,
   purgeInactiveButton,
   inactiveHint,
+
+  // Runtime defaults
   DEFAULT_THROTTLE_SECONDS,
+
+  // Runtime requests + feedback
   authFetch,
   assertSession,
   showToast,
@@ -288,23 +371,37 @@ const runtimeManager = createRuntimeManager({
   normalizeAuthMessage,
   modalConfirm,
   modalConfirmWithInput,
+
+  // Runtime state helpers
   applyConfigUpdate,
   setStatus: (text) => togglesManager.setStatus(text)
 });
 
+/* -------------------------------------------------------------------------- */
+/* Toggles manager                                                            */
+/* -------------------------------------------------------------------------- */
 const togglesManager = createTogglesManager({
+  // Toggle UI
   statusLabel,
   allowModeUniqueInput,
   allowModeUnlimitedInput,
+
+  // Toggle requests + feedback
   authFetch,
   assertSession,
   showToast,
   showAlert,
   normalizeAuthMessage,
+
+  // Toggle state helper
   applyConfigUpdate
 });
 
+/* -------------------------------------------------------------------------- */
+/* Session manager                                                            */
+/* -------------------------------------------------------------------------- */
 const sessionManager = createSessionManager({
+  // Session-owned UI
   usersPager,
   togglePrivate,
   toggleGuides,
@@ -312,19 +409,30 @@ const sessionManager = createSessionManager({
   allowModeUnlimitedInput,
   autoBackupSection,
   backupDesc,
+
+  // Session state
   getActiveUser: () => activeUser,
   setActiveUser: (next) => {
     activeUser = next;
   },
+
+  // Session data + feedback
   fetchSettings: (...args) => formManager.fetchSettings(...args),
   showToast,
   setStatus: (text) => togglesManager.setStatus(text),
+
+  // Session setup hooks
   setupBackupControls,
   setupApiKeys,
   setupUsers,
   setupBrandingForm,
+
+  // Session toggle handlers
   handleToggleChange: (...args) => togglesManager.handleToggleChange(...args),
-  handleAllowedModesChange: (...args) => togglesManager.handleAllowedModesChange(...args),
+  handleAllowedModesChange: (...args) =>
+    togglesManager.handleAllowedModesChange(...args),
+
+  // Session feature managers
   runtimeManager,
   adminPermissionsManager,
   populateForm: (...args) => formManager.populateForm(...args),
@@ -334,13 +442,15 @@ const sessionManager = createSessionManager({
 /* -------------------------------------------------------------------------- */
 /* Theme helpers                                                              */
 /* -------------------------------------------------------------------------- */
-
 function applyThemeClass(theme) {
   if (themeHelper?.apply) {
     themeHelper.apply(theme);
     return;
   }
-  const fallback = String(theme || 'default').trim().toLowerCase() || 'default';
+  const fallback =
+    String(theme || 'default')
+      .trim()
+      .toLowerCase() || 'default';
   document.documentElement.setAttribute('data-theme', fallback);
 }
 
@@ -356,10 +466,7 @@ function authFetch(url, options = {}) {
     }
   });
 }
-
-/* -------------------------------------------------------------------------- */
-/* Init                                                                       */
-/* -------------------------------------------------------------------------- */
+// init
 sessionManager.start();
 
 /* -------------------------------------------------------------------------- */
@@ -399,7 +506,10 @@ function formatTimestamp(value) {
   try {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'never';
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric'
+    });
   } catch {
     return 'never';
   }
@@ -417,21 +527,20 @@ function escapeHtml(value) {
 /* -------------------------------------------------------------------------- */
 /* Hint tooltips                                                              */
 /* -------------------------------------------------------------------------- */
-// toggle hint tooltips
-(function(){
-  const icons=document.querySelectorAll('.hint-icon[data-tooltip]');
-  icons.forEach((icon)=>{
-    icon.addEventListener('click',(e)=>{
+(function () {
+  const icons = document.querySelectorAll('.hint-icon[data-tooltip]');
+  icons.forEach((icon) => {
+    icon.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const isOpen=icon.classList.contains('is-open');
-      icons.forEach((i)=>i.classList.remove('is-open'));
-      if(!isOpen){
+      const isOpen = icon.classList.contains('is-open');
+      icons.forEach((i) => i.classList.remove('is-open'));
+      if (!isOpen) {
         icon.classList.add('is-open');
       }
     });
   });
-  document.addEventListener('click',()=>{
-    icons.forEach((i)=>i.classList.remove('is-open'));
+  document.addEventListener('click', () => {
+    icons.forEach((i) => i.classList.remove('is-open'));
   });
 })();

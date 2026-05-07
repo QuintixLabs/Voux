@@ -106,7 +106,9 @@ function registerCounterWriteRoutes(app, deps) {
     const { value } = req.body || {};
     const validation = validateCounterValue(value);
     if (validation.error) {
-      return res.status(400).json({ error: validation.error, message: validation.message });
+      return res
+        .status(400)
+        .json({ error: validation.error, message: validation.message });
     }
     const counter = getCounter(req.params.id);
     if (!counter) {
@@ -150,22 +152,30 @@ function registerCounterWriteRoutes(app, deps) {
     const auth = authenticateRequest(req);
     const isAdmin = auth?.type === 'admin';
     const ownerKnown = isKnownOwner(counter.owner_id);
-    const isOwner = Boolean(counter.owner_id && auth?.user?.id === counter.owner_id);
+    const isOwner = Boolean(
+      counter.owner_id && auth?.user?.id === counter.owner_id
+    );
     const canAdminTag = isAdmin && (!counter.owner_id || !ownerKnown);
-    const tagOwnerId = isOwner ? counter.owner_id : canAdminTag ? auth.user.id : null;
+    const tagOwnerId = isOwner
+      ? counter.owner_id
+      : canAdminTag
+        ? auth.user.id
+        : null;
     const canEditTags = Boolean(isOwner || canAdminTag);
     const { label, value, note, tags } = req.body || {};
     const nextLabel =
       typeof label === 'string'
         ? label.trim().slice(0, LABEL_LIMIT)
         : typeof counter.label === 'string'
-        ? counter.label.trim().slice(0, LABEL_LIMIT)
-        : '';
+          ? counter.label.trim().slice(0, LABEL_LIMIT)
+          : '';
     let nextValue = counter.value;
     if (value !== undefined) {
       const validation = validateCounterValue(value);
       if (validation.error) {
-        return res.status(400).json({ error: validation.error, message: validation.message });
+        return res
+          .status(400)
+          .json({ error: validation.error, message: validation.message });
       }
       nextValue = validation.value;
     }
@@ -196,8 +206,8 @@ function registerCounterWriteRoutes(app, deps) {
     const updated = getCounter(req.params.id);
     const canShowTags = Boolean(
       tagOwnerId &&
-        ((counter.owner_id && auth?.type && auth.user?.id === tagOwnerId) ||
-          (isAdmin && (!counter.owner_id || !ownerKnown)))
+      ((counter.owner_id && auth?.type && auth.user?.id === tagOwnerId) ||
+        (isAdmin && (!counter.owner_id || !ownerKnown)))
     );
     return res.json({
       counter: serializeCounterWithStats(updated, {
@@ -218,15 +228,27 @@ function registerCounterWriteRoutes(app, deps) {
       return res.status(400).json({ error: 'invalid_mode' });
     }
     const ownerOnly =
-      auth?.type === 'admin' && String(req.query.owner || '').toLowerCase() === 'me';
-    if (auth?.type === 'admin' && !hasAdminPermission(auth, 'danger') && !ownerOnly) {
+      auth?.type === 'admin' &&
+      String(req.query.owner || '').toLowerCase() === 'me';
+    if (
+      auth?.type === 'admin' &&
+      !hasAdminPermission(auth, 'danger') &&
+      !ownerOnly
+    ) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
     if (auth?.type === 'user' || ownerOnly) {
       const ownerId = auth.user.id;
       if (modeFilter) {
-        const deletedFiltered = deleteCountersByOwnerAndMode(ownerId, modeFilter);
-        return res.json({ ok: true, deleted: deletedFiltered, mode: modeFilter });
+        const deletedFiltered = deleteCountersByOwnerAndMode(
+          ownerId,
+          modeFilter
+        );
+        return res.json({
+          ok: true,
+          deleted: deletedFiltered,
+          mode: modeFilter
+        });
       }
       const deletedCount = deleteCountersByOwner(ownerId);
       return res.json({ ok: true, deleted: deletedCount });
@@ -255,7 +277,8 @@ function registerCounterWriteRoutes(app, deps) {
       const rateCheck = checkCreationRate(clientIp);
       if (!rateCheck.allowed) {
         const retrySeconds = rateCheck.retryAfterSeconds;
-        const prettySeconds = retrySeconds === 1 ? '1 second' : `${retrySeconds} seconds`;
+        const prettySeconds =
+          retrySeconds === 1 ? '1 second' : `${retrySeconds} seconds`;
         res.set('Retry-After', String(Math.max(1, retrySeconds || 1)));
         return res.status(429).json({
           error: 'rate_limited',
@@ -269,17 +292,16 @@ function registerCounterWriteRoutes(app, deps) {
 
     const runtimeConfig = getConfig();
     const defaultMode = getDefaultMode(runtimeConfig);
-    const {
-      label = '',
-      startValue = 0,
-      tags = [],
-      mode
-    } = req.body || {};
+    const { label = '', startValue = 0, tags = [], mode } = req.body || {};
     const requestedModeInput = typeof mode === 'string' ? mode : defaultMode;
-    const normalizedLabel = typeof label === 'string' ? label.trim().slice(0, 80) : '';
+    const normalizedLabel =
+      typeof label === 'string' ? label.trim().slice(0, 80) : '';
     const startValidation = validateCounterValue(startValue);
     const auth = authenticateRequest(req);
-    const ownerId = auth && (auth.type === 'admin' || auth.type === 'user') ? auth.user?.id || null : null;
+    const ownerId =
+      auth && (auth.type === 'admin' || auth.type === 'user')
+        ? auth.user?.id || null
+        : null;
     const tagIds = filterTagIds(Array.isArray(tags) ? tags : [], ownerId);
     const modeResult = parseRequestedMode(requestedModeInput);
     if (modeResult.error) {
@@ -314,7 +336,11 @@ function registerCounterWriteRoutes(app, deps) {
     const embedSvgUrl = `${baseUrl}/embed/${counter.id}.svg`;
     const embedSvgCode = `<img src="${embedSvgUrl}" alt="Voux counter">`;
     return res.status(201).json({
-      counter: serializeCounter(counter, { includeNote: true, includeTags: true, tagOwnerId: ownerId }),
+      counter: serializeCounter(counter, {
+        includeNote: true,
+        includeTags: true,
+        tagOwnerId: ownerId
+      }),
       embedCode,
       embedUrl,
       embedSvgCode,

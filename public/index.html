@@ -272,8 +272,7 @@ npm install --production   # for production installs</code></pre>
 
         <div class="callout" data-tone="warning" role="note">
           <div class="callout__content">
-            <p>Open <span class="code-inline">.env</span> and set your settings. This is where you configure your <strong>admin login</strong>, <strong>site URL</strong>, <strong>port</strong>, and <strong>other options</strong>. You must set <span class="code-inline">ADMIN_USERNAME</span> + <span class="code-inline">ADMIN_PASSWORD</span> before running the server.</p>
-            <br>
+            <p>Open <span class="code-inline">.env</span> and set your settings.</p>
             <p>If you run <strong>Voux</strong> on a public domain, set <span class="code-inline">PUBLIC_BASE_URL</span> to your full URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>)</p>
             <p>If <strong>Voux</strong> is behind a <strong>reverse proxy</strong> or <strong>tunnel</strong> (for example <span class="code-inline">Nginx</span>, <span class="code-inline">Caddy</span>, <span class="code-inline">Cloudflare Tunnel</span>, etc.), also set: <span class="code-inline">TRUST_PROXY=1</span></p>
           </div>
@@ -308,8 +307,6 @@ npm install --production   # for production installs</code></pre>
           <pre><code class="language-bash">docker run -d \
   --name voux \
   -p 8787:8787 \
-  -e ADMIN_USERNAME=admin \
-  -e ADMIN_PASSWORD=change-this-password \
   # -e PUBLIC_BASE_URL=https://your-domain.com \
   # -e TRUST_PROXY=1 \
   -v $(pwd)/data:/app/data \
@@ -323,8 +320,6 @@ npm install --production   # for production installs</code></pre>
 
         <div class="callout" data-tone="warning" role="note">
           <div class="callout__content">
-            <p>You must set <span class="code-inline">ADMIN_USERNAME</span> and <span class="code-inline">ADMIN_PASSWORD</span> to your own values. <strong>Do not leave the example credentials!</strong></p>
-            <br>
             <p>If you run <strong>Voux</strong> on a public domain, set <span class="code-inline">PUBLIC_BASE_URL</span> to your full URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>)</p>
             <p>If <strong>Voux</strong> is behind a <strong>reverse proxy</strong> or <strong>tunnel</strong> (for example <span class="code-inline">Nginx</span>, <span class="code-inline">Caddy</span>, <span class="code-inline">Cloudflare Tunnel</span>, etc.), also set: <span class="code-inline">TRUST_PROXY=1</span></p>
           </div>

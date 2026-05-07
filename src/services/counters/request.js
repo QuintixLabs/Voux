@@ -1,22 +1,25 @@
 /*
-  src/services/counterRequest.js
+  src/services/counters/request.js
 
   Request parsing and normalization helpers for counter APIs.
 */
 
 function createCounterRequestService(deps) {
-  const {
-    startValueDigitLimit,
-    filterTagIds
-  } = deps;
+  const { startValueDigitLimit, filterTagIds } = deps;
 
   function validateCounterValue(rawValue) {
-    const normalizedRaw = rawValue === undefined || rawValue === null ? '0' : String(rawValue).trim();
+    const normalizedRaw =
+      rawValue === undefined || rawValue === null
+        ? '0'
+        : String(rawValue).trim();
     if (!normalizedRaw) {
       return { value: 0n };
     }
     if (!/^\d+$/.test(normalizedRaw)) {
-      return { error: 'startValue must be a positive number', message: 'Starting value must be a positive number.' };
+      return {
+        error: 'startValue must be a positive number',
+        message: 'Starting value must be a positive number.'
+      };
     }
     if (normalizedRaw.length > startValueDigitLimit) {
       return {
@@ -27,7 +30,10 @@ function createCounterRequestService(deps) {
     try {
       return { value: BigInt(normalizedRaw) };
     } catch {
-      return { error: 'startValue must be a positive number', message: 'Starting value must be a positive number.' };
+      return {
+        error: 'startValue must be a positive number',
+        message: 'Starting value must be a positive number.'
+      };
     }
   }
 
@@ -106,7 +112,13 @@ function createCounterRequestService(deps) {
     const raw = Array.isArray(value) ? value[0] : value;
     if (raw === undefined || raw === null) return null;
     const normalized = String(raw).trim().toLowerCase();
-    if (normalized === 'newest' || normalized === 'oldest' || normalized === 'views' || normalized === 'views_asc' || normalized === 'last_hit') {
+    if (
+      normalized === 'newest' ||
+      normalized === 'oldest' ||
+      normalized === 'views' ||
+      normalized === 'views_asc' ||
+      normalized === 'last_hit'
+    ) {
       return normalized;
     }
     return null;

@@ -29,10 +29,10 @@ function createDashboardAdminUi(deps) {
     applyAllowedModesToSelect
   } = deps;
 
-/* -------------------------------------------------------------------------- */
-/* Owner/filter visibility                                                    */
-/* -------------------------------------------------------------------------- */
-function syncOwnerFilterToggle() {
+  /* -------------------------------------------------------------------------- */
+  /* Owner/filter visibility                                                    */
+  /* -------------------------------------------------------------------------- */
+  function syncOwnerFilterToggle() {
     const toggle = document.querySelector('#ownerFilterToggle');
     if (!toggle) return;
     toggle.setAttribute('aria-pressed', state.ownerOnly ? 'true' : 'false');
@@ -74,7 +74,8 @@ function syncOwnerFilterToggle() {
     if (sortFilterSelect) {
       sortFilterSelect.value = state.sort || 'newest';
     }
-    const dangerAllowed = !state.isAdmin || state.user?.adminPermissions?.danger === true;
+    const dangerAllowed =
+      !state.isAdmin || state.user?.adminPermissions?.danger === true;
     const allowMyDanger = dangerAllowed || (state.isAdmin && state.ownerOnly);
     const isGlobal = state.modeFilter === 'all';
     if (deleteFilteredBtn) {
@@ -99,7 +100,8 @@ function syncOwnerFilterToggle() {
     if (!isAdmin) {
       state.ownerOnly = false;
     }
-    const dangerAllowed = !state.isAdmin || state.user?.adminPermissions?.danger === true;
+    const dangerAllowed =
+      !state.isAdmin || state.user?.adminPermissions?.danger === true;
     if (isAdmin && !dangerAllowed) {
       state.ownerOnly = true;
       state.ownerOnlyForced = true;
@@ -109,15 +111,18 @@ function syncOwnerFilterToggle() {
       state.ownerOnlyForced = false;
       saveOwnerFilterPreference(false);
     }
-    ownerFilterWrap?.classList.toggle('hidden', !isAdmin || (isAdmin && !dangerAllowed));
+    ownerFilterWrap?.classList.toggle(
+      'hidden',
+      !isAdmin || (isAdmin && !dangerAllowed)
+    );
     syncOwnerFilterToggle();
     updateDeleteFilteredState();
   }
 
-/* -------------------------------------------------------------------------- */
-/* Mode + throttle hints                                                      */
-/* -------------------------------------------------------------------------- */
-function refreshAdminModeControls() {
+  /* -------------------------------------------------------------------------- */
+  /* Mode + throttle hints                                                      */
+  /* -------------------------------------------------------------------------- */
+  function refreshAdminModeControls() {
     if (!adminCooldownSelect) return;
     applyAllowedModesToSelect(adminCooldownSelect, state.allowedModes);
   }

@@ -40,7 +40,8 @@ function createProfileSession(deps) {
 
   function applyCachedProfile(user) {
     if (!user) return;
-    if (profileUsernameText) profileUsernameText.textContent = user.username || '';
+    if (profileUsernameText)
+      profileUsernameText.textContent = user.username || '';
     if (profileDisplayText) {
       profileDisplayText.textContent = user.displayName || 'No display name';
       profileDisplayText.classList.toggle('hint', !user.displayName);
@@ -61,14 +62,23 @@ function createProfileSession(deps) {
     }
 
     if (profileRoleText) {
-      profileRoleText.textContent = updated.isOwner ? 'Owner' : updated.role === 'admin' ? 'Admin' : 'Member';
+      profileRoleText.textContent = updated.isOwner
+        ? 'Owner'
+        : updated.role === 'admin'
+          ? 'Admin'
+          : 'Member';
     }
 
     if (updated.avatarUrl !== undefined) {
-      setAvatarPreview(updated.avatarUrl || '', updated.displayName || updated.username);
+      setAvatarPreview(
+        updated.avatarUrl || '',
+        updated.displayName || updated.username
+      );
     }
 
-    document.dispatchEvent(new CustomEvent('voux:session-updated', { detail: { user: updated } }));
+    document.dispatchEvent(
+      new CustomEvent('voux:session-updated', { detail: { user: updated } })
+    );
   }
 
   async function loadProfile() {
@@ -112,9 +122,14 @@ function createProfileSession(deps) {
       const user = result.data?.user || {};
       revealPage();
 
-      if (profileUsernameText) profileUsernameText.textContent = user.username || '';
+      if (profileUsernameText)
+        profileUsernameText.textContent = user.username || '';
       if (profileRoleText) {
-        profileRoleText.textContent = user.isOwner ? 'Owner' : user.role === 'admin' ? 'Admin' : 'Member';
+        profileRoleText.textContent = user.isOwner
+          ? 'Owner'
+          : user.role === 'admin'
+            ? 'Admin'
+            : 'Member';
       }
       if (profileDisplayText) {
         profileDisplayText.textContent = user.displayName || 'No display name';

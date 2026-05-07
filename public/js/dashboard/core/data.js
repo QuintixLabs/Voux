@@ -23,10 +23,10 @@ function createDashboardData(deps) {
     counterListEl
   } = deps;
 
-/* -------------------------------------------------------------------------- */
-/* Counter response apply                                                     */
-/* -------------------------------------------------------------------------- */
-function applyCounterResponse(data, counters, options = {}) {
+  /* -------------------------------------------------------------------------- */
+  /* Counter response apply                                                     */
+  /* -------------------------------------------------------------------------- */
+  function applyCounterResponse(data, counters, options = {}) {
     const { silent = false } = options;
     const selectionSnapshot = silent ? snapshotDashboardTextSelection() : null;
     let patched = false;
@@ -41,7 +41,8 @@ function applyCounterResponse(data, counters, options = {}) {
     state.page = data.pagination?.page || 1;
     state.totalPages = data.pagination?.totalPages || 1;
     state.total = data.pagination?.total || (data.counters?.length ?? 0);
-    state.totalOverall = data.totals?.overall ?? state.totalOverall ?? state.total;
+    state.totalOverall =
+      data.totals?.overall ?? state.totalOverall ?? state.total;
     updatePagination();
     updateCounterTotal();
     updateTagCounterHints();
@@ -53,16 +54,22 @@ function applyCounterResponse(data, counters, options = {}) {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Text selection snapshot/restore                                            */
-/* -------------------------------------------------------------------------- */
-function snapshotDashboardTextSelection() {
+  /* -------------------------------------------------------------------------- */
+  /* Text selection snapshot/restore                                            */
+  /* -------------------------------------------------------------------------- */
+  function snapshotDashboardTextSelection() {
     const selection = window.getSelection?.();
     if (!isSelectionInsideCounterList(selection)) {
       return null;
     }
-    const anchor = snapshotSelectionPosition(selection.anchorNode, selection.anchorOffset);
-    const focus = snapshotSelectionPosition(selection.focusNode, selection.focusOffset);
+    const anchor = snapshotSelectionPosition(
+      selection.anchorNode,
+      selection.anchorOffset
+    );
+    const focus = snapshotSelectionPosition(
+      selection.focusNode,
+      selection.focusOffset
+    );
     if (!anchor || !focus) {
       return null;
     }
@@ -101,9 +108,12 @@ function snapshotDashboardTextSelection() {
     }
     let node = resolveNodeFromPath(snapshot.path);
     if (!node) return null;
-    const maxOffset = node.nodeType === Node.TEXT_NODE
-      ? (node.textContent ? node.textContent.length : 0)
-      : node.childNodes.length;
+    const maxOffset =
+      node.nodeType === Node.TEXT_NODE
+        ? node.textContent
+          ? node.textContent.length
+          : 0
+        : node.childNodes.length;
     const clampedOffset = Math.max(0, Math.min(snapshot.offset, maxOffset));
     return { node, offset: clampedOffset };
   }
@@ -115,17 +125,27 @@ function snapshotDashboardTextSelection() {
     if (selection.anchorNode === selection.focusNode) {
       return selection.anchorOffset > selection.focusOffset;
     }
-    const position = selection.anchorNode.compareDocumentPosition(selection.focusNode);
+    const position = selection.anchorNode.compareDocumentPosition(
+      selection.focusNode
+    );
     return Boolean(position & Node.DOCUMENT_POSITION_PRECEDING);
   }
 
   function isSelectionInsideCounterList(selection) {
-    if (!selection || selection.isCollapsed || selection.rangeCount === 0 || !counterListEl) {
+    if (
+      !selection ||
+      selection.isCollapsed ||
+      selection.rangeCount === 0 ||
+      !counterListEl
+    ) {
       return false;
     }
     const range = selection.getRangeAt(0);
     const container = range.commonAncestorContainer;
-    const containerEl = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+    const containerEl =
+      container.nodeType === Node.ELEMENT_NODE
+        ? container
+        : container.parentElement;
     return Boolean(containerEl && counterListEl.contains(containerEl));
   }
 
@@ -143,9 +163,19 @@ function snapshotDashboardTextSelection() {
     selection.removeAllRanges();
     if (typeof selection.setBaseAndExtent === 'function') {
       if (backward) {
-        selection.setBaseAndExtent(focus.node, focus.offset, anchor.node, anchor.offset);
+        selection.setBaseAndExtent(
+          focus.node,
+          focus.offset,
+          anchor.node,
+          anchor.offset
+        );
       } else {
-        selection.setBaseAndExtent(anchor.node, anchor.offset, focus.node, focus.offset);
+        selection.setBaseAndExtent(
+          anchor.node,
+          anchor.offset,
+          focus.node,
+          focus.offset
+        );
       }
       return;
     }
@@ -183,10 +213,10 @@ function snapshotDashboardTextSelection() {
     return node;
   }
 
-/* -------------------------------------------------------------------------- */
-/* Counter fetch + cache                                                      */
-/* -------------------------------------------------------------------------- */
-async function fetchCounters(page) {
+  /* -------------------------------------------------------------------------- */
+  /* Counter fetch + cache                                                      */
+  /* -------------------------------------------------------------------------- */
+  async function fetchCounters(page) {
     const params = new URLSearchParams({
       page: String(page),
       pageSize: String(state.pageSize)
@@ -218,7 +248,9 @@ async function fetchCounters(page) {
     }
     if (res.status === 429) {
       const err = await res.json().catch(() => ({}));
-      const rateError = new Error(err?.message || 'Too many attempts. Try again soon.');
+      const rateError = new Error(
+        err?.message || 'Too many attempts. Try again soon.'
+      );
       rateError.retryAfterSeconds = err?.retryAfterSeconds;
       rateError.code = 'rate_limit';
       throw rateError;

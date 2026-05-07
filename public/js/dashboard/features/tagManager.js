@@ -34,10 +34,10 @@ function createDashboardTagManager(deps) {
 
   let tagFilterMenuOpen = false;
 
-/* -------------------------------------------------------------------------- */
-/* Tag filter list + menu                                                     */
-/* -------------------------------------------------------------------------- */
-async function fetchTags() {
+  /* -------------------------------------------------------------------------- */
+  /* Tag filter list + menu                                                     */
+  /* -------------------------------------------------------------------------- */
+  async function fetchTags() {
     if (!state.user) return;
     if (state.isAdmin && state.user?.adminPermissions?.tags === false) {
       state.tags = [];
@@ -58,8 +58,12 @@ async function fetchTags() {
       const payload = await res.json().catch(() => ({}));
       const tags = Array.isArray(payload.tags) ? payload.tags : [];
       state.tags = tags;
-      state.tagFilter = state.tagFilter.filter((id) => tags.some((tag) => tag.id === id));
-      state.createTags = state.createTags.filter((id) => tags.some((tag) => tag.id === id));
+      state.tagFilter = state.tagFilter.filter((id) =>
+        tags.some((tag) => tag.id === id)
+      );
+      state.createTags = state.createTags.filter((id) =>
+        tags.some((tag) => tag.id === id)
+      );
       refreshTagSelectors();
       renderTagFilterList();
       updateTagCounterHints();
@@ -124,7 +128,9 @@ async function fetchTags() {
         confirmTagDeletion(tag);
       });
       chip.appendChild(removeBtn);
-      chip.addEventListener('contextmenu', (event) => handleTagContextMenu(event, tag));
+      chip.addEventListener('contextmenu', (event) =>
+        handleTagContextMenu(event, tag)
+      );
       item.append(input, chip);
       tagFilterList.appendChild(item);
     });
@@ -176,7 +182,10 @@ async function fetchTags() {
   function handleDocumentClick(event) {
     if (!tagFilterMenuOpen) return;
     if (!tagFilterControls) return;
-    if (event.target.closest('.modal') || event.target.closest('.modal-overlay')) {
+    if (
+      event.target.closest('.modal') ||
+      event.target.closest('.modal-overlay')
+    ) {
       return;
     }
     if (!tagFilterControls.contains(event.target)) {
@@ -185,9 +194,13 @@ async function fetchTags() {
   }
 
   function handleGlobalKeydown(event) {
-    if (event.key === 'Escape' && tagFilterMenuOpen) {
-      closeTagFilterMenu();
+    if (event.key !== 'Escape' || !tagFilterMenuOpen) {
+      return;
     }
+    if (document.querySelector('.modal-overlay.modal-overlay--open')) {
+      return;
+    }
+    closeTagFilterMenu();
   }
 
   function clearTagFilterSelection(event) {
@@ -198,7 +211,10 @@ async function fetchTags() {
   }
 
   function updateTagCounterHints() {
-    const count = Math.max(0, Array.isArray(state.tags) ? state.tags.length : 0);
+    const count = Math.max(
+      0,
+      Array.isArray(state.tags) ? state.tags.length : 0
+    );
     if (createTagCounterHint) {
       createTagCounterHint.textContent = `${count.toLocaleString()} / ${TAG_LIMIT}`;
     }
@@ -212,7 +228,12 @@ async function fetchTags() {
     const normalized = Array.isArray(ids)
       ? ids
           .map((id) => String(id || '').trim())
-          .filter((id, index, arr) => id && arr.indexOf(id) === index && state.tags.some((tag) => tag.id === id))
+          .filter(
+            (id, index, arr) =>
+              id &&
+              arr.indexOf(id) === index &&
+              state.tags.some((tag) => tag.id === id)
+          )
       : [];
     const changed =
       normalized.length !== state.tagFilter.length ||
@@ -222,24 +243,32 @@ async function fetchTags() {
     renderTagFilterList();
     updateTagCounterHints();
     if (changed) {
-      refreshCounters(1).catch((err) => console.warn('Failed to refresh counters', err));
+      refreshCounters(1).catch((err) =>
+        console.warn('Failed to refresh counters', err)
+      );
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Tag create/edit/delete                                                     */
-/* -------------------------------------------------------------------------- */
-async function handleTagCreate(context) {
+  /* -------------------------------------------------------------------------- */
+  /* Tag create/edit/delete                                                     */
+  /* -------------------------------------------------------------------------- */
+  async function handleTagCreate(context) {
     if (state.tags.length >= TAG_LIMIT) {
-      await showAlert(`You can only create up to ${TAG_LIMIT} tags. Delete an existing tag first.`, {
-        title: 'Tag limit reached'
-      });
+      await showAlert(
+        `You can only create up to ${TAG_LIMIT} tags. Delete an existing tag first.`,
+        {
+          title: 'Tag limit reached'
+        }
+      );
       return;
     }
     if (context !== 'filter') {
       closeTagFilterMenu();
     }
-    const result = await openTagDialog(state.tags.length, state.totalOverall || state.total || 0);
+    const result = await openTagDialog(
+      state.tags.length,
+      state.totalOverall || state.total || 0
+    );
     if (!result || !result.name) return;
     let createdTagId = null;
     let createdTagName = result.name;
@@ -259,7 +288,11 @@ async function handleTagCreate(context) {
       createdTagId = payload?.tag?.id || null;
       createdTagName = payload?.tag?.name || createdTagName;
       await fetchTags();
-      if (context === 'create' && createdTagId && !state.createTags.includes(createdTagId)) {
+      if (
+        context === 'create' &&
+        createdTagId &&
+        !state.createTags.includes(createdTagId)
+      ) {
         state.createTags = [...state.createTags, createdTagId];
         refreshTagSelectors();
       }
@@ -277,11 +310,15 @@ async function handleTagCreate(context) {
   }
 
   async function openTagEditDialog(tag) {
-    const result = await openTagDialog(state.tags.length, state.totalOverall || state.total || 0, {
-      id: tag?.id,
-      name: tag?.name,
-      color: tag?.color
-    });
+    const result = await openTagDialog(
+      state.tags.length,
+      state.totalOverall || state.total || 0,
+      {
+        id: tag?.id,
+        name: tag?.name,
+        color: tag?.color
+      }
+    );
     if (!result || !result.name) return;
     try {
       const res = await authFetch(`/api/tags/${tag.id}`, {
@@ -344,10 +381,10 @@ async function handleTagCreate(context) {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Tag selector registry                                                      */
-/* -------------------------------------------------------------------------- */
-function registerTagSelector(container, config = {}) {
+  /* -------------------------------------------------------------------------- */
+  /* Tag selector registry                                                      */
+  /* -------------------------------------------------------------------------- */
+  function registerTagSelector(container, config = {}) {
     if (!container) return null;
     const entry = {
       container,
@@ -406,7 +443,9 @@ function registerTagSelector(container, config = {}) {
         confirmTagDeletion(tag);
       });
       pill.appendChild(removeBtn);
-      pill.addEventListener('contextmenu', (event) => handleTagContextMenu(event, tag));
+      pill.addEventListener('contextmenu', (event) =>
+        handleTagContextMenu(event, tag)
+      );
       pill.addEventListener('click', () => {
         const next = toggleTagSelection(selected, tag.id);
         entry.setSelected?.(next);
@@ -450,14 +489,15 @@ function registerTagSelector(container, config = {}) {
     return [...current, tagId];
   }
 
-/* -------------------------------------------------------------------------- */
-/* Tag dialog UI                                                              */
-/* -------------------------------------------------------------------------- */
-function openTagDialog(existingCount = 0, counterTotal = 0, defaults = {}) {
+  /* -------------------------------------------------------------------------- */
+  /* Tag dialog UI                                                              */
+  /* -------------------------------------------------------------------------- */
+  function openTagDialog(existingCount = 0, _counterTotal = 0, defaults = {}) {
     return new Promise((resolve) => {
       const isEdit = Boolean(defaults && defaults.id);
       const defaultName = (defaults && defaults.name) || '';
-      const defaultColor = normalizeHexColor(defaults && defaults.color) || '#4c6ef5';
+      const defaultColor =
+        normalizeHexColor(defaults && defaults.color) || '#4c6ef5';
 
       const overlay = document.createElement('div');
       overlay.classList.add('modal-overlay', 'tag-dialog-overlay');
@@ -518,7 +558,8 @@ function openTagDialog(existingCount = 0, counterTotal = 0, defaults = {}) {
 
       ensurePickrLoaded()
         .then(() => {
-          if (!window.Pickr || typeof window.Pickr.create !== 'function') return;
+          if (!window.Pickr || typeof window.Pickr.create !== 'function')
+            return;
           pickrInstance = window.Pickr.create({
             el: colorSwatch,
             theme: 'monolith',
@@ -665,13 +706,17 @@ function openTagDialog(existingCount = 0, counterTotal = 0, defaults = {}) {
     });
   }
 
-/* -------------------------------------------------------------------------- */
-/* Bulk tag dialog                                                            */
-/* -------------------------------------------------------------------------- */
-function openBulkTagDialog(selectedCount = 0) {
+  /* -------------------------------------------------------------------------- */
+  /* Bulk tag dialog                                                            */
+  /* -------------------------------------------------------------------------- */
+  function openBulkTagDialog(selectedCount = 0) {
     return new Promise((resolve) => {
       const overlay = document.createElement('div');
-      overlay.classList.add('modal-overlay', 'modal-overlay--open', 'tag-dialog-overlay');
+      overlay.classList.add(
+        'modal-overlay',
+        'modal-overlay--open',
+        'tag-dialog-overlay'
+      );
       const dialog = document.createElement('div');
       dialog.className = 'tag-dialog';
       dialog.tabIndex = -1;

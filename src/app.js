@@ -23,13 +23,30 @@ function configureApp(app, deps) {
 /* -------------------------------------------------------------------------- */
 /* Page Routes                                                                */
 /* -------------------------------------------------------------------------- */
-function registerPageRoutes(app, serveHtml) {
-  app.get('/', serveHtml('index.html'));
-  app.get('/index.html', serveHtml('index.html'));
-  app.get('/dashboard', serveHtml('dashboard.html'));
+function registerPageRoutes(app, serveHtml, deps = {}) {
+  const { countUsers } = deps;
+  const setupRequired = () =>
+    typeof countUsers === 'function' && countUsers() === 0;
+  const redirectToSetupIfNeeded = (filename) => (req, res) => {
+    if (setupRequired()) {
+      return res.redirect('/setup');
+    }
+    return serveHtml(filename)(req, res);
+  };
+  const redirectSetupIfReady = (req, res) => {
+    if (!setupRequired()) {
+      return res.redirect('/dashboard');
+    }
+    return serveHtml('setup.html')(req, res);
+  };
+
+  app.get('/', redirectToSetupIfNeeded('index.html'));
+  app.get('/index.html', redirectToSetupIfNeeded('index.html'));
+  app.get('/dashboard', redirectToSetupIfNeeded('dashboard.html'));
+  app.get('/settings', redirectToSetupIfNeeded('settings.html'));
+  app.get('/profile', redirectToSetupIfNeeded('profile.html'));
+  app.get('/setup', redirectSetupIfReady);
   app.get('/about', serveHtml('about.html'));
-  app.get('/settings', serveHtml('settings.html'));
-  app.get('/profile', serveHtml('profile.html'));
   app.get('/privacy', serveHtml('privacy.html'));
   app.get('/terms', serveHtml('terms.html'));
 }
@@ -51,11 +68,20 @@ function registerStaticAndErrorHandlers(app, deps) {
     '/uploads',
     express.static(uploadsDir, {
       setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.jpeg') || filePath.endsWith('.webp') || filePath.endsWith('.gif')) {
+        if (
+          filePath.endsWith('.png') ||
+          filePath.endsWith('.jpg') ||
+          filePath.endsWith('.jpeg') ||
+          filePath.endsWith('.webp') ||
+          filePath.endsWith('.gif')
+        ) {
           if (isDev) {
             res.setHeader('Cache-Control', 'no-store');
           } else {
-            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            res.setHeader(
+              'Cache-Control',
+              'public, max-age=31536000, immutable'
+            );
           }
         }
       }
@@ -70,7 +96,10 @@ function registerStaticAndErrorHandlers(app, deps) {
           if (isDev) {
             res.setHeader('Cache-Control', 'no-store');
           } else {
-            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            res.setHeader(
+              'Cache-Control',
+              'public, max-age=31536000, immutable'
+            );
           }
         }
       }

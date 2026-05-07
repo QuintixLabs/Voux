@@ -24,11 +24,19 @@ const profileAvatarRemove = document.getElementById('profileAvatarRemove');
 /* -------------------------------------------------------------------------- */
 const profilePasswordReset = document.getElementById('profilePasswordReset');
 const profilePasswordModal = document.getElementById('profilePasswordModal');
-const profilePasswordMessage = document.getElementById('profilePasswordMessage');
-const profilePasswordCurrent = document.getElementById('profilePasswordCurrent');
+const profilePasswordMessage = document.getElementById(
+  'profilePasswordMessage'
+);
+const profilePasswordCurrent = document.getElementById(
+  'profilePasswordCurrent'
+);
 const profilePasswordNew = document.getElementById('profilePasswordNew');
-const profilePasswordCurrentError = document.getElementById('profilePasswordCurrentError');
-const profilePasswordNewError = document.getElementById('profilePasswordNewError');
+const profilePasswordCurrentError = document.getElementById(
+  'profilePasswordCurrentError'
+);
+const profilePasswordNewError = document.getElementById(
+  'profilePasswordNewError'
+);
 const profilePasswordSave = document.getElementById('profilePasswordSave');
 const profilePasswordCancel = document.getElementById('profilePasswordCancel');
 
@@ -39,9 +47,13 @@ const profileUsernameEdit = document.getElementById('profileUsernameEdit');
 const profileUsernameText = document.getElementById('profileUsernameText');
 const profileUsernameModal = document.getElementById('profileUsernameModal');
 const profileUsernameNew = document.getElementById('profileUsernameNew');
-const profileUsernamePassword = document.getElementById('profileUsernamePassword');
+const profileUsernamePassword = document.getElementById(
+  'profileUsernamePassword'
+);
 const profileUsernameError = document.getElementById('profileUsernameError');
-const profileUsernameNewError = document.getElementById('profileUsernameNewError');
+const profileUsernameNewError = document.getElementById(
+  'profileUsernameNewError'
+);
 const profileUsernameSave = document.getElementById('profileUsernameSave');
 const profileUsernameCancel = document.getElementById('profileUsernameCancel');
 

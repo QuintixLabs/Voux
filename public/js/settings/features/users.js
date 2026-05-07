@@ -47,10 +47,10 @@ function createUsersManager(deps) {
 
   let activeUserEditor = null;
 
-/* -------------------------------------------------------------------------- */
-/* User list + filters                                                        */
-/* -------------------------------------------------------------------------- */
-async function loadUsers(silent = false) {
+  /* -------------------------------------------------------------------------- */
+  /* User list + filters                                                        */
+  /* -------------------------------------------------------------------------- */
+  async function loadUsers(silent = false) {
     if (!usersList) return;
     if (!silent) {
       usersList.innerHTML = '<p class="hint">Loading users...</p>';
@@ -75,7 +75,8 @@ async function loadUsers(silent = false) {
     const baseList = usersPager.list;
     let filtered = baseList;
     const sortByName = () => {
-      const normalize = (user) => (user.displayName || user.username || '').trim().toLowerCase();
+      const normalize = (user) =>
+        (user.displayName || user.username || '').trim().toLowerCase();
       return (a, b) => normalize(a).localeCompare(normalize(b));
     };
     if (usersPager.filter === 'owner') {
@@ -89,7 +90,8 @@ async function loadUsers(silent = false) {
     }
     if (query) {
       filtered = filtered.filter((user) => {
-        const name = `${user.displayName || ''} ${user.username || ''}`.toLowerCase();
+        const name =
+          `${user.displayName || ''} ${user.username || ''}`.toLowerCase();
         return name.includes(query);
       });
     }
@@ -153,11 +155,14 @@ async function loadUsers(silent = false) {
         avatar.textContent = name.charAt(0).toUpperCase() || '?';
       }
       const title = document.createElement('strong');
-      title.textContent = user.displayName ? `${user.displayName} (${user.username})` : user.username;
+      title.textContent = user.displayName
+        ? `${user.displayName} (${user.username})`
+        : user.username;
       const subtitle = document.createElement('span');
       subtitle.className = 'hint';
       const ownerLabel = user.isOwner ? 'Owner' : null;
-      subtitle.textContent = ownerLabel || (user.role === 'admin' ? 'Admin' : 'Member');
+      subtitle.textContent =
+        ownerLabel || (user.role === 'admin' ? 'Admin' : 'Member');
       meta.append(avatar, title, subtitle);
 
       const actions = document.createElement('div');
@@ -178,7 +183,9 @@ async function loadUsers(silent = false) {
         <option value="admin">Admin</option>
       `;
         roleSelect.value = user.role === 'admin' ? 'admin' : 'user';
-        roleSelect.addEventListener('change', () => handleUserRoleChange(user, roleSelect));
+        roleSelect.addEventListener('change', () =>
+          handleUserRoleChange(user, roleSelect)
+        );
         actions.appendChild(roleSelect);
       }
 
@@ -187,11 +194,16 @@ async function loadUsers(silent = false) {
         permsBtn.type = 'button';
         permsBtn.className = 'ghost';
         permsBtn.innerHTML = '<i class="ri-shield-keyhole-line"></i>';
-        permsBtn.addEventListener('click', () => onOpenAdminPermissions?.(user));
+        permsBtn.addEventListener('click', () =>
+          onOpenAdminPermissions?.(user)
+        );
         actions.appendChild(permsBtn);
       }
 
-      if ((user.role !== 'admin' || requesterIsOwner) && activeUser?.id !== user.id) {
+      if (
+        (user.role !== 'admin' || requesterIsOwner) &&
+        activeUser?.id !== user.id
+      ) {
         const editBtn = document.createElement('button');
         editBtn.type = 'button';
         editBtn.className = 'ghost';
@@ -200,7 +212,10 @@ async function loadUsers(silent = false) {
         actions.appendChild(editBtn);
       }
 
-      if (activeUser?.id !== user.id && (user.role !== 'admin' || requesterIsOwner)) {
+      if (
+        activeUser?.id !== user.id &&
+        (user.role !== 'admin' || requesterIsOwner)
+      ) {
         const deleteBtn = document.createElement('button');
         deleteBtn.type = 'button';
         deleteBtn.className = 'danger ghost';
@@ -214,10 +229,10 @@ async function loadUsers(silent = false) {
     });
   }
 
-/* -------------------------------------------------------------------------- */
-/* Create modal flow                                                          */
-/* -------------------------------------------------------------------------- */
-function openUserCreateModal() {
+  /* -------------------------------------------------------------------------- */
+  /* Create modal flow                                                          */
+  /* -------------------------------------------------------------------------- */
+  function openUserCreateModal() {
     if (!userCreateModal || !userForm) return;
     userForm.reset();
     setUserStatus('');
@@ -267,9 +282,10 @@ function openUserCreateModal() {
       loadUsers(true);
       closeUserCreateModal();
     } catch (error) {
-      const message = error.message === 'username_exists'
-        ? 'That username is already taken.'
-        : error.message || 'Failed to create user.';
+      const message =
+        error.message === 'username_exists'
+          ? 'That username is already taken.'
+          : error.message || 'Failed to create user.';
       if (error.message === 'username_exists') {
         setUserNameError(message);
         return;
@@ -289,10 +305,10 @@ function openUserCreateModal() {
     userNameError.classList.toggle('is-hidden', !next);
   }
 
-/* -------------------------------------------------------------------------- */
-/* Role/profile updates                                                       */
-/* -------------------------------------------------------------------------- */
-async function handleUserRoleChange(user, roleSelect) {
+  /* -------------------------------------------------------------------------- */
+  /* Role/profile updates                                                       */
+  /* -------------------------------------------------------------------------- */
+  async function handleUserRoleChange(user, roleSelect) {
     if (!user?.id || !roleSelect) return;
     const nextRole = roleSelect.value === 'admin' ? 'admin' : 'user';
     const previousRole = user.role === 'admin' ? 'admin' : 'user';
@@ -314,13 +330,14 @@ async function handleUserRoleChange(user, roleSelect) {
       loadUsers(true);
     } catch (error) {
       roleSelect.value = previousRole;
-      const message = error.message === 'last_admin'
-        ? 'You need at least one admin on this instance.'
-        : error.message === 'admin_edit_forbidden'
-          ? 'Admin accounts cannot be edited.'
-          : error.message === 'owner_locked'
-            ? 'The owner account cannot be edited.'
-            : error.message || 'Failed to update role';
+      const message =
+        error.message === 'last_admin'
+          ? 'You need at least one admin on this instance.'
+          : error.message === 'admin_edit_forbidden'
+            ? 'Admin accounts cannot be edited.'
+            : error.message === 'owner_locked'
+              ? 'The owner account cannot be edited.'
+              : error.message || 'Failed to update role';
       await showAlert(normalizeAuthMessage(error, message));
     }
   }
@@ -329,7 +346,9 @@ async function handleUserRoleChange(user, roleSelect) {
     if (!userEditModal) return;
     activeUserEditor = user;
     if (userEditMessage) {
-      const label = user.displayName ? `${user.displayName} (${user.username})` : user.username;
+      const label = user.displayName
+        ? `${user.displayName} (${user.username})`
+        : user.username;
       userEditMessage.textContent = `Editing ${label}.`;
     }
     if (userEditUsername) userEditUsername.value = user.username || '';
@@ -374,18 +393,24 @@ async function handleUserRoleChange(user, roleSelect) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to update user');
       }
-      const targetName = displayName || username || activeUserEditor.displayName || activeUserEditor.username || 'user';
+      const targetName =
+        displayName ||
+        username ||
+        activeUserEditor.displayName ||
+        activeUserEditor.username ||
+        'user';
       showToast(`User updated: ${targetName}`);
       closeUserEditor();
       loadUsers(true);
     } catch (error) {
-      const message = error.message === 'username_exists'
-        ? 'That username is already taken.'
-        : error.message === 'owner_locked'
-          ? 'The owner account cannot be edited.'
-          : error.message === 'admin_edit_forbidden'
-            ? 'Admin accounts cannot be edited.'
-            : normalizeAuthMessage(error, 'Failed to update user');
+      const message =
+        error.message === 'username_exists'
+          ? 'That username is already taken.'
+          : error.message === 'owner_locked'
+            ? 'The owner account cannot be edited.'
+            : error.message === 'admin_edit_forbidden'
+              ? 'Admin accounts cannot be edited.'
+              : normalizeAuthMessage(error, 'Failed to update user');
       await showAlert(normalizeAuthMessage(error, message));
     }
   }
@@ -405,7 +430,9 @@ async function handleUserRoleChange(user, roleSelect) {
     });
     if (!confirmed) return;
     try {
-      const res = await authFetch(`/api/users/${user.id}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/users/${user.id}`, {
+        method: 'DELETE'
+      });
       await assertSession(res);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -424,10 +451,10 @@ async function handleUserRoleChange(user, roleSelect) {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Event wiring                                                               */
-/* -------------------------------------------------------------------------- */
-function setupUsers() {
+  /* -------------------------------------------------------------------------- */
+  /* Event wiring                                                               */
+  /* -------------------------------------------------------------------------- */
+  function setupUsers() {
     if (!usersCard) return;
     loadUsers();
     userForm?.addEventListener('submit', handleUserCreate);
@@ -475,6 +502,4 @@ function setupUsers() {
   };
 }
 
-export {
-  createUsersManager
-};
+export { createUsersManager };

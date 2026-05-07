@@ -46,7 +46,10 @@ async function assertAuthorizedResponse(res, onUnauthorized = null) {
     throw buildUnauthorizedError();
   }
   if (res.status === 403) {
-    const payload = await res.clone().json().catch(() => ({}));
+    const payload = await res
+      .clone()
+      .json()
+      .catch(() => ({}));
     if (payload?.error === 'csrf_blocked') {
       const error = new Error('csrf_blocked');
       error.code = 'csrf_blocked';
@@ -71,7 +74,9 @@ async function showConfirmWithInput(options) {
   if (modalApi()?.confirmWithInput) {
     return modalApi().confirmWithInput(options);
   }
-  const entered = window.prompt(options?.promptMessage || 'Type DELETE to confirm');
+  const entered = window.prompt(
+    options?.promptMessage || 'Type DELETE to confirm'
+  );
   return entered && entered.trim() === (options?.inputMatch || 'DELETE');
 }
 
@@ -90,7 +95,8 @@ function showToast(message, variant = 'success') {
   const toast = document.createElement('div');
   toast.className = `toast toast--${variant}`;
   const icon = document.createElement('i');
-  icon.className = variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line';
+  icon.className =
+    variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line';
   icon.setAttribute('aria-hidden', 'true');
   const text = document.createElement('span');
   text.className = 'toast__message';
@@ -141,11 +147,15 @@ function showToast(message, variant = 'success') {
   toast._resumeToast = resumeTimer;
 
   const pauseAll = () => {
-    toastContainer.querySelectorAll('.toast').forEach((node) => node._pauseToast?.());
+    toastContainer
+      .querySelectorAll('.toast')
+      .forEach((node) => node._pauseToast?.());
   };
 
   const resumeAll = () => {
-    toastContainer.querySelectorAll('.toast').forEach((node) => node._resumeToast?.());
+    toastContainer
+      .querySelectorAll('.toast')
+      .forEach((node) => node._resumeToast?.());
   };
 
   toast.addEventListener('mouseenter', pauseAll);

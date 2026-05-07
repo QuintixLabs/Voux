@@ -52,7 +52,10 @@ function createProfileAvatarFeature(deps) {
       showToast('Profile photo updated');
       syncProfile(updated);
     } catch (error) {
-      showToast(normalizeProfileError(error, 'Failed to update photo.'), 'danger');
+      showToast(
+        normalizeProfileError(error, 'Failed to update photo.'),
+        'danger'
+      );
     }
   }
 

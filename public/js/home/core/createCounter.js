@@ -39,9 +39,12 @@ function createHomeCreateCounterManager(deps) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (isPrivateMode) {
-        await showAlert('Private instance is enabled. Create counters from the dashboard.', {
-          title: 'Private instance'
-        });
+        await showAlert(
+          'Private instance is enabled. Create counters from the dashboard.',
+          {
+            title: 'Private instance'
+          }
+        );
         return;
       }
 
@@ -69,7 +72,10 @@ function createHomeCreateCounterManager(deps) {
 
         if (!response.ok) {
           const error = await response.json().catch(() => ({}));
-          const message = buildCreateCounterErrorMessage(error, response.status);
+          const message = buildCreateCounterErrorMessage(
+            error,
+            response.status
+          );
           const err = new Error(message);
           err.code = error && error.error;
           throw err;
@@ -96,9 +102,13 @@ function createHomeCreateCounterManager(deps) {
       if (!data) return;
 
       isPrivateMode = Boolean(data.privateMode);
-      showGuides = data.showGuides !== undefined ? Boolean(data.showGuides) : true;
+      showGuides =
+        data.showGuides !== undefined ? Boolean(data.showGuides) : true;
       allowedModes = normalizeAllowedModes(data.allowedModes);
-      defaultMode = data.defaultMode === 'unlimited' && allowedModes.unlimited !== false ? 'unlimited' : 'unique';
+      defaultMode =
+        data.defaultMode === 'unlimited' && allowedModes.unlimited !== false
+          ? 'unlimited'
+          : 'unique';
       currentThrottleSeconds = Number(data.unlimitedThrottleSeconds) || 0;
 
       if (cooldownSelect) {
@@ -147,7 +157,9 @@ function createHomeCreateCounterManager(deps) {
 
   function readStartValue(input) {
     if (!input) return '0';
-    const digits = (input.value || '').replace(/[^\d]/g, '').slice(0, START_VALUE_DIGIT_LIMIT);
+    const digits = (input.value || '')
+      .replace(/[^\d]/g, '')
+      .slice(0, START_VALUE_DIGIT_LIMIT);
     return digits || '0';
   }
 
@@ -167,9 +179,10 @@ function createHomeCreateCounterManager(deps) {
     const options = Array.from(selectEl.options);
     let firstAllowed = null;
 
-    const throttleLabel = currentThrottleSeconds > 0
-      ? `Every visit (${currentThrottleSeconds}s)`
-      : 'Every visit';
+    const throttleLabel =
+      currentThrottleSeconds > 0
+        ? `Every visit (${currentThrottleSeconds}s)`
+        : 'Every visit';
 
     options.forEach((option) => {
       const mode = option.value === 'unlimited' ? 'unlimited' : 'unique';

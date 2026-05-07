@@ -33,7 +33,8 @@ function showToast(message, variant = 'success') {
   toast.className = `toast toast--${variant}`;
 
   const icon = document.createElement('i');
-  icon.className = variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line';
+  icon.className =
+    variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line';
   icon.setAttribute('aria-hidden', 'true');
 
   const text = document.createElement('span');
@@ -88,11 +89,15 @@ function showToast(message, variant = 'success') {
   toast._resumeToast = resumeTimer;
 
   const pauseAll = () => {
-    toastContainer.querySelectorAll('.toast').forEach((node) => node._pauseToast?.());
+    toastContainer
+      .querySelectorAll('.toast')
+      .forEach((node) => node._pauseToast?.());
   };
 
   const resumeAll = () => {
-    toastContainer.querySelectorAll('.toast').forEach((node) => node._resumeToast?.());
+    toastContainer
+      .querySelectorAll('.toast')
+      .forEach((node) => node._resumeToast?.());
   };
 
   toast.addEventListener('mouseenter', pauseAll);
@@ -133,9 +138,4 @@ function setInlineError(el, message) {
   }
 }
 
-export {
-  showAlert,
-  showToast,
-  normalizeProfileError,
-  setInlineError
-};
+export { showAlert, showToast, normalizeProfileError, setInlineError };

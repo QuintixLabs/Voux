@@ -31,9 +31,10 @@ function createProfilePasswordFeature(deps) {
     if (!profilePasswordModal) return;
 
     const username = profileUsernameText?.textContent || '';
-    const displayName = profileDisplayText && !profileDisplayText.classList.contains('hint')
-      ? profileDisplayText.textContent
-      : '';
+    const displayName =
+      profileDisplayText && !profileDisplayText.classList.contains('hint')
+        ? profileDisplayText.textContent
+        : '';
 
     if (profilePasswordMessage) {
       profilePasswordMessage.textContent = displayName
@@ -65,7 +66,10 @@ function createProfilePasswordFeature(deps) {
     let hasError = false;
 
     if (!currentPassword) {
-      setInlineError(profilePasswordCurrentError, 'Enter your current password.');
+      setInlineError(
+        profilePasswordCurrentError,
+        'Enter your current password.'
+      );
       hasError = true;
     }
 
@@ -73,7 +77,10 @@ function createProfilePasswordFeature(deps) {
       setInlineError(profilePasswordNewError, 'Enter a new password.');
       hasError = true;
     } else if (newPassword.length < 6) {
-      setInlineError(profilePasswordNewError, 'New password must be at least 6 characters.');
+      setInlineError(
+        profilePasswordNewError,
+        'New password must be at least 6 characters.'
+      );
       hasError = true;
     }
 
@@ -95,9 +102,10 @@ function createProfilePasswordFeature(deps) {
       setInlineError(profilePasswordNewError, '');
       closePasswordModal();
     } catch (error) {
-      const message = error.message === 'invalid_credentials'
-        ? 'Current password is incorrect.'
-        : normalizeProfileError(error, 'Failed to reset password');
+      const message =
+        error.message === 'invalid_credentials'
+          ? 'Current password is incorrect.'
+          : normalizeProfileError(error, 'Failed to reset password');
 
       if (profilePasswordCurrentError) {
         setInlineError(profilePasswordCurrentError, message);
@@ -114,8 +122,12 @@ function createProfilePasswordFeature(deps) {
       if (event.target === profilePasswordModal) closePasswordModal();
     });
     profilePasswordSave?.addEventListener('click', savePasswordReset);
-    profilePasswordCurrent?.addEventListener('input', () => setInlineError(profilePasswordCurrentError, ''));
-    profilePasswordNew?.addEventListener('input', () => setInlineError(profilePasswordNewError, ''));
+    profilePasswordCurrent?.addEventListener('input', () =>
+      setInlineError(profilePasswordCurrentError, '')
+    );
+    profilePasswordNew?.addEventListener('input', () =>
+      setInlineError(profilePasswordNewError, '')
+    );
   }
 
   return { bind };

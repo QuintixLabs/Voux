@@ -84,23 +84,30 @@
 
     <section class="card login-card login-card--pending hidden" id="loginCard">
       <h2>Dashboard Login</h2>
-      <p>Enter your username + password to continue. You'll stay signed in for 12 hours.</p>
+      <p>Enter your username and password to continue.</p>
       <p id="loginStatus" class="hint hidden">Checking your session...</p>
       <form id="admin-form" class="admin-form login-form" action="javascript:void(0);" novalidate>
         <div class="input-icon">
           <span class="input-icon__icon" aria-hidden="true"><i class="ri-user-3-line"></i></span>
           <input type="text" id="loginUsername" placeholder="Username" autocomplete="username" required />
         </div>
-        <div class="password-field">
-          <span class="password-field__icon" aria-hidden="true"><i class="ri-lock-line"></i></span>
-          <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" required />
-          <button type="button" class="password-toggle" aria-label="Show password">
-            <i class="ri-eye-off-line" aria-hidden="true"></i>
-          </button>
+        <div class="field login-form__field">
+          <div class="password-field">
+            <span class="password-field__icon" aria-hidden="true"><i class="ri-lock-line"></i></span>
+            <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" required />
+            <button type="button" class="password-toggle" aria-label="Show password">
+              <i class="ri-eye-line" aria-hidden="true"></i>
+            </button>
+          </div>
+          <small id="loginError" class="modal__input-error is-hidden" role="alert" aria-live="polite">Login failed. Check your details.</small>
         </div>
+        <label class="remember-choice remember-choice--login" for="loginRememberDevice">
+          <input type="checkbox" id="loginRememberDevice" />
+          <span class="remember-choice__indicator" aria-hidden="true"></span>
+          <span class="remember-choice__title">Remember this device for 7 days</span>
+        </label>
         <button type="submit">Log in</button>
       </form>
-      <p id="loginError" class="form-error hidden" role="alert" aria-live="polite">Login failed. Check your details.</p>
     </section>
 
     <section class="card hidden" id="dashboardCard">

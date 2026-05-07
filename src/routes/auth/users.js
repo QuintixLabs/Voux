@@ -1,5 +1,5 @@
 /*
-  src/routes/users.js
+  src/routes/auth/users.js
 
   Admin user-management routes.
 */
@@ -50,7 +50,11 @@ function registerUsersRoutes(app, deps) {
     if (String(password).length < 6) {
       return res.status(400).json({ error: 'password_too_short' });
     }
-    const avatarResult = resolveAvatarUrl(`user-${Date.now()}`, avatarUrl, null);
+    const avatarResult = resolveAvatarUrl(
+      `user-${Date.now()}`,
+      avatarUrl,
+      null
+    );
     if (avatarResult.error) {
       return res.status(400).json({ error: avatarResult.error });
     }
@@ -101,7 +105,11 @@ function registerUsersRoutes(app, deps) {
     if (username !== undefined && !String(username || '').trim()) {
       return res.status(400).json({ error: 'username_required' });
     }
-    const avatarResult = resolveAvatarUrl(target.id, avatarUrl, target.avatar_url);
+    const avatarResult = resolveAvatarUrl(
+      target.id,
+      avatarUrl,
+      target.avatar_url
+    );
     if (avatarResult.error) {
       return res.status(400).json({ error: avatarResult.error });
     }

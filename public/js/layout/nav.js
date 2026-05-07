@@ -11,15 +11,25 @@
   const toggles = document.querySelectorAll('.password-toggle');
   if (!toggles.length) return;
   toggles.forEach((toggle) => {
-    toggle.addEventListener('click', () => {
-      const field = toggle.closest('.password-field');
-      const input = field?.querySelector('input');
+    const field = toggle.closest('.password-field');
+    const input = field?.querySelector('input');
+    const icon = toggle.querySelector('i');
+
+    const syncToggleState = () => {
       if (!input) return;
-      const showing = input.type === 'text';
-      input.type = showing ? 'password' : 'text';
-      const icon = toggle.querySelector('i');
-      if (icon) icon.className = showing ? 'ri-eye-off-line' : 'ri-eye-line';
-      toggle.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+      const hidden = input.type === 'password';
+      if (icon) icon.className = hidden ? 'ri-eye-line' : 'ri-eye-off-line';
+      toggle.setAttribute(
+        'aria-label',
+        hidden ? 'Show password' : 'Hide password'
+      );
+    };
+
+    syncToggleState();
+    toggle.addEventListener('click', () => {
+      if (!input) return;
+      input.type = input.type === 'password' ? 'text' : 'password';
+      syncToggleState();
     });
   });
 })();
@@ -45,6 +55,11 @@
   let sessionRetryCount = 0;
   let sessionGraceUntil = 0;
   cachedUser = readCachedUser();
+  if (document.body?.dataset?.page === 'setup') {
+    cachedUser = null;
+    sessionUser = null;
+    writeCachedUser(null);
+  }
   updateAccountButton(cachedUser);
 
   /* ------------------------------------------------------------------------ */
@@ -66,7 +81,11 @@
 
   document.addEventListener('click', (event) => {
     if (!menu.classList.contains('account-menu--open')) return;
-    if (!menu.contains(event.target) && event.target !== menuButton && !menuButton.contains(event.target)) {
+    if (
+      !menu.contains(event.target) &&
+      event.target !== menuButton &&
+      !menuButton.contains(event.target)
+    ) {
       closeMenu();
     }
   });
@@ -142,12 +161,12 @@
         if (error?.name !== 'AbortError') {
           console.warn('Failed to check session', error);
         }
-      sessionChecked = true;
-      sessionUser = null;
-      updateMenuState();
-      if (menu.classList.contains('account-menu--open')) {
-        closeMenu();
-      }
+        sessionChecked = true;
+        sessionUser = null;
+        updateMenuState();
+        if (menu.classList.contains('account-menu--open')) {
+          closeMenu();
+        }
         return sessionUser;
       } finally {
         sessionCheckInFlight = null;
@@ -185,12 +204,17 @@
       menuButton.textContent = '';
       const fallbackName = (user.username || '?').trim();
       const displayName = (user.displayName || '').trim();
-      const letter = (displayName || fallbackName || '?').charAt(0).toUpperCase();
+      const letter = (displayName || fallbackName || '?')
+        .charAt(0)
+        .toUpperCase();
       const fallback = document.createElement('span');
-      fallback.className = 'nav-account__avatar nav-account__avatar--fallback hidden';
-      fallback.textContent = letter;
+      fallback.className =
+        'nav-account__avatar nav-account__avatar--fallback hidden';
+      fallback.dataset.letter = letter;
+      fallback.setAttribute('aria-label', letter);
       const img = document.createElement('img');
-      img.className = 'nav-account__avatar nav-account__avatar--image is-loading';
+      img.className =
+        'nav-account__avatar nav-account__avatar--image is-loading';
       img.src = user.avatarUrl;
       img.alt = display;
       img.addEventListener('load', () => {
@@ -212,7 +236,8 @@
     menuButton.textContent = '';
     const fallback = document.createElement('span');
     fallback.className = 'nav-account__avatar nav-account__avatar--fallback';
-    fallback.textContent = letter;
+    fallback.dataset.letter = letter;
+    fallback.setAttribute('aria-label', letter);
     menuButton.appendChild(fallback);
   }
 

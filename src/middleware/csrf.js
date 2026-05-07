@@ -22,10 +22,7 @@ function normalizeOrigin(value) {
 }
 
 function createCsrfGuard(options = {}) {
-  const {
-    getSessionToken,
-    getBaseUrl
-  } = options;
+  const { getSessionToken, getBaseUrl } = options;
 
   return (req, res, next) => {
     if (!isUnsafeMethod(req.method)) {
@@ -50,7 +47,8 @@ function createCsrfGuard(options = {}) {
       return res.status(403).json({ error: 'csrf_blocked' });
     }
     if (referer) {
-      if (referer === expected || referer.startsWith(`${expected}/`)) return next();
+      if (referer === expected || referer.startsWith(`${expected}/`))
+        return next();
       return res.status(403).json({ error: 'csrf_blocked' });
     }
     return res.status(403).json({ error: 'csrf_blocked' });

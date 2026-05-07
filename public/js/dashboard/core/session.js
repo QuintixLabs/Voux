@@ -22,6 +22,7 @@ function createDashboardSession(deps) {
     adminForm,
     loginUsernameInput,
     loginPasswordInput,
+    loginRememberDeviceInput,
     loginError,
     loginStatus,
     dashboardSubtitle,
@@ -31,7 +32,6 @@ function createDashboardSession(deps) {
     adminEmbedSvgSnippetCode,
     paginationEl,
     deleteAllBtn,
-    showToast,
     renderTagFilterList,
     updateTagFilterButton,
     refreshTagSelectors,
@@ -51,18 +51,22 @@ function createDashboardSession(deps) {
 
   let sessionRetryCount = 0;
   let sessionGraceUntil = 0;
+  let loginErrorClearTimer = null;
 
-/* -------------------------------------------------------------------------- */
-/* Config + session checks                                                    */
-/* -------------------------------------------------------------------------- */
-async function fetchConfig() {
+  /* -------------------------------------------------------------------------- */
+  /* Config + session checks                                                    */
+  /* -------------------------------------------------------------------------- */
+  async function fetchConfig() {
     try {
       const data = await fetchRuntimeConfig();
       if (!data) return;
       if (data.adminPageSize) {
         state.pageSize = Number(data.adminPageSize) || state.pageSize;
       }
-      document.documentElement.style.setProperty('--admin-page-size', state.pageSize);
+      document.documentElement.style.setProperty(
+        '--admin-page-size',
+        state.pageSize
+      );
       state.privateMode = Boolean(data.privateMode);
       state.allowedModes = normalizeAllowedModes(data.allowedModes);
       state.throttleSeconds = Number(data.unlimitedThrottleSeconds) || 0;
@@ -120,28 +124,34 @@ async function fetchConfig() {
 
   async function onLoginSubmit(event) {
     event.preventDefault();
-    hideLoginError();
     const username = loginUsernameInput?.value.trim();
     const password = loginPasswordInput?.value;
+    const rememberDevice = loginRememberDeviceInput?.checked === true;
     if (!username || !password) {
       showLoginError('Enter your username and password.');
       return;
     }
     setLoginPending(true);
-    await attemptLogin(username, password);
+    await attemptLogin(username, password, rememberDevice);
   }
 
-  async function attemptLogin(username, password) {
+  async function attemptLogin(username, password, rememberDevice) {
     setLoginLoading(true);
     try {
-      const res = await loginRequest(username, password);
+      const res = await loginRequest(username, password, rememberDevice);
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));
         const code = error?.error;
         if (res.status === 429) {
-          throw Object.assign(new Error(error?.message || 'Too many attempts. Try again soon.'), { code: 'rate_limit' });
+          throw Object.assign(
+            new Error(error?.message || 'Too many attempts. Try again soon.'),
+            { code: 'rate_limit' }
+          );
         }
-        throw Object.assign(new Error(error?.message || 'Login failed. Check your details.'), { code: code || 'unauthorized' });
+        throw Object.assign(
+          new Error(error?.message || 'Login failed. Check your details.'),
+          { code: code || 'unauthorized' }
+        );
       }
       const data = await res.json();
       await setUserSession(data?.user || null, data?.adminPermissions || null);
@@ -150,6 +160,7 @@ async function fetchConfig() {
       }
       if (loginUsernameInput) loginUsernameInput.value = '';
       loginPasswordInput.value = '';
+      if (loginRememberDeviceInput) loginRememberDeviceInput.checked = false;
       showDashboard();
     } catch (error) {
       const code = error?.code;
@@ -164,14 +175,14 @@ async function fetchConfig() {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Dashboard/login visibility                                                 */
-/* -------------------------------------------------------------------------- */
-function finishDashboardInit() {
+  /* -------------------------------------------------------------------------- */
+  /* Dashboard/login visibility                                                 */
+  /* -------------------------------------------------------------------------- */
+  function finishDashboardInit() {
     document.body.classList.remove('dashboard-initializing');
   }
 
-function showDashboard() {
+  function showDashboard() {
     finishDashboardInit();
     loginCard?.classList.add('hidden');
     loginCard?.classList.remove('login-card--pending');
@@ -181,8 +192,11 @@ function showDashboard() {
       adminControls.classList.remove('is-loading');
     }
     if (dashboardSubtitle) {
-      const name = state.user?.displayName || state.user?.username || 'Signed in';
-      const instanceLabel = state.privateMode ? 'Private instance' : 'Public instance';
+      const name =
+        state.user?.displayName || state.user?.username || 'Signed in';
+      const instanceLabel = state.privateMode
+        ? 'Private instance'
+        : 'Public instance';
       dashboardSubtitle.textContent = `${name} · ${instanceLabel}`;
     }
     hideLoginError();
@@ -212,13 +226,44 @@ function showDashboard() {
   }
 
   function showLoginError(message) {
-    showToast(message || 'Login failed. Check your details.', 'danger');
+    if (loginError) {
+      const nextMessage = message || 'Login failed. Check your details.';
+      if (loginErrorClearTimer) {
+        window.clearTimeout(loginErrorClearTimer);
+        loginErrorClearTimer = null;
+      }
+      if (
+        !loginError.classList.contains('is-hidden') &&
+        loginError.textContent === nextMessage
+      ) {
+        loginPasswordInput?.classList.add('input-error');
+        loginPasswordInput?.setAttribute('aria-invalid', 'true');
+        return;
+      }
+      if (loginError.classList.contains('is-hidden')) {
+        loginError.textContent = nextMessage;
+        loginError.classList.remove('is-hidden');
+      } else {
+        loginError.textContent = nextMessage;
+      }
+    }
     loginPasswordInput?.classList.add('input-error');
     loginPasswordInput?.setAttribute('aria-invalid', 'true');
   }
 
   function hideLoginError() {
-    loginError?.classList.add('hidden');
+    if (loginError && !loginError.classList.contains('is-hidden')) {
+      loginError.classList.add('is-hidden');
+      if (loginErrorClearTimer) {
+        window.clearTimeout(loginErrorClearTimer);
+      }
+      loginErrorClearTimer = window.setTimeout(() => {
+        if (loginError.classList.contains('is-hidden')) {
+          loginError.textContent = '';
+        }
+        loginErrorClearTimer = null;
+      }, 160);
+    }
     loginPasswordInput?.classList.remove('input-error');
     loginPasswordInput?.removeAttribute('aria-invalid');
   }
@@ -227,6 +272,9 @@ function showDashboard() {
     if (!adminForm) return;
     state.loadingLogin = loading;
     Array.from(adminForm.elements).forEach((el) => {
+      if (el === loginRememberDeviceInput) {
+        return;
+      }
       el.disabled = loading && el.type !== 'button';
     });
   }
@@ -273,10 +321,10 @@ function showDashboard() {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Login status UI                                                            */
-/* -------------------------------------------------------------------------- */
-function setLoginPending(pending, message) {
+  /* -------------------------------------------------------------------------- */
+  /* Login status UI                                                            */
+  /* -------------------------------------------------------------------------- */
+  function setLoginPending(pending, _message) {
     if (!loginCard) return;
     loginCard.classList.toggle('login-card--pending', Boolean(pending));
     if (pending) {

@@ -1,5 +1,5 @@
 /*
-  src/db/users.js
+  src/db/auth/users.js
 
   User read/write helpers for auth and profile data.
 */
@@ -8,10 +8,18 @@ function createUsersApi(db, helpers, cryptoApi) {
   const { generateId, normalizeUserRow } = helpers;
   const { hashPassword } = cryptoApi;
 
-  const listUsersStmt = db.prepare('SELECT id, username, role, display_name, avatar_url, created_at, updated_at, last_login_at FROM users ORDER BY created_at DESC');
-  const getUserByIdStmt = db.prepare('SELECT id, username, role, display_name, avatar_url, created_at, updated_at, last_login_at FROM users WHERE id = ?');
-  const getUserByUsernameStmt = db.prepare('SELECT id, username, role, display_name, avatar_url, password_hash, created_at, updated_at, last_login_at FROM users WHERE username = ?');
-  const getOwnerUserStmt = db.prepare("SELECT id, username, role, display_name, avatar_url, created_at, updated_at, last_login_at FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1");
+  const listUsersStmt = db.prepare(
+    'SELECT id, username, role, display_name, avatar_url, created_at, updated_at, last_login_at FROM users ORDER BY created_at DESC'
+  );
+  const getUserByIdStmt = db.prepare(
+    'SELECT id, username, role, display_name, avatar_url, created_at, updated_at, last_login_at FROM users WHERE id = ?'
+  );
+  const getUserByUsernameStmt = db.prepare(
+    'SELECT id, username, role, display_name, avatar_url, password_hash, created_at, updated_at, last_login_at FROM users WHERE username = ?'
+  );
+  const getOwnerUserStmt = db.prepare(
+    "SELECT id, username, role, display_name, avatar_url, created_at, updated_at, last_login_at FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1"
+  );
   const insertUserStmt = db.prepare(`
     INSERT INTO users (id, username, password_hash, role, display_name, avatar_url, created_at, updated_at, last_login_at)
     VALUES (@id, @username, @password_hash, @role, @display_name, @avatar_url, @created_at, @updated_at, NULL)
@@ -26,10 +34,14 @@ function createUsersApi(db, helpers, cryptoApi) {
         updated_at = @updated_at
     WHERE id = @id
   `);
-  const updateUserLoginStmt = db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?');
+  const updateUserLoginStmt = db.prepare(
+    'UPDATE users SET last_login_at = ? WHERE id = ?'
+  );
   const deleteUserStmt = db.prepare('DELETE FROM users WHERE id = ?');
   const countUsersStmt = db.prepare('SELECT COUNT(*) as total FROM users');
-  const countAdminsStmt = db.prepare("SELECT COUNT(*) as total FROM users WHERE role = 'admin'");
+  const countAdminsStmt = db.prepare(
+    "SELECT COUNT(*) as total FROM users WHERE role = 'admin'"
+  );
 
   function listUsers() {
     return listUsersStmt.all().map(normalizeUserRow);
@@ -50,8 +62,16 @@ function createUsersApi(db, helpers, cryptoApi) {
     return getUserByUsernameStmt.get(String(username).toLowerCase()) || null;
   }
 
-  function createUser({ username, password, role = 'user', displayName = '', avatarUrl = '' }) {
-    const safeUsername = String(username || '').trim().toLowerCase();
+  function createUser({
+    username,
+    password,
+    role = 'user',
+    displayName = '',
+    avatarUrl = ''
+  }) {
+    const safeUsername = String(username || '')
+      .trim()
+      .toLowerCase();
     if (!safeUsername) throw new Error('username_required');
     if (getUserByUsername(safeUsername)) throw new Error('username_exists');
 
@@ -62,7 +82,9 @@ function createUsersApi(db, helpers, cryptoApi) {
       username: safeUsername,
       password_hash: passwordHash,
       role: role === 'admin' ? 'admin' : 'user',
-      display_name: displayName ? String(displayName).trim().slice(0, 80) : null,
+      display_name: displayName
+        ? String(displayName).trim().slice(0, 80)
+        : null,
       avatar_url: avatarUrl ? String(avatarUrl).trim().slice(0, 3000000) : null,
       created_at: now,
       updated_at: now
@@ -71,11 +93,19 @@ function createUsersApi(db, helpers, cryptoApi) {
     return normalizeUserRow(user);
   }
 
-  function updateUser(id, { role, displayName, avatarUrl, password, username }) {
+  function updateUser(
+    id,
+    { role, displayName, avatarUrl, password, username }
+  ) {
     const existing = getUserByIdStmt.get(id);
     if (!existing) return null;
 
-    const nextUsername = username !== undefined ? String(username || '').trim().toLowerCase() : existing.username;
+    const nextUsername =
+      username !== undefined
+        ? String(username || '')
+            .trim()
+            .toLowerCase()
+        : existing.username;
     if (!nextUsername) throw new Error('username_required');
     if (nextUsername !== existing.username) {
       const taken = getUserByUsername(nextUsername);
@@ -85,9 +115,24 @@ function createUsersApi(db, helpers, cryptoApi) {
     const payload = {
       id,
       username: nextUsername,
-      role: role !== undefined ? (role === 'admin' ? 'admin' : 'user') : existing.role,
-      display_name: displayName !== undefined ? String(displayName || '').trim().slice(0, 80) || null : existing.display_name,
-      avatar_url: avatarUrl !== undefined ? String(avatarUrl || '').trim().slice(0, 3000000) || null : existing.avatar_url,
+      role:
+        role !== undefined
+          ? role === 'admin'
+            ? 'admin'
+            : 'user'
+          : existing.role,
+      display_name:
+        displayName !== undefined
+          ? String(displayName || '')
+              .trim()
+              .slice(0, 80) || null
+          : existing.display_name,
+      avatar_url:
+        avatarUrl !== undefined
+          ? String(avatarUrl || '')
+              .trim()
+              .slice(0, 3000000) || null
+          : existing.avatar_url,
       password_hash: password ? hashPassword(password) : null,
       updated_at: Date.now()
     };

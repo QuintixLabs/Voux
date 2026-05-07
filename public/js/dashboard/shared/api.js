@@ -38,11 +38,11 @@ export async function fetchSession(force = true) {
 /* -------------------------------------------------------------------------- */
 /* Auth endpoints                                                             */
 /* -------------------------------------------------------------------------- */
-export function login(username, password) {
+export function login(username, password, rememberDevice = false) {
   return fetch('/api/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ username, password })
+    body: JSON.stringify({ username, password, rememberDevice })
   });
 }

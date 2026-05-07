@@ -1,5 +1,5 @@
 /*
-  src/services/loginLimiter.js
+  src/services/auth/loginLimiter.js
 
   Tracks admin login attempts and blocks after too many failures.
 */
@@ -57,7 +57,9 @@ function cleanEntry(entry, now, touch = true) {
     current.blockUntil = 0;
   }
   if (Array.isArray(current.failures)) {
-    current.failures = current.failures.filter((ts) => now - ts < ATTEMPT_WINDOW_MS);
+    current.failures = current.failures.filter(
+      (ts) => now - ts < ATTEMPT_WINDOW_MS
+    );
   } else {
     current.failures = [];
   }
@@ -87,7 +89,10 @@ function checkLoginBlock(ip, now = Date.now()) {
     return { blocked: false, retryAfterSeconds: 0 };
   }
   if (entry.blockUntil > now) {
-    const retryAfterSeconds = Math.max(1, Math.ceil((entry.blockUntil - now) / 1000));
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((entry.blockUntil - now) / 1000)
+    );
     return { blocked: true, retryAfterSeconds };
   }
   entry.blockUntil = 0;

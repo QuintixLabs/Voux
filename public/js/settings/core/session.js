@@ -31,10 +31,10 @@ function createSessionManager(deps) {
     adminPermissionsManager
   } = deps;
 
-/* -------------------------------------------------------------------------- */
-/* Session bootstrap                                                          */
-/* -------------------------------------------------------------------------- */
-async function checkSession() {
+  /* -------------------------------------------------------------------------- */
+  /* Session bootstrap                                                          */
+  /* -------------------------------------------------------------------------- */
+  async function checkSession() {
     const revealPage = () => {
       document.documentElement.classList.remove('auth-pending');
     };
@@ -82,39 +82,64 @@ async function checkSession() {
   }
 
   /* -------------------------------------------------------------------------- */
-/* Admin page init                                                            */
-/* -------------------------------------------------------------------------- */
-function initAdmin() {
+  /* Admin page init                                                            */
+  /* -------------------------------------------------------------------------- */
+  function initAdmin() {
     fetchSettings()
-      .then(({ config, usersPageSize, inactiveDaysThreshold: inactiveDays, adminPermissions, backupDirectory }) => {
-        // sync form values before listeners
-        deps.populateForm(config, { backupDirectory });
-        runtimeManager.setInactiveDaysThreshold(Number(inactiveDays));
-        runtimeManager.updateInactiveButtonLabel();
-        if (Number.isFinite(usersPageSize) && usersPageSize > 0) {
-          usersPager.pageSize = usersPageSize;
+      .then(
+        ({
+          config,
+          usersPageSize,
+          inactiveDaysThreshold: inactiveDays,
+          adminPermissions,
+          backupDirectory
+        }) => {
+          // sync form values before listeners
+          deps.populateForm(config, { backupDirectory });
+          runtimeManager.setInactiveDaysThreshold(Number(inactiveDays));
+          runtimeManager.updateInactiveButtonLabel();
+          if (Number.isFinite(usersPageSize) && usersPageSize > 0) {
+            usersPager.pageSize = usersPageSize;
+          }
+          const effectiveAdminPermissions = adminPermissions?.effective || null;
+          adminPermissionsManager.applyAdminPermissionsUI(
+            effectiveAdminPermissions,
+            Boolean(getActiveUser()?.isOwner)
+          );
+          setStatus('');
+          togglePrivate?.addEventListener('change', () =>
+            handleToggleChange(
+              { privateMode: togglePrivate.checked },
+              togglePrivate.checked
+                ? 'Private instance enabled'
+                : 'Private instance disabled',
+              togglePrivate
+            )
+          );
+          toggleGuides?.addEventListener('change', () =>
+            handleToggleChange(
+              { showGuides: toggleGuides.checked },
+              toggleGuides.checked ? 'Guide cards shown' : 'Guide cards hidden',
+              toggleGuides
+            )
+          );
+          allowModeUniqueInput?.addEventListener('change', (event) =>
+            handleAllowedModesChange(event.target)
+          );
+          allowModeUnlimitedInput?.addEventListener('change', (event) =>
+            handleAllowedModesChange(event.target)
+          );
+          setupBackupControls(Boolean(getActiveUser()?.isOwner));
+          setupApiKeys();
+          setupUsers();
+          setupBrandingForm();
+          runtimeManager.setupRuntimeActions();
+          document.body.classList.remove('settings-footer-hidden');
+          if (getActiveUser()?.isOwner) {
+            adminPermissionsManager.loadAdminPermissions();
+          }
         }
-        const effectiveAdminPermissions = adminPermissions?.effective || null;
-        adminPermissionsManager.applyAdminPermissionsUI(effectiveAdminPermissions, Boolean(getActiveUser()?.isOwner));
-        setStatus('');
-        togglePrivate?.addEventListener('change', () =>
-          handleToggleChange({ privateMode: togglePrivate.checked }, togglePrivate.checked ? 'Private instance enabled' : 'Private instance disabled', togglePrivate)
-        );
-        toggleGuides?.addEventListener('change', () =>
-          handleToggleChange({ showGuides: toggleGuides.checked }, toggleGuides.checked ? 'Guide cards shown' : 'Guide cards hidden', toggleGuides)
-        );
-        allowModeUniqueInput?.addEventListener('change', (event) => handleAllowedModesChange(event.target));
-        allowModeUnlimitedInput?.addEventListener('change', (event) => handleAllowedModesChange(event.target));
-        setupBackupControls(Boolean(getActiveUser()?.isOwner));
-        setupApiKeys();
-        setupUsers();
-        setupBrandingForm();
-        runtimeManager.setupRuntimeActions();
-        document.body.classList.remove('settings-footer-hidden');
-        if (getActiveUser()?.isOwner) {
-          adminPermissionsManager.loadAdminPermissions();
-        }
-      })
+      )
       .catch(() => {
         showToast('Unable to load settings right now.', 'danger');
         document.body.classList.remove('settings-footer-hidden');
@@ -122,12 +147,13 @@ function initAdmin() {
   }
 
   /* -------------------------------------------------------------------------- */
-/* Member page init                                                           */
-/* -------------------------------------------------------------------------- */
-function initMember() {
+  /* Member page init                                                           */
+  /* -------------------------------------------------------------------------- */
+  function initMember() {
     deps.initSettingsTabs(['backupCard']);
     if (backupDesc) {
-      backupDesc.textContent = 'Download your counters as JSON or restore them later.';
+      backupDesc.textContent =
+        'Download your counters as JSON or restore them later.';
     }
     if (autoBackupSection) {
       autoBackupSection.classList.add('hidden');
@@ -141,6 +167,4 @@ function initMember() {
   };
 }
 
-export {
-  createSessionManager
-};
+export { createSessionManager };

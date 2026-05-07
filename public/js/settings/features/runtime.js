@@ -26,10 +26,10 @@ function createRuntimeManager(deps) {
 
   let inactiveDaysThreshold = 30;
 
-/* -------------------------------------------------------------------------- */
-/* Inactive counter threshold                                                 */
-/* -------------------------------------------------------------------------- */
-function setInactiveDaysThreshold(value) {
+  /* -------------------------------------------------------------------------- */
+  /* Inactive counter threshold                                                 */
+  /* -------------------------------------------------------------------------- */
+  function setInactiveDaysThreshold(value) {
     if (Number.isFinite(value) && value > 0) {
       inactiveDaysThreshold = Math.max(1, Math.round(value));
     }
@@ -37,7 +37,9 @@ function setInactiveDaysThreshold(value) {
 
   function updateInactiveButtonLabel() {
     if (!purgeInactiveButton) return;
-    const days = Number.isFinite(inactiveDaysThreshold) ? inactiveDaysThreshold : 30;
+    const days = Number.isFinite(inactiveDaysThreshold)
+      ? inactiveDaysThreshold
+      : 30;
     const label = days === 1 ? '1 day' : `${days} days`;
     purgeInactiveButton.innerHTML = `<i class="ri-delete-bin-line"></i> Delete counters inactive for ${label}`;
     if (inactiveHint) {
@@ -45,20 +47,23 @@ function setInactiveDaysThreshold(value) {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Event wiring                                                               */
-/* -------------------------------------------------------------------------- */
-function setupRuntimeActions() {
+  /* -------------------------------------------------------------------------- */
+  /* Event wiring                                                               */
+  /* -------------------------------------------------------------------------- */
+  function setupRuntimeActions() {
     throttleSelect?.addEventListener('change', () => handleThrottleChange());
     purgeInactiveButton?.addEventListener('click', () => handlePurgeInactive());
   }
 
-/* -------------------------------------------------------------------------- */
-/* Throttle + purge actions                                                   */
-/* -------------------------------------------------------------------------- */
-async function handleThrottleChange() {
+  /* -------------------------------------------------------------------------- */
+  /* Throttle + purge actions                                                   */
+  /* -------------------------------------------------------------------------- */
+  async function handleThrottleChange() {
     if (!throttleSelect) return;
-    const value = Math.max(0, Number(throttleSelect.value) || DEFAULT_THROTTLE_SECONDS);
+    const value = Math.max(
+      0,
+      Number(throttleSelect.value) || DEFAULT_THROTTLE_SECONDS
+    );
     try {
       setStatus('');
       const res = await authFetch('/api/settings', {
@@ -92,9 +97,12 @@ async function handleThrottleChange() {
       await showAlert('Log in again to manage counters.');
       return;
     }
-    const days = Number.isFinite(inactiveDaysThreshold) ? inactiveDaysThreshold : 30;
+    const days = Number.isFinite(inactiveDaysThreshold)
+      ? inactiveDaysThreshold
+      : 30;
     const daysLabel = days === 1 ? '1 day' : `${days} days`;
-    const siteUrl = window.location?.origin || window.location?.href || 'this site';
+    const siteUrl =
+      window.location?.origin || window.location?.href || 'this site';
     const confirmedFinal = await modalConfirm({
       title: 'Really remove inactive counters?',
       message: `This will permanently remove every counter that has no hits for ${daysLabel} on: ${siteUrl}. You'll confirm by typing DELETE next.`,
@@ -138,9 +146,13 @@ async function handleThrottleChange() {
       }
       const payload = await res.json().catch(() => ({}));
       const removed = payload.removed || 0;
-      showToast(`Deleted ${removed} inactive ${removed === 1 ? 'counter' : 'counters'}`);
+      showToast(
+        `Deleted ${removed} inactive ${removed === 1 ? 'counter' : 'counters'}`
+      );
     } catch (error) {
-      await showAlert(normalizeAuthMessage(error, 'Failed to delete inactive counters'));
+      await showAlert(
+        normalizeAuthMessage(error, 'Failed to delete inactive counters')
+      );
     } finally {
       purgeInactiveButton.disabled = false;
     }
@@ -153,6 +165,4 @@ async function handleThrottleChange() {
   };
 }
 
-export {
-  createRuntimeManager
-};
+export { createRuntimeManager };

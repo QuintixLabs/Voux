@@ -31,10 +31,10 @@ function createDashboardFilters(deps) {
 
   let searchDebounce = null;
 
-/* -------------------------------------------------------------------------- */
-/* Search + owner filters                                                     */
-/* -------------------------------------------------------------------------- */
-function handleSearchInput() {
+  /* -------------------------------------------------------------------------- */
+  /* Search + owner filters                                                     */
+  /* -------------------------------------------------------------------------- */
+  function handleSearchInput() {
     if (!counterSearchInput) return;
     toggleSearchClear();
     const value = counterSearchInput.value.trim().slice(0, 80);
@@ -71,7 +71,10 @@ function handleSearchInput() {
 
   function syncOwnerFilterToggle() {
     if (!ownerFilterToggle) return;
-    ownerFilterToggle.setAttribute('aria-pressed', state.ownerOnly ? 'true' : 'false');
+    ownerFilterToggle.setAttribute(
+      'aria-pressed',
+      state.ownerOnly ? 'true' : 'false'
+    );
   }
 
   function handleModeFilterChange() {
@@ -93,13 +96,16 @@ function handleSearchInput() {
 
   function toggleSearchClear() {
     if (!counterSearchClear || !counterSearchInput) return;
-    counterSearchClear.classList.toggle('hidden', counterSearchInput.value.trim().length === 0);
+    counterSearchClear.classList.toggle(
+      'hidden',
+      counterSearchInput.value.trim().length === 0
+    );
   }
 
-/* -------------------------------------------------------------------------- */
-/* Activity range + totals                                                    */
-/* -------------------------------------------------------------------------- */
-function handleActivityRangeClick(event) {
+  /* -------------------------------------------------------------------------- */
+  /* Activity range + totals                                                    */
+  /* -------------------------------------------------------------------------- */
+  function handleActivityRangeClick(event) {
     const button = event.target.closest('button[data-range]');
     if (!button) return;
     const range = button.dataset.range;
@@ -111,7 +117,8 @@ function handleActivityRangeClick(event) {
 
   function updateActivityRangeButtons() {
     if (!activityRangeControls) return;
-    const buttons = activityRangeControls.querySelectorAll('button[data-range]');
+    const buttons =
+      activityRangeControls.querySelectorAll('button[data-range]');
     buttons.forEach((button) => {
       const isActive = button.dataset.range === state.activityRange;
       button.classList.toggle('activity-range__button--active', isActive);
@@ -120,7 +127,8 @@ function handleActivityRangeClick(event) {
   }
 
   function updatePagination() {
-    if (!paginationEl || !paginationInfo || !prevPageBtn || !nextPageBtn) return;
+    if (!paginationEl || !paginationInfo || !prevPageBtn || !nextPageBtn)
+      return;
     if (state.totalPages <= 1) {
       paginationEl.classList.add('hidden');
       if (topPaginationInfo) topPaginationInfo.classList.add('hidden');
@@ -142,21 +150,27 @@ function handleActivityRangeClick(event) {
     counterTotalValue.textContent = total.toLocaleString();
   }
 
-/* -------------------------------------------------------------------------- */
-/* Pagination controls                                                        */
-/* -------------------------------------------------------------------------- */
-function handlePaginationHotkeys(event) {
+  /* -------------------------------------------------------------------------- */
+  /* Pagination controls                                                        */
+  /* -------------------------------------------------------------------------- */
+  function handlePaginationHotkeys(event) {
     const { activeElement } = document;
     if (activeElement) {
       const tag = activeElement.tagName;
       const type = (activeElement.getAttribute('type') || '').toLowerCase();
       const isTextInput =
-        tag === 'TEXTAREA' || (tag === 'INPUT' && ['text', 'search', 'password', 'email', 'url', 'number'].includes(type));
+        tag === 'TEXTAREA' ||
+        (tag === 'INPUT' &&
+          ['text', 'search', 'password', 'email', 'url', 'number'].includes(
+            type
+          ));
       if (isTextInput) return;
     }
     const keepScroll = () => {
       const top = window.scrollY;
-      requestAnimationFrame(() => window.scrollTo({ top, left: 0, behavior: 'auto' }));
+      requestAnimationFrame(() =>
+        window.scrollTo({ top, left: 0, behavior: 'auto' })
+      );
     };
     if (event.key === 'ArrowLeft' && !prevPageBtn?.disabled) {
       event.preventDefault();
@@ -165,7 +179,9 @@ function handlePaginationHotkeys(event) {
     }
     if (event.key === 'ArrowRight' && !nextPageBtn?.disabled) {
       event.preventDefault();
-      handlePageNavigation(Math.min(state.totalPages, state.page + 1), { skipScroll: true });
+      handlePageNavigation(Math.min(state.totalPages, state.page + 1), {
+        skipScroll: true
+      });
       keepScroll();
     }
     if (event.shiftKey && (event.key === 'A' || event.key === 'a')) {

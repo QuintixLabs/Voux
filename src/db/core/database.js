@@ -1,5 +1,5 @@
 /*
-  src/db/core.js
+  src/db/core/database.js
 
   Opens the database and wires all DB modules together.
 */
@@ -7,18 +7,21 @@
 const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
-const { listTagCatalog: listLegacyTagCatalog } = require('../configStore');
+const { listTagCatalog: listLegacyTagCatalog } = require('../../configStore');
 
+// DB core helpers
 const initializeSchema = require('./schema');
 const helpers = require('./helpers');
 const cryptoApi = require('./crypto');
-const createTagsApi = require('./tags');
-const createCountersApi = require('./counters');
-const createApiKeysApi = require('./apiKeys');
-const createUsersApi = require('./users');
-const createSessionsApi = require('./sessions');
 
-const DATA_DIR = path.resolve(__dirname, '..', '..', 'data');
+// DB domain APIs
+const createTagsApi = require('../counters/tags');
+const createCountersApi = require('../counters/counters');
+const createApiKeysApi = require('../auth/apiKeys');
+const createUsersApi = require('../auth/users');
+const createSessionsApi = require('../auth/sessions');
+
+const DATA_DIR = path.resolve(__dirname, '..', '..', '..', 'data');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
@@ -49,11 +52,13 @@ async function createDatabaseBackup(targetPath) {
 }
 
 module.exports = {
+  // Counter and tag APIs
   ...countersApi,
-  ...apiKeysApi,
   ...tagsApi,
-  ...cryptoApi,
 
+  // Auth APIs
+  ...apiKeysApi,
+  ...cryptoApi,
   listUsers: usersApi.listUsers,
   getOwnerUser: usersApi.getOwnerUser,
   getUserById: usersApi.getUserById,
@@ -63,11 +68,11 @@ module.exports = {
   deleteUser: sessionsApi.deleteUser,
   countUsers: usersApi.countUsers,
   countAdmins: usersApi.countAdmins,
-
   createSession: sessionsApi.createSession,
   findSession: sessionsApi.findSession,
   deleteSession: sessionsApi.deleteSession,
   recordUserLogin: sessionsApi.recordUserLogin,
 
+  // Backup API
   createDatabaseBackup
 };

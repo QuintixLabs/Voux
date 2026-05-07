@@ -7,7 +7,10 @@
 /* -------------------------------------------------------------------------- */
 /* Imports                                                                    */
 /* -------------------------------------------------------------------------- */
-import { enhanceCodeSnippets, bindSnippetCopyButtons } from '../utils/snippets.js';
+import {
+  enhanceCodeSnippets,
+  bindSnippetCopyButtons
+} from '../utils/snippets.js';
 import {
   form,
   resultSection,
@@ -24,14 +27,8 @@ import {
   cooldownSelect,
   startValueInput
 } from './shared/dom.js';
-import {
-  showAlert,
-  buildCreateCounterErrorMessage
-} from './shared/ui.js';
-import {
-  initGuideExpanders,
-  toggleGuideCards
-} from './features/guides.js';
+import { showAlert, buildCreateCounterErrorMessage } from './shared/ui.js';
+import { initGuideExpanders, toggleGuideCards } from './features/guides.js';
 import { createHomeEmbedManager } from './features/embed.js';
 import { createHomeCreateCounterManager } from './core/createCounter.js';
 
@@ -61,7 +58,8 @@ const createCounterManager = createHomeCreateCounterManager({
   showAlert,
   buildCreateCounterErrorMessage,
   themeHelper,
-  onGuideVisibilityChange: (shouldShow) => toggleGuideCards([stylingCard, selfHostCard], shouldShow),
+  onGuideVisibilityChange: (shouldShow) =>
+    toggleGuideCards([stylingCard, selfHostCard], shouldShow),
   onCounterCreated: (data) => {
     if (snippetCode) snippetCode.textContent = data.embedCode || '';
     if (svgSnippetCode) svgSnippetCode.textContent = data.embedSvgCode || '';

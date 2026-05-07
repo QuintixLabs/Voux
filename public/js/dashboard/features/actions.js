@@ -41,10 +41,10 @@ function createDashboardActions(deps) {
     updateDeleteFilteredState
   } = deps;
 
-/* -------------------------------------------------------------------------- */
-/* Create counter helpers                                                     */
-/* -------------------------------------------------------------------------- */
-function getCooldownPayload(selectEl) {
+  /* -------------------------------------------------------------------------- */
+  /* Create counter helpers                                                     */
+  /* -------------------------------------------------------------------------- */
+  function getCooldownPayload(selectEl) {
     if (!selectEl) return 'unique';
     const mode = selectEl.value === 'unlimited' ? 'unlimited' : 'unique';
     if (!isModeAllowed(mode, state.allowedModes)) {
@@ -53,12 +53,15 @@ function getCooldownPayload(selectEl) {
     return mode;
   }
 
-/* -------------------------------------------------------------------------- */
-/* Delete actions                                                             */
-/* -------------------------------------------------------------------------- */
-async function handleDeleteAll() {
-    const siteUrl = window.location?.origin || window.location?.href || 'this site';
-    const targetLabel = state.ownerOnly ? 'every counter and their data for your account' : 'every counter and their data';
+  /* -------------------------------------------------------------------------- */
+  /* Delete actions                                                             */
+  /* -------------------------------------------------------------------------- */
+  async function handleDeleteAll() {
+    const siteUrl =
+      window.location?.origin || window.location?.href || 'this site';
+    const targetLabel = state.ownerOnly
+      ? 'every counter and their data for your account'
+      : 'every counter and their data';
     const confirmed = await showConfirm({
       title: 'Delete all counters?',
       message: `This will permanently remove ${targetLabel} on: ${siteUrl}. You'll confirm by typing DELETE next.`,
@@ -88,13 +91,15 @@ async function handleDeleteAll() {
     if (!confirmedFinal) return;
     try {
       deleteAllBtn.disabled = true;
-      const dangerAllowed = !state.isAdmin || state.user?.adminPermissions?.danger === true;
+      const dangerAllowed =
+        !state.isAdmin || state.user?.adminPermissions?.danger === true;
       const ownerParam = state.ownerOnly ? 'owner=me' : '';
-      const url = state.ownerOnly && !dangerAllowed
-        ? '/api/counters?owner=me'
-        : ownerParam
-        ? `/api/counters?${ownerParam}`
-        : '/api/counters';
+      const url =
+        state.ownerOnly && !dangerAllowed
+          ? '/api/counters?owner=me'
+          : ownerParam
+            ? `/api/counters?${ownerParam}`
+            : '/api/counters';
       const res = await authFetch(url, {
         method: 'DELETE'
       });
@@ -120,7 +125,9 @@ async function handleDeleteAll() {
     try {
       await ensureSessionForAction();
     } catch (error) {
-      await showAlert(normalizeAuthMessage(error, 'Session expired. Please log in again.'));
+      await showAlert(
+        normalizeAuthMessage(error, 'Session expired. Please log in again.')
+      );
       return;
     }
     const noteValue = createNoteInput?.value?.trim() || '';
@@ -148,7 +155,9 @@ async function handleDeleteAll() {
       if (res.status === 403) {
         const err = await res.json().catch(() => ({}));
         if (err?.error === 'csrf_blocked') {
-          throw Object.assign(new Error('csrf_blocked'), { error: 'csrf_blocked' });
+          throw Object.assign(new Error('csrf_blocked'), {
+            error: 'csrf_blocked'
+          });
         }
       }
       await assertAuthorizedResponse(res);
@@ -158,12 +167,19 @@ async function handleDeleteAll() {
           throw new Error(err.message.trim());
         }
         if (err && err.error === 'rate_limited') {
-          const wait = typeof err.retryAfterSeconds === 'number' ? err.retryAfterSeconds : null;
+          const wait =
+            typeof err.retryAfterSeconds === 'number'
+              ? err.retryAfterSeconds
+              : null;
           if (wait) {
             const pretty = wait === 1 ? '1 second' : `${wait} seconds`;
-            throw new Error(`Too many new counters at once. Try again in ${pretty}.`);
+            throw new Error(
+              `Too many new counters at once. Try again in ${pretty}.`
+            );
           }
-          throw new Error('Too many new counters right now. Try again in a moment.');
+          throw new Error(
+            'Too many new counters right now. Try again in a moment.'
+          );
         }
         throw new Error(err.error || 'Failed to create counter');
       }
@@ -184,7 +200,9 @@ async function handleDeleteAll() {
       }
       if (noteValue) {
         try {
-          await updateCounterMetadataRequest(data.counter.id, { note: noteValue });
+          await updateCounterMetadataRequest(data.counter.id, {
+            note: noteValue
+          });
         } catch (err) {
           console.warn('Failed to set note on create', err);
         }
@@ -221,7 +239,10 @@ async function handleDeleteAll() {
       await assertAuthorizedResponse(res);
       if (!res.ok) throw new Error('Failed to delete counter');
       state.selectedIds.delete(id);
-      const nextPage = state.page > 1 && counterListEl.children.length === 1 ? state.page - 1 : state.page;
+      const nextPage =
+        state.page > 1 && counterListEl.children.length === 1
+          ? state.page - 1
+          : state.page;
       await refreshCounters(nextPage);
       updateSelectionToolbar();
       showToast(`Deleted ${id}`);
@@ -232,8 +253,12 @@ async function handleDeleteAll() {
 
   async function handleDeleteFiltered() {
     if (state.modeFilter === 'all') return;
-    const label = state.modeFilter === 'unique' ? 'unique counters' : 'every-visit counters';
-    const siteUrl = window.location?.origin || window.location?.href || 'this site';
+    const label =
+      state.modeFilter === 'unique'
+        ? 'unique counters'
+        : 'every-visit counters';
+    const siteUrl =
+      window.location?.origin || window.location?.href || 'this site';
     const scopeLabel = state.isAdmin ? `all ${label}` : `your ${label}`;
     const confirmed = await showConfirm({
       title: 'Delete filtered counters?',
@@ -265,9 +290,12 @@ async function handleDeleteAll() {
     try {
       deleteFilteredBtn.disabled = true;
       const ownerParam = state.ownerOnly ? '&owner=me' : '';
-      const res = await authFetch(`/api/counters?mode=${state.modeFilter}${ownerParam}`, {
-        method: 'DELETE'
-      });
+      const res = await authFetch(
+        `/api/counters?mode=${state.modeFilter}${ownerParam}`,
+        {
+          method: 'DELETE'
+        }
+      );
       await assertAuthorizedResponse(res);
       if (!res.ok) throw new Error('Failed to delete counters');
       await refreshCounters(1);

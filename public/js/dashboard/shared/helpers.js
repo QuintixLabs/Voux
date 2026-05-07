@@ -73,11 +73,13 @@ function extractTagIds(tags) {
 }
 
 function slugifyFilename(value) {
-  return String(value || 'counter')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40) || 'counter';
+  return (
+    String(value || 'counter')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'counter'
+  );
 }
 
 /* -------------------------------------------------------------------------- */

@@ -1,25 +1,31 @@
 /*
-  src/services/counterStats.js
+  src/services/counters/stats.js
 
   Time/activity formatting helpers for counters.
 */
 
 function createCounterStatsService(deps) {
-  const {
-    weekdayLabels,
-    activityWindowDays,
-    inactiveThresholdDays,
-    dayMs
-  } = deps;
+  const { weekdayLabels, activityWindowDays, inactiveThresholdDays, dayMs } =
+    deps;
 
   function formatActivityTrend(trend = []) {
-    const chronological = Array.isArray(trend) ? trend.slice(-activityWindowDays) : [];
-    const total30d = chronological.reduce((sum, item) => sum + (item.hits || 0), 0);
+    const chronological = Array.isArray(trend)
+      ? trend.slice(-activityWindowDays)
+      : [];
+    const total30d = chronological.reduce(
+      (sum, item) => sum + (item.hits || 0),
+      0
+    );
     const recentWeek = chronological.slice(-7);
     const weekOrdered = orderWeekByLabel(recentWeek);
-    const todayHits = chronological.length ? (chronological[chronological.length - 1].hits || 0) : 0;
+    const todayHits = chronological.length
+      ? chronological[chronological.length - 1].hits || 0
+      : 0;
     const total7d = recentWeek.reduce((sum, item) => sum + (item.hits || 0), 0);
-    const maxHits = weekOrdered.reduce((peak, item) => Math.max(peak, item.hits || 0), 0);
+    const maxHits = weekOrdered.reduce(
+      (peak, item) => Math.max(peak, item.hits || 0),
+      0
+    );
     return {
       trend: weekOrdered,
       todayHits,

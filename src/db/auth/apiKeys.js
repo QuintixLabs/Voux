@@ -1,5 +1,5 @@
 /*
-  src/db/apiKeys.js
+  src/db/auth/apiKeys.js
 
   API key storage and lookup helpers.
 */
@@ -12,20 +12,34 @@ function createApiKeysApi(db, helpers, cryptoApi) {
     INSERT INTO api_keys (id, name, token_hash, scope, allowed_counters, created_at, last_used_at, disabled)
     VALUES (@id, @name, @token_hash, @scope, @allowed_counters, @created_at, NULL, 0)
   `);
-  const listApiKeysStmt = db.prepare('SELECT id, name, scope, allowed_counters, created_at, last_used_at, disabled FROM api_keys ORDER BY created_at DESC');
+  const listApiKeysStmt = db.prepare(
+    'SELECT id, name, scope, allowed_counters, created_at, last_used_at, disabled FROM api_keys ORDER BY created_at DESC'
+  );
   const deleteApiKeyStmt = db.prepare('DELETE FROM api_keys WHERE id = ?');
-  const selectApiKeyByHashStmt = db.prepare('SELECT id, name, scope, allowed_counters, created_at, last_used_at, disabled FROM api_keys WHERE token_hash = ? AND disabled = 0');
-  const updateApiKeyUsageStmt = db.prepare('UPDATE api_keys SET last_used_at = ? WHERE id = ?');
+  const selectApiKeyByHashStmt = db.prepare(
+    'SELECT id, name, scope, allowed_counters, created_at, last_used_at, disabled FROM api_keys WHERE token_hash = ? AND disabled = 0'
+  );
+  const updateApiKeyUsageStmt = db.prepare(
+    'UPDATE api_keys SET last_used_at = ? WHERE id = ?'
+  );
 
   function createApiKey({ name, scope = 'global', counters = [] }) {
-    const trimmedName = String(name || '').trim().slice(0, 80);
+    const trimmedName = String(name || '')
+      .trim()
+      .slice(0, 80);
     if (!trimmedName) throw new Error('name_required');
 
     const normalizedScope = scope === 'limited' ? 'limited' : 'global';
     let allowed = [];
     if (normalizedScope === 'limited') {
       allowed = Array.isArray(counters)
-        ? counters.map((value) => String(value || '').trim().slice(0, 64)).filter(Boolean)
+        ? counters
+            .map((value) =>
+              String(value || '')
+                .trim()
+                .slice(0, 64)
+            )
+            .filter(Boolean)
         : [];
       if (!allowed.length) throw new Error('counters_required');
     }
@@ -40,7 +54,11 @@ function createApiKeysApi(db, helpers, cryptoApi) {
       created_at: Date.now()
     };
     insertApiKeyStmt.run(record);
-    const key = normalizeApiKeyRow({ ...record, last_used_at: null, disabled: 0 });
+    const key = normalizeApiKeyRow({
+      ...record,
+      last_used_at: null,
+      disabled: 0
+    });
     return { token, key };
   }
 

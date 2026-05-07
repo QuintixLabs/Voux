@@ -38,12 +38,14 @@ function createBackupManager(deps) {
 
   let backupBusy = false;
 
-/* -------------------------------------------------------------------------- */
-/* Backup controls wiring                                                     */
-/* -------------------------------------------------------------------------- */
-function setupBackupControls(canManageAutoBackups = false) {
+  /* -------------------------------------------------------------------------- */
+  /* Backup controls wiring                                                     */
+  /* -------------------------------------------------------------------------- */
+  function setupBackupControls(canManageAutoBackups = false) {
     downloadBackupBtn?.addEventListener('click', () => handleBackupDownload());
-    restoreFileInput?.addEventListener('change', (event) => handleBackupRestore(event));
+    restoreFileInput?.addEventListener('change', (event) =>
+      handleBackupRestore(event)
+    );
     if (autoBackupSection) {
       autoBackupSection.classList.toggle('hidden', !canManageAutoBackups);
     }
@@ -52,13 +54,21 @@ function setupBackupControls(canManageAutoBackups = false) {
     }
     autoBackupToggle?.addEventListener('click', () => toggleAutoBackupBody());
     autoBackupFrequencyInput?.addEventListener('change', syncAutoBackupUiState);
-    autoBackupTimeInput?.addEventListener('pointerdown', handleTimePickerHotspot);
+    autoBackupTimeInput?.addEventListener(
+      'pointerdown',
+      handleTimePickerHotspot
+    );
     autoBackupRetentionInput?.addEventListener('input', syncAutoBackupUiState);
     autoBackupTimeInput?.addEventListener('input', syncAutoBackupUiState);
     autoBackupWeekdayInput?.addEventListener('change', syncAutoBackupUiState);
-    autoBackupIncludeJsonInput?.addEventListener('change', syncAutoBackupUiState);
+    autoBackupIncludeJsonInput?.addEventListener(
+      'change',
+      syncAutoBackupUiState
+    );
     saveAutoBackupBtn?.addEventListener('click', () => handleSaveAutoBackup());
-    runAutoBackupNowBtn?.addEventListener('click', () => handleRunAutoBackupNow());
+    runAutoBackupNowBtn?.addEventListener('click', () =>
+      handleRunAutoBackupNow()
+    );
     toggleAutoBackupBody(false);
     syncAutoBackupUiState();
   }
@@ -82,10 +92,10 @@ function setupBackupControls(canManageAutoBackups = false) {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Manual backup actions                                                      */
-/* -------------------------------------------------------------------------- */
-async function handleBackupDownload() {
+  /* -------------------------------------------------------------------------- */
+  /* Manual backup actions                                                      */
+  /* -------------------------------------------------------------------------- */
+  async function handleBackupDownload() {
     if (backupBusy) {
       showToast('Finish the current backup task first', 'danger');
       return;
@@ -98,7 +108,9 @@ async function handleBackupDownload() {
       await assertSession(res);
       if (!res.ok) throw new Error('Failed to download backup');
       const data = await res.json();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json'
+      });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -184,13 +196,16 @@ async function handleBackupDownload() {
       const count = result.imported || payload.length;
       const dailyCount = result.dailyImported || dailyPayload.length || 0;
       setBackupStatus('');
-      const message = dailyCount ? `Restored ${count} counters and ${dailyCount} activity rows` : `Restored ${count} counters`;
+      const message = dailyCount
+        ? `Restored ${count} counters and ${dailyCount} activity rows`
+        : `Restored ${count} counters`;
       showToast(message);
     } catch (error) {
       setBackupStatus('');
-      const message = error.message === 'counter_id_taken'
-        ? 'One or more counter IDs already exist. Remove them or edit the backup file.'
-        : error.message || 'Failed to restore backup';
+      const message =
+        error.message === 'counter_id_taken'
+          ? 'One or more counter IDs already exist. Remove them or edit the backup file.'
+          : error.message || 'Failed to restore backup';
       await showAlert(normalizeAuthMessage(error, message));
     } finally {
       event.target.value = '';
@@ -208,17 +223,19 @@ async function handleBackupDownload() {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Auto backup UI state                                                       */
-/* -------------------------------------------------------------------------- */
-function syncAutoBackupUiState() {
+  /* -------------------------------------------------------------------------- */
+  /* Auto backup UI state                                                       */
+  /* -------------------------------------------------------------------------- */
+  function syncAutoBackupUiState() {
     const frequency = autoBackupFrequencyInput?.value || 'off';
     if (autoBackupWeekdayField) {
       autoBackupWeekdayField.classList.toggle('hidden', frequency !== 'weekly');
     }
     if (autoBackupSummary) {
       const retention = Number(autoBackupRetentionInput?.value || 7);
-      const keep = Number.isFinite(retention) ? Math.max(1, Math.min(30, Math.round(retention))) : 7;
+      const keep = Number.isFinite(retention)
+        ? Math.max(1, Math.min(30, Math.round(retention)))
+        : 7;
       const time = formatTime12h(String(autoBackupTimeInput?.value || '03:00'));
       if (frequency === 'off') {
         autoBackupSummary.textContent = 'Off';
@@ -227,7 +244,9 @@ function syncAutoBackupUiState() {
       const jsonSuffix = autoBackupIncludeJsonInput?.checked ? ' · JSON' : '';
       if (frequency === 'weekly') {
         const weekday = Number(autoBackupWeekdayInput?.value || 0);
-        const dayLabel = AUTO_BACKUP_WEEKDAYS[Math.max(0, Math.min(6, Math.floor(weekday)))] || 'Sunday';
+        const dayLabel =
+          AUTO_BACKUP_WEEKDAYS[Math.max(0, Math.min(6, Math.floor(weekday)))] ||
+          'Sunday';
         autoBackupSummary.textContent = `Weekly · ${dayLabel} · ${time} · Keep ${keep}${jsonSuffix}`;
         return;
       }
@@ -242,7 +261,10 @@ function syncAutoBackupUiState() {
       return '03:00 AM';
     }
     const hour24 = Math.max(0, Math.min(23, Number(match[1])));
-    const minute = String(Math.max(0, Math.min(59, Number(match[2])))).padStart(2, '0');
+    const minute = String(Math.max(0, Math.min(59, Number(match[2])))).padStart(
+      2,
+      '0'
+    );
     const suffix = hour24 >= 12 ? 'PM' : 'AM';
     const hour12 = hour24 % 12 || 12;
     return `${hour12}:${minute} ${suffix}`;
@@ -250,11 +272,13 @@ function syncAutoBackupUiState() {
 
   function toggleAutoBackupBody(forceOpen) {
     if (!autoBackupBody || !autoBackupToggle) return;
-    const nextOpen = typeof forceOpen === 'boolean'
-      ? forceOpen
-      : !autoBackupBody.classList.contains('is-open');
+    const nextOpen =
+      typeof forceOpen === 'boolean'
+        ? forceOpen
+        : !autoBackupBody.classList.contains('is-open');
     const onTransitionEnd = (event) => {
-      if (event.target !== autoBackupBody || event.propertyName !== 'height') return;
+      if (event.target !== autoBackupBody || event.propertyName !== 'height')
+        return;
       if (autoBackupBody.classList.contains('is-open')) {
         autoBackupBody.style.height = 'auto';
       }
@@ -279,22 +303,32 @@ function syncAutoBackupUiState() {
 
   function applyAutoBackupForm(autoBackup = {}) {
     if (autoBackupFrequencyInput) {
-      const frequency = ['off', 'daily', 'weekly'].includes(autoBackup.frequency) ? autoBackup.frequency : 'off';
+      const frequency = ['off', 'daily', 'weekly'].includes(
+        autoBackup.frequency
+      )
+        ? autoBackup.frequency
+        : 'off';
       autoBackupFrequencyInput.value = frequency;
     }
     if (autoBackupTimeInput) {
-      const time = typeof autoBackup.time === 'string' && /^\d{2}:\d{2}$/.test(autoBackup.time)
-        ? autoBackup.time
-        : '03:00';
+      const time =
+        typeof autoBackup.time === 'string' &&
+        /^\d{2}:\d{2}$/.test(autoBackup.time)
+          ? autoBackup.time
+          : '03:00';
       autoBackupTimeInput.value = time;
     }
     if (autoBackupWeekdayInput) {
       const weekday = Number(autoBackup.weekday);
-      autoBackupWeekdayInput.value = Number.isFinite(weekday) ? String(Math.max(0, Math.min(6, Math.floor(weekday)))) : '0';
+      autoBackupWeekdayInput.value = Number.isFinite(weekday)
+        ? String(Math.max(0, Math.min(6, Math.floor(weekday))))
+        : '0';
     }
     if (autoBackupRetentionInput) {
       const retention = Number(autoBackup.retention);
-      const safeRetention = Number.isFinite(retention) ? Math.max(1, Math.min(30, Math.round(retention))) : 7;
+      const safeRetention = Number.isFinite(retention)
+        ? Math.max(1, Math.min(30, Math.round(retention)))
+        : 7;
       autoBackupRetentionInput.value = String(safeRetention);
     }
     if (autoBackupIncludeJsonInput) {
@@ -305,13 +339,18 @@ function syncAutoBackupUiState() {
 
   function applyAutoBackupPath(rawPath) {
     if (!autoBackupPath || !autoBackupPathValue) return;
-    const value = typeof rawPath === 'string' && rawPath.trim() ? rawPath.trim() : './data/backups';
+    const value =
+      typeof rawPath === 'string' && rawPath.trim()
+        ? rawPath.trim()
+        : './data/backups';
     autoBackupPathValue.textContent = value;
     autoBackupPath.title = value;
   }
 
   function collectAutoBackupPayload() {
-    const frequency = ['off', 'daily', 'weekly'].includes(autoBackupFrequencyInput?.value)
+    const frequency = ['off', 'daily', 'weekly'].includes(
+      autoBackupFrequencyInput?.value
+    )
       ? autoBackupFrequencyInput.value
       : 'off';
     const time = String(autoBackupTimeInput?.value || '03:00').trim();
@@ -320,16 +359,20 @@ function syncAutoBackupUiState() {
     return {
       frequency,
       time: /^\d{2}:\d{2}$/.test(time) ? time : '03:00',
-      weekday: Number.isFinite(weekday) ? Math.max(0, Math.min(6, Math.floor(weekday))) : 0,
-      retention: Number.isFinite(retention) ? Math.max(1, Math.min(30, Math.round(retention))) : 7,
+      weekday: Number.isFinite(weekday)
+        ? Math.max(0, Math.min(6, Math.floor(weekday)))
+        : 0,
+      retention: Number.isFinite(retention)
+        ? Math.max(1, Math.min(30, Math.round(retention)))
+        : 7,
       includeJson: autoBackupIncludeJsonInput?.checked === true
     };
   }
 
-/* -------------------------------------------------------------------------- */
-/* Auto backup actions                                                        */
-/* -------------------------------------------------------------------------- */
-async function handleSaveAutoBackup() {
+  /* -------------------------------------------------------------------------- */
+  /* Auto backup actions                                                        */
+  /* -------------------------------------------------------------------------- */
+  async function handleSaveAutoBackup() {
     if (!saveAutoBackupBtn) return;
     const payload = collectAutoBackupPayload();
     try {
@@ -351,7 +394,9 @@ async function handleSaveAutoBackup() {
       showToast('Automatic backup schedule saved');
     } catch (error) {
       setBackupStatus('');
-      await showAlert(normalizeAuthMessage(error, 'Failed to save backup schedule'));
+      await showAlert(
+        normalizeAuthMessage(error, 'Failed to save backup schedule')
+      );
     } finally {
       saveAutoBackupBtn.disabled = false;
     }
@@ -376,7 +421,11 @@ async function handleSaveAutoBackup() {
       const fileName = data?.backup?.fileName || 'database backup';
       const jsonName = data?.jsonBackup?.fileName || '';
       setBackupStatus('');
-      showToast(jsonName ? `DB + JSON backups created: ${fileName}` : `DB backup created: ${fileName}`);
+      showToast(
+        jsonName
+          ? `DB + JSON backups created: ${fileName}`
+          : `DB backup created: ${fileName}`
+      );
     } catch (error) {
       setBackupStatus('');
       await showAlert(normalizeAuthMessage(error, 'Failed to run DB backup'));
@@ -393,6 +442,4 @@ async function handleSaveAutoBackup() {
   };
 }
 
-export {
-  createBackupManager
-};
+export { createBackupManager };

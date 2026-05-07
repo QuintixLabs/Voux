@@ -10,7 +10,9 @@
 function formatSnippetLanguage(code) {
   const fallback = 'Text';
   if (!code) return fallback;
-  const langClass = Array.from(code.classList || []).find((cls) => cls.startsWith('language-'));
+  const langClass = Array.from(code.classList || []).find((cls) =>
+    cls.startsWith('language-')
+  );
   const raw = (langClass || '').replace(/^language-/, '').toLowerCase();
   if (!raw) return fallback;
   if (raw === 'markup') return 'Markup';
@@ -63,7 +65,10 @@ function enhanceCodeSnippets(root = document) {
 /* -------------------------------------------------------------------------- */
 /* Copy button binding                                                        */
 /* -------------------------------------------------------------------------- */
-function bindSnippetCopyButtons(selector = '.code-snippet .copy-button', root = document) {
+function bindSnippetCopyButtons(
+  selector = '.code-snippet .copy-button',
+  root = document
+) {
   root.querySelectorAll(selector).forEach((button) => {
     button.addEventListener('click', () => {
       const block = button.closest('.code-snippet') || button.parentElement;
@@ -91,7 +96,4 @@ function bindSnippetCopyButtons(selector = '.code-snippet .copy-button', root = 
 /* -------------------------------------------------------------------------- */
 /* Exports                                                                    */
 /* -------------------------------------------------------------------------- */
-export {
-  enhanceCodeSnippets,
-  bindSnippetCopyButtons
-};
+export { enhanceCodeSnippets, bindSnippetCopyButtons };

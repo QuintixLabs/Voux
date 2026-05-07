@@ -12,6 +12,9 @@ export const dashboardCard = document.querySelector('#dashboardCard');
 export const adminForm = document.querySelector('#admin-form');
 export const loginUsernameInput = document.querySelector('#loginUsername');
 export const loginPasswordInput = document.querySelector('#loginPassword');
+export const loginRememberDeviceInput = document.querySelector(
+  '#loginRememberDevice'
+);
 export const loginError = document.querySelector('#loginError');
 export const loginStatus = document.querySelector('#loginStatus');
 export const dashboardSubtitle = document.querySelector('#dashboardSubtitle');
@@ -50,13 +53,25 @@ export const createLabelInput = document.querySelector('#adminLabel');
 export const createNoteInput = document.querySelector('#adminNote');
 export const createStartInput = document.querySelector('#adminStartValue');
 export const adminEmbedBlock = document.querySelector('#adminEmbedBlock');
-export const adminEmbedSnippetCode = document.querySelector('#adminEmbedSnippetCode');
-export const adminEmbedSvgSnippetCode = document.querySelector('#adminEmbedSvgSnippetCode');
-export const embedToggles = Array.from(document.querySelectorAll('.embed-toggle'));
-export const embedPanels = Array.from(document.querySelectorAll('[data-embed-panel]'));
-export const embedDescs = Array.from(document.querySelectorAll('[data-embed-desc]'));
+export const adminEmbedSnippetCode = document.querySelector(
+  '#adminEmbedSnippetCode'
+);
+export const adminEmbedSvgSnippetCode = document.querySelector(
+  '#adminEmbedSvgSnippetCode'
+);
+export const embedToggles = Array.from(
+  document.querySelectorAll('.embed-toggle')
+);
+export const embedPanels = Array.from(
+  document.querySelectorAll('[data-embed-panel]')
+);
+export const embedDescs = Array.from(
+  document.querySelectorAll('[data-embed-desc]')
+);
 export const createCard = document.querySelector('#createCard');
-export const adminCooldownSelect = document.querySelector('#adminCooldownSelect');
+export const adminCooldownSelect = document.querySelector(
+  '#adminCooldownSelect'
+);
 export const adminPreview = document.querySelector('#adminPreview');
 export const adminPreviewTarget = document.querySelector('#adminPreviewTarget');
 
@@ -65,7 +80,9 @@ export const adminPreviewTarget = document.querySelector('#adminPreviewTarget');
 /* -------------------------------------------------------------------------- */
 export const modeFilterSelect = document.querySelector('#modeFilter');
 export const sortFilterSelect = document.querySelector('#sortFilter');
-export const activityRangeControls = document.querySelector('#activityRangeControls');
+export const activityRangeControls = document.querySelector(
+  '#activityRangeControls'
+);
 export const adminThrottleHint = document.querySelector('#adminThrottleHint');
 
 /* -------------------------------------------------------------------------- */
@@ -79,7 +96,9 @@ export const clearTagFilterBtn = document.querySelector('#clearTagFilter');
 export const tagFilterCreateBtn = document.querySelector('#tagFilterCreate');
 export const createTagPicker = document.querySelector('#createTagPicker');
 export const createTagManageBtn = document.querySelector('#createTagManage');
-export const createTagCounterHint = document.querySelector('#createTagCounterHint');
+export const createTagCounterHint = document.querySelector(
+  '#createTagCounterHint'
+);
 export const tagFilterCountHint = document.querySelector('.tag-count-hint');
 
 /* -------------------------------------------------------------------------- */

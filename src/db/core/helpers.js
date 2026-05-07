@@ -37,7 +37,12 @@ function describeModeLabel(mode) {
 }
 
 function parseRequestedMode(input) {
-  if (input === undefined || input === null || input === '' || input === 'default') {
+  if (
+    input === undefined ||
+    input === null ||
+    input === '' ||
+    input === 'default'
+  ) {
     return { mode: 'unique' };
   }
   const normalized = String(input).trim().toLowerCase();
@@ -48,7 +53,9 @@ function parseRequestedMode(input) {
 
 function sanitizeTagColor(value) {
   if (typeof value !== 'string') return '#4c6ef5';
-  const normalized = value.trim().startsWith('#') ? value.trim() : `#${value.trim()}`;
+  const normalized = value.trim().startsWith('#')
+    ? value.trim()
+    : `#${value.trim()}`;
   if (/^#[0-9a-fA-F]{6}$/.test(normalized)) return normalized.toLowerCase();
   return '#4c6ef5';
 }
@@ -61,7 +68,11 @@ function sanitizeTagCatalog(entries = []) {
     const id = typeof entry.id === 'string' ? entry.id.trim() : '';
     const name = typeof entry.name === 'string' ? entry.name.trim() : '';
     if (!id || !name || seen.has(id)) return;
-    sanitized.push({ id, name: name.slice(0, 40), color: sanitizeTagColor(entry.color) });
+    sanitized.push({
+      id,
+      name: name.slice(0, 40),
+      color: sanitizeTagColor(entry.color)
+    });
     seen.add(id);
   });
   return sanitized;
@@ -89,7 +100,8 @@ function normalizeSearch(search) {
 
 function extractIntegerDigits(value) {
   if (value === undefined || value === null) return 0n;
-  const raw = typeof value === 'bigint' ? value.toString() : String(value || '');
+  const raw =
+    typeof value === 'bigint' ? value.toString() : String(value || '');
   const digits = raw.replace(/[^\d]/g, '');
   if (!digits) return 0n;
   if (digits.length > 18) return null;
@@ -102,7 +114,8 @@ function extractIntegerDigits(value) {
 
 function normalizeDailyEntry(raw) {
   if (!raw || typeof raw !== 'object') return null;
-  const counterId = typeof raw.counter_id === 'string' ? raw.counter_id.trim() : '';
+  const counterId =
+    typeof raw.counter_id === 'string' ? raw.counter_id.trim() : '';
   if (!counterId) return null;
   const day = Number(raw.day);
   const hits = Number(raw.hits);

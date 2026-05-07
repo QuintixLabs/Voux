@@ -33,20 +33,37 @@ function registerCounterImportExportRoutes(app, deps) {
     const auth = authenticateRequest(req);
     const isAdmin = auth?.type === 'admin';
     const canDanger = !isAdmin || hasAdminPermission(auth, 'danger');
-    const ownerId = auth?.type === 'user' ? auth.user.id : isAdmin && !canDanger ? auth.user.id : null;
-    const tagOwnerId = auth?.type === 'user' ? auth.user.id : auth?.type === 'admin' ? auth.user.id : null;
+    const ownerId =
+      auth?.type === 'user'
+        ? auth.user.id
+        : isAdmin && !canDanger
+          ? auth.user.id
+          : null;
+    const tagOwnerId =
+      auth?.type === 'user'
+        ? auth.user.id
+        : auth?.type === 'admin'
+          ? auth.user.id
+          : null;
     const counters = exportCounters(ownerId)
       .map(normalizeCounterForExport)
       .filter(Boolean)
       .map((counter) => {
         const ownerKnown = isKnownOwner(counter.owner_id);
-        if (tagOwnerId && counter.owner_id && counter.owner_id !== tagOwnerId && ownerKnown) {
+        if (
+          tagOwnerId &&
+          counter.owner_id &&
+          counter.owner_id !== tagOwnerId &&
+          ownerKnown
+        ) {
           return { ...counter, tags: [] };
         }
         return counter;
       });
     const counterIds = counters.map((counter) => counter.id);
-    const daily = ownerId ? exportDailyActivityFor(counterIds) : exportDailyActivity();
+    const daily = ownerId
+      ? exportDailyActivityFor(counterIds)
+      : exportDailyActivity();
     return res.json({
       counters,
       daily,
@@ -62,8 +79,18 @@ function registerCounterImportExportRoutes(app, deps) {
     const auth = authenticateRequest(req);
     const isAdmin = auth?.type === 'admin';
     const canDanger = !isAdmin || hasAdminPermission(auth, 'danger');
-    const ownerId = auth?.type === 'user' ? auth.user.id : isAdmin && !canDanger ? auth.user.id : null;
-    const tagOwnerId = auth?.type === 'user' ? auth.user.id : auth?.type === 'admin' ? auth.user.id : null;
+    const ownerId =
+      auth?.type === 'user'
+        ? auth.user.id
+        : isAdmin && !canDanger
+          ? auth.user.id
+          : null;
+    const tagOwnerId =
+      auth?.type === 'user'
+        ? auth.user.id
+        : auth?.type === 'admin'
+          ? auth.user.id
+          : null;
     const ids = normalizeIdsInput(req.body?.ids);
     if (!ids.length) {
       return res.status(400).json({ error: 'ids_required' });
@@ -73,7 +100,12 @@ function registerCounterImportExportRoutes(app, deps) {
       .filter(Boolean)
       .map((counter) => {
         const ownerKnown = isKnownOwner(counter.owner_id);
-        if (tagOwnerId && counter.owner_id && counter.owner_id !== tagOwnerId && ownerKnown) {
+        if (
+          tagOwnerId &&
+          counter.owner_id &&
+          counter.owner_id !== tagOwnerId &&
+          ownerKnown
+        ) {
           return { ...counter, tags: [] };
         }
         return counter;
@@ -109,7 +141,9 @@ function registerCounterImportExportRoutes(app, deps) {
     const { replace = false } = req.body || {};
     let payload = null;
     let dailyPayload = [];
-    const incomingTags = Array.isArray(req.body?.tagCatalog) ? req.body.tagCatalog : null;
+    const incomingTags = Array.isArray(req.body?.tagCatalog)
+      ? req.body.tagCatalog
+      : null;
     if (Array.isArray(req.body)) {
       payload = req.body;
     } else if (req.body && Array.isArray(req.body.counters)) {
@@ -145,10 +179,16 @@ function registerCounterImportExportRoutes(app, deps) {
         return res.json({ ok: true, imported, dailyImported });
       }
       const userOwnerId = auth.user.id;
-      const imported = importCountersForOwner(payload, { replace: Boolean(replace) }, userOwnerId);
+      const imported = importCountersForOwner(
+        payload,
+        { replace: Boolean(replace) },
+        userOwnerId
+      );
       let dailyImported = 0;
       if (dailyPayload.length) {
-        const ids = payload.map((entry) => String(entry?.id || '').trim()).filter(Boolean);
+        const ids = payload
+          .map((entry) => String(entry?.id || '').trim())
+          .filter(Boolean);
         dailyImported = importDailyActivityFor(ids, dailyPayload);
         seedLastHitsFromDaily(dailyPayload, { ids });
       }

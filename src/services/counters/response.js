@@ -1,5 +1,5 @@
 /*
-  src/services/counterResponse.js
+  src/services/counters/response.js
 
   API response serialization for counters/users.
 */
@@ -63,7 +63,9 @@ function createCounterResponseService(deps) {
     const base = serializeCounter(counter, options);
     if (!base) return base;
     const lastHit = toSafeNumber(getLastHitTimestamp(counter.id));
-    const activityTrend = formatActivityTrend(getCounterDailyTrend(counter.id, activityWindowDays));
+    const activityTrend = formatActivityTrend(
+      getCounterDailyTrend(counter.id, activityWindowDays)
+    );
     const hitsToday = toSafeNumber(activityTrend.todayHits ?? 0);
     const inactivity = buildInactiveStatus(counter, lastHit);
     return {

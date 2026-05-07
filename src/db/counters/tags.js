@@ -1,5 +1,5 @@
 /*
-  src/db/tags.js
+  src/db/counters/tags.js
 
   Tag catalog storage and counter tag mapping helpers.
 */
@@ -9,16 +9,34 @@ const crypto = require('crypto');
 function createTagsApi(db, helpers) {
   const { sanitizeTagColor, sanitizeTagCatalog } = helpers;
 
-  const listTagsByOwnerStmt = db.prepare('SELECT id, name, color FROM tags WHERE owner_id = ? ORDER BY name COLLATE NOCASE');
-  const getTagByOwnerStmt = db.prepare('SELECT id, name, color FROM tags WHERE id = ? AND owner_id = ?');
-  const getTagByIdAnyStmt = db.prepare('SELECT id FROM tags WHERE id = ? LIMIT 1');
-  const insertTagStmt = db.prepare('INSERT INTO tags (id, owner_id, name, color) VALUES (@id, @owner_id, @name, @color)');
-  const updateTagStmt = db.prepare('UPDATE tags SET name = @name, color = @color WHERE id = @id AND owner_id = @owner_id');
-  const deleteTagStmt = db.prepare('DELETE FROM tags WHERE id = ? AND owner_id = ?');
+  const listTagsByOwnerStmt = db.prepare(
+    'SELECT id, name, color FROM tags WHERE owner_id = ? ORDER BY name COLLATE NOCASE'
+  );
+  const getTagByOwnerStmt = db.prepare(
+    'SELECT id, name, color FROM tags WHERE id = ? AND owner_id = ?'
+  );
+  const getTagByIdAnyStmt = db.prepare(
+    'SELECT id FROM tags WHERE id = ? LIMIT 1'
+  );
+  const insertTagStmt = db.prepare(
+    'INSERT INTO tags (id, owner_id, name, color) VALUES (@id, @owner_id, @name, @color)'
+  );
+  const updateTagStmt = db.prepare(
+    'UPDATE tags SET name = @name, color = @color WHERE id = @id AND owner_id = @owner_id'
+  );
+  const deleteTagStmt = db.prepare(
+    'DELETE FROM tags WHERE id = ? AND owner_id = ?'
+  );
 
-  const insertCounterTagStmt = db.prepare('INSERT OR IGNORE INTO counter_tags (counter_id, tag_id) VALUES (?, ?)');
-  const deleteCounterTagsStmt = db.prepare('DELETE FROM counter_tags WHERE counter_id = ?');
-  const deleteTagsByTagStmt = db.prepare('DELETE FROM counter_tags WHERE tag_id = ?');
+  const insertCounterTagStmt = db.prepare(
+    'INSERT OR IGNORE INTO counter_tags (counter_id, tag_id) VALUES (?, ?)'
+  );
+  const deleteCounterTagsStmt = db.prepare(
+    'DELETE FROM counter_tags WHERE counter_id = ?'
+  );
+  const deleteTagsByTagStmt = db.prepare(
+    'DELETE FROM counter_tags WHERE tag_id = ?'
+  );
 
   function createTagId() {
     let id = '';
@@ -38,7 +56,11 @@ function createTagsApi(db, helpers) {
     if (!ownerId) throw new Error('owner_required');
     if (!normalizedName) throw new Error('name_required');
     const existing = listTagsByOwnerStmt.all(ownerId);
-    if (existing.some((tag) => tag.name.toLowerCase() === normalizedName.toLowerCase())) {
+    if (
+      existing.some(
+        (tag) => tag.name.toLowerCase() === normalizedName.toLowerCase()
+      )
+    ) {
       throw new Error('tag_exists');
     }
     const id = createTagId();
@@ -59,13 +81,22 @@ function createTagsApi(db, helpers) {
     const existing = getTagByOwnerStmt.get(normalizedId, ownerId);
     if (!existing) return null;
 
-    const next = { id: existing.id, owner_id: ownerId, name: existing.name, color: existing.color };
+    const next = {
+      id: existing.id,
+      owner_id: ownerId,
+      name: existing.name,
+      color: existing.color
+    };
     if (name !== undefined) {
       const normalizedName = typeof name === 'string' ? name.trim() : '';
       if (!normalizedName) throw new Error('name_required');
       const collision = listTagsByOwnerStmt
         .all(ownerId)
-        .some((tag) => tag.id !== normalizedId && tag.name.toLowerCase() === normalizedName.toLowerCase());
+        .some(
+          (tag) =>
+            tag.id !== normalizedId &&
+            tag.name.toLowerCase() === normalizedName.toLowerCase()
+        );
       if (collision) throw new Error('tag_exists');
       next.name = normalizedName.slice(0, 40);
     }
@@ -92,7 +123,9 @@ function createTagsApi(db, helpers) {
     const incoming = sanitizeTagCatalog(entries);
     if (!incoming.length) return;
 
-    const current = new Map(listTagsByOwnerStmt.all(ownerId).map((tag) => [tag.id, tag]));
+    const current = new Map(
+      listTagsByOwnerStmt.all(ownerId).map((tag) => [tag.id, tag])
+    );
     incoming.forEach((tag) => {
       if (!current.has(tag.id)) {
         current.set(tag.id, { ...tag, owner_id: ownerId });
@@ -146,7 +179,9 @@ function createTagsApi(db, helpers) {
   function fetchTagsForCounters(ids = []) {
     if (!ids.length) return [];
     const placeholders = ids.map(() => '?').join(',');
-    const stmt = db.prepare(`SELECT counter_id, tag_id FROM counter_tags WHERE counter_id IN (${placeholders}) ORDER BY rowid`);
+    const stmt = db.prepare(
+      `SELECT counter_id, tag_id FROM counter_tags WHERE counter_id IN (${placeholders}) ORDER BY rowid`
+    );
     return stmt.all(ids);
   }
 
@@ -177,10 +212,17 @@ function createTagsApi(db, helpers) {
     if (!legacyTags.length) return;
 
     const tagCount = db.prepare('SELECT COUNT(*) as total FROM tags').get();
-    const totalTags = typeof tagCount?.total === 'bigint' ? Number(tagCount.total) : Number(tagCount?.total || 0);
+    const totalTags =
+      typeof tagCount?.total === 'bigint'
+        ? Number(tagCount.total)
+        : Number(tagCount?.total || 0);
     if (totalTags) return;
 
-    const ownerRow = db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1").get();
+    const ownerRow = db
+      .prepare(
+        "SELECT id FROM users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1"
+      )
+      .get();
     const ownerId = ownerRow?.id || null;
     if (!ownerId) return;
 

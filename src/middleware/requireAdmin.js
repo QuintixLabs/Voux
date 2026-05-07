@@ -18,7 +18,7 @@ const {
   checkLoginBlock,
   recordLoginFailure,
   clearLoginFailures
-} = require('../services/loginLimiter');
+} = require('../services/auth/loginLimiter');
 
 /* ========================================================================== */
 /* Constants                                                                  */

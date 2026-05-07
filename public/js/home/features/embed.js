@@ -8,12 +8,7 @@
 /* Embed manager                                                              */
 /* -------------------------------------------------------------------------- */
 function createHomeEmbedManager(deps) {
-  const {
-    embedToggles,
-    embedPanels,
-    embedDescs,
-    previewTarget
-  } = deps;
+  const { embedToggles, embedPanels, embedDescs, previewTarget } = deps;
 
   let embedMode = 'script';
 
@@ -37,7 +32,9 @@ function createHomeEmbedManager(deps) {
 
   function bindEmbedToggleEvents() {
     embedToggles.forEach((toggle) => {
-      toggle.addEventListener('click', () => setEmbedMode(toggle.dataset.embed || 'script'));
+      toggle.addEventListener('click', () =>
+        setEmbedMode(toggle.dataset.embed || 'script')
+      );
     });
   }
 

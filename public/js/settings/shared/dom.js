@@ -11,7 +11,8 @@ export const togglePrivate = document.getElementById('togglePrivateMode');
 export const toggleGuides = document.getElementById('toggleShowGuides');
 export const statusLabel = document.getElementById('settingsStatus');
 export const allowModeUniqueInput = document.getElementById('allowModeUnique');
-export const allowModeUnlimitedInput = document.getElementById('allowModeUnlimited');
+export const allowModeUnlimitedInput =
+  document.getElementById('allowModeUnlimited');
 
 /* -------------------------------------------------------------------------- */
 /* Backup refs                                                                */
@@ -24,13 +25,24 @@ export const autoBackupToggle = document.getElementById('autoBackupToggle');
 export const autoBackupSummary = document.getElementById('autoBackupSummary');
 export const autoBackupBody = document.getElementById('autoBackupBody');
 export const autoBackupPath = document.getElementById('autoBackupPath');
-export const autoBackupPathValue = document.getElementById('autoBackupPathValue');
-export const autoBackupFrequencyInput = document.getElementById('autoBackupFrequency');
+export const autoBackupPathValue = document.getElementById(
+  'autoBackupPathValue'
+);
+export const autoBackupFrequencyInput = document.getElementById(
+  'autoBackupFrequency'
+);
 export const autoBackupTimeInput = document.getElementById('autoBackupTime');
-export const autoBackupWeekdayField = document.getElementById('autoBackupWeekdayField');
-export const autoBackupWeekdayInput = document.getElementById('autoBackupWeekday');
-export const autoBackupRetentionInput = document.getElementById('autoBackupRetention');
-export const autoBackupIncludeJsonInput = document.getElementById('autoBackupIncludeJson');
+export const autoBackupWeekdayField = document.getElementById(
+  'autoBackupWeekdayField'
+);
+export const autoBackupWeekdayInput =
+  document.getElementById('autoBackupWeekday');
+export const autoBackupRetentionInput = document.getElementById(
+  'autoBackupRetention'
+);
+export const autoBackupIncludeJsonInput = document.getElementById(
+  'autoBackupIncludeJson'
+);
 export const saveAutoBackupBtn = document.getElementById('saveAutoBackup');
 export const runAutoBackupNowBtn = document.getElementById('runAutoBackupNow');
 
@@ -42,7 +54,9 @@ export const apiKeysList = document.getElementById('apiKeysList');
 export const apiKeyForm = document.getElementById('apiKeyForm');
 export const apiKeyNameInput = document.getElementById('apiKeyName');
 export const apiKeyScopeSelect = document.getElementById('apiKeyScope');
-export const apiKeyCountersField = document.getElementById('apiKeyCountersField');
+export const apiKeyCountersField = document.getElementById(
+  'apiKeyCountersField'
+);
 export const apiKeyCountersInput = document.getElementById('apiKeyCounters');
 export const apiKeyStatusLabel = document.getElementById('apiKeyStatus');
 export const apiKeysPagination = document.getElementById('apiKeysPagination');
@@ -60,7 +74,9 @@ export const themeSelect = document.getElementById('themeSelect');
 export const brandingStatusLabel = document.getElementById('brandingStatus');
 export const resetBrandingBtn = document.getElementById('resetBranding');
 export const throttleSelect = document.getElementById('throttleSelect');
-export const purgeInactiveButton = document.getElementById('purgeInactiveButton');
+export const purgeInactiveButton = document.getElementById(
+  'purgeInactiveButton'
+);
 export const inactiveHint = document.getElementById('inactiveHint');
 
 /* -------------------------------------------------------------------------- */
@@ -76,7 +92,9 @@ export const usersPrevBtn = document.getElementById('usersPrev');
 export const usersNextBtn = document.getElementById('usersNext');
 export const usersPageInfo = document.getElementById('usersPageInfo');
 export const settingsTabs = document.getElementById('settingsTabs');
-export const settingsTabButtons = settingsTabs ? Array.from(settingsTabs.querySelectorAll('.settings-tab')) : [];
+export const settingsTabButtons = settingsTabs
+  ? Array.from(settingsTabs.querySelectorAll('.settings-tab'))
+  : [];
 export const userForm = document.getElementById('userForm');
 export const userNameInput = document.getElementById('userName');
 export const userDisplayInput = document.getElementById('userDisplay');

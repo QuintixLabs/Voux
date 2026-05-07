@@ -1,17 +1,11 @@
 /*
-  src/services/avatars.js
+  src/services/system/avatars.js
 
   Avatar URL validation, file writes, and safe cleanup helpers.
 */
 
 function createAvatarService(deps) {
-  const {
-    fs,
-    path,
-    avatarUploadsDir,
-    staticDir,
-    avatarMaxBytes
-  } = deps;
+  const { fs, path, avatarUploadsDir, staticDir, avatarMaxBytes } = deps;
 
   function isDataImageUrl(value) {
     return /^data:image\/(png|jpeg|jpg);base64,/.test(value || '');
@@ -26,7 +20,9 @@ function createAvatarService(deps) {
   }
 
   function sanitizeAvatarRelativePath(value) {
-    const raw = String(value || '').trim().replace(/\\/g, '/');
+    const raw = String(value || '')
+      .trim()
+      .replace(/\\/g, '/');
     if (!raw || raw.includes('\0')) return null;
     const normalized = path.posix.normalize(`/${raw}`).replace(/^\/+/, '');
     if (!normalized || normalized.startsWith('..')) return null;
@@ -49,7 +45,10 @@ function createAvatarService(deps) {
     if (!safeRelative) return;
     const dataPath = resolveSafeChildPath(avatarUploadsDir, safeRelative);
     const publicAvatarUploadsDir = path.join(staticDir, 'uploads', 'avatars');
-    const publicPath = resolveSafeChildPath(publicAvatarUploadsDir, safeRelative);
+    const publicPath = resolveSafeChildPath(
+      publicAvatarUploadsDir,
+      safeRelative
+    );
     if (!dataPath || !publicPath) return;
     try {
       fs.unlinkSync(dataPath);
@@ -76,6 +75,10 @@ function createAvatarService(deps) {
         trimmed.startsWith('/uploads/avatars/') &&
         /\.(png|jpe?g)$/i.test(trimmed);
       if (!isLocalAvatar) return { error: 'invalid_avatar' };
+      const currentAvatar = String(existingUrl || '').trim();
+      if (!currentAvatar || trimmed !== currentAvatar) {
+        return { error: 'invalid_avatar' };
+      }
       return { value: trimmed.slice(0, 2048) };
     }
     const extracted = extractDataImage(trimmed);

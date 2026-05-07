@@ -89,14 +89,20 @@ function initializeSchema(db) {
   `);
 
   const countersTableInfo = db.prepare('PRAGMA table_info(counters)').all();
-  const hasOwnerIdColumn = countersTableInfo.some((col) => col.name === 'owner_id');
+  const hasOwnerIdColumn = countersTableInfo.some(
+    (col) => col.name === 'owner_id'
+  );
   if (!hasOwnerIdColumn) {
     db.exec('ALTER TABLE counters ADD COLUMN owner_id TEXT');
   }
 
-  db.exec('CREATE INDEX IF NOT EXISTS idx_counters_owner ON counters(owner_id)');
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_counters_owner ON counters(owner_id)'
+  );
   db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)');
-  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash)');
+  db.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash)'
+  );
 }
 
 module.exports = initializeSchema;

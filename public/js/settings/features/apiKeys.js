@@ -32,10 +32,10 @@ function createApiKeysManager(deps) {
     escapeHtml
   } = deps;
 
-/* -------------------------------------------------------------------------- */
-/* Key list rendering                                                         */
-/* -------------------------------------------------------------------------- */
-async function loadApiKeys() {
+  /* -------------------------------------------------------------------------- */
+  /* Key list rendering                                                         */
+  /* -------------------------------------------------------------------------- */
+  async function loadApiKeys() {
     if (!apiKeysList) return;
     try {
       apiKeysList.innerHTML = '<p class="hint">Loading keys...</p>';
@@ -47,7 +47,8 @@ async function loadApiKeys() {
       renderApiKeys();
       setApiKeyStatus('');
     } catch (error) {
-      apiKeysList.innerHTML = '<p class="hint error">Unable to load API keys.</p>';
+      apiKeysList.innerHTML =
+        '<p class="hint error">Unable to load API keys.</p>';
       setApiKeyStatus('');
       console.warn(error);
     }
@@ -56,7 +57,10 @@ async function loadApiKeys() {
   function renderApiKeys() {
     if (!apiKeysList) return;
     const keys = apiKeyPager.list || [];
-    const totalPages = Math.max(1, Math.ceil(keys.length / apiKeyPager.pageSize));
+    const totalPages = Math.max(
+      1,
+      Math.ceil(keys.length / apiKeyPager.pageSize)
+    );
     apiKeyPager.page = Math.min(Math.max(1, apiKeyPager.page), totalPages);
     const start = (apiKeyPager.page - 1) * apiKeyPager.pageSize;
     const visible = keys.slice(start, start + apiKeyPager.pageSize);
@@ -70,13 +74,15 @@ async function loadApiKeys() {
       row.className = 'api-key-row';
       const meta = document.createElement('div');
       meta.className = 'api-key-meta';
-      const scopeLabel = key.scope === 'limited'
-        ? `Limited · ${key.allowedCounters?.length || 0} counters`
-        : 'Full access';
+      const scopeLabel =
+        key.scope === 'limited'
+          ? `Limited · ${key.allowedCounters?.length || 0} counters`
+          : 'Full access';
       const detail = document.createElement('small');
-      const allowedText = key.scope === 'limited' && key.allowedCounters?.length
-        ? `Allowed: ${key.allowedCounters.join(', ')}`
-        : '';
+      const allowedText =
+        key.scope === 'limited' && key.allowedCounters?.length
+          ? `Allowed: ${key.allowedCounters.join(', ')}`
+          : '';
       const timeline = document.createElement('small');
       timeline.textContent = `Created ${formatTimestamp(key.createdAt)} · Last used ${formatTimestamp(key.lastUsedAt)}`;
       meta.innerHTML = `<strong>${escapeHtml(key.name || key.id)}</strong><small>${scopeLabel}</small>`;
@@ -91,17 +97,25 @@ async function loadApiKeys() {
       deleteBtn.type = 'button';
       deleteBtn.className = 'danger ghost';
       deleteBtn.innerHTML = '<i class="ri-delete-bin-line"></i>';
-      deleteBtn.addEventListener('click', () => handleApiKeyDelete({
-        id: key.id,
-        name: key.name || '',
-        createdAt: key.createdAt || ''
-      }));
+      deleteBtn.addEventListener('click', () =>
+        handleApiKeyDelete({
+          id: key.id,
+          name: key.name || '',
+          createdAt: key.createdAt || ''
+        })
+      );
       actions.appendChild(deleteBtn);
       row.append(meta, actions);
       apiKeysList.appendChild(row);
     });
 
-    if (keys.length > apiKeyPager.pageSize && apiKeysPagination && apiKeysPrevBtn && apiKeysNextBtn && apiKeysPageInfo) {
+    if (
+      keys.length > apiKeyPager.pageSize &&
+      apiKeysPagination &&
+      apiKeysPrevBtn &&
+      apiKeysNextBtn &&
+      apiKeysPageInfo
+    ) {
       apiKeysPagination.classList.remove('hidden');
       apiKeysPrevBtn.disabled = apiKeyPager.page <= 1;
       apiKeysNextBtn.disabled = apiKeyPager.page >= totalPages;
@@ -111,10 +125,10 @@ async function loadApiKeys() {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Key create/delete                                                          */
-/* -------------------------------------------------------------------------- */
-async function handleApiKeyCreate(event) {
+  /* -------------------------------------------------------------------------- */
+  /* Key create/delete                                                          */
+  /* -------------------------------------------------------------------------- */
+  async function handleApiKeyCreate(event) {
     event.preventDefault();
     if (!apiKeyNameInput || !apiKeyScopeSelect) return;
     const name = apiKeyNameInput.value.trim();
@@ -145,7 +159,9 @@ async function handleApiKeyCreate(event) {
       setApiKeyStatus('');
       showToast('API key generated');
       if (payload.token) {
-        await showAlert(`Copy your new API key now:\n${payload.token}`, { title: 'API key created' });
+        await showAlert(`Copy your new API key now:\n${payload.token}`, {
+          title: 'API key created'
+        });
       }
       apiKeyForm?.reset();
       if (apiKeyScopeSelect) {
@@ -195,12 +211,15 @@ async function handleApiKeyCreate(event) {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Form state                                                                 */
-/* -------------------------------------------------------------------------- */
-function updateApiKeyScopeState() {
+  /* -------------------------------------------------------------------------- */
+  /* Form state                                                                 */
+  /* -------------------------------------------------------------------------- */
+  function updateApiKeyScopeState() {
     if (!apiKeyScopeSelect || !apiKeyCountersField) return;
-    apiKeyCountersField.classList.toggle('hidden', apiKeyScopeSelect.value !== 'limited');
+    apiKeyCountersField.classList.toggle(
+      'hidden',
+      apiKeyScopeSelect.value !== 'limited'
+    );
   }
 
   function setApiKeyStatus(message) {
@@ -214,13 +233,15 @@ function updateApiKeyScopeState() {
     renderApiKeys();
   }
 
-/* -------------------------------------------------------------------------- */
-/* Event wiring                                                               */
-/* -------------------------------------------------------------------------- */
-function setup() {
+  /* -------------------------------------------------------------------------- */
+  /* Event wiring                                                               */
+  /* -------------------------------------------------------------------------- */
+  function setup() {
     if (!apiKeysCard) return;
     loadApiKeys();
-    apiKeyForm?.addEventListener('submit', (event) => handleApiKeyCreate(event));
+    apiKeyForm?.addEventListener('submit', (event) =>
+      handleApiKeyCreate(event)
+    );
     apiKeyScopeSelect?.addEventListener('change', updateApiKeyScopeState);
     apiKeysPrevBtn?.addEventListener('click', () => changeApiKeyPage(-1));
     apiKeysNextBtn?.addEventListener('click', () => changeApiKeyPage(1));
@@ -234,6 +255,4 @@ function setup() {
   };
 }
 
-export {
-  createApiKeysManager
-};
+export { createApiKeysManager };

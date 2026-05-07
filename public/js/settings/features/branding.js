@@ -45,12 +45,14 @@ function createBrandingManager(deps) {
     return ['default'];
   }
 
-/* -------------------------------------------------------------------------- */
-/* Event wiring                                                               */
-/* -------------------------------------------------------------------------- */
-function setupBrandingForm() {
+  /* -------------------------------------------------------------------------- */
+  /* Event wiring                                                               */
+  /* -------------------------------------------------------------------------- */
+  function setupBrandingForm() {
     if (!brandingForm) return;
-    brandingForm.addEventListener('submit', (event) => handleBrandingSubmit(event));
+    brandingForm.addEventListener('submit', (event) =>
+      handleBrandingSubmit(event)
+    );
     themeSelect?.addEventListener('change', handleThemePreview);
     brandNameInputField?.addEventListener('input', checkBrandingDirty);
     homeTitleInputField?.addEventListener('input', checkBrandingDirty);
@@ -59,7 +61,8 @@ function setupBrandingForm() {
 
   function applyBrandingFromConfig(config = {}) {
     populateThemeOptions();
-    if (brandNameInputField) brandNameInputField.value = config.brandName || DEFAULT_BRAND_NAME;
+    if (brandNameInputField)
+      brandNameInputField.value = config.brandName || DEFAULT_BRAND_NAME;
     if (homeTitleInputField) {
       homeTitleInputField.value = config.homeTitle || DEFAULT_HOME_TITLE;
     }
@@ -78,16 +81,18 @@ function setupBrandingForm() {
     setBrandingDirty(false);
   }
 
-/* -------------------------------------------------------------------------- */
-/* Save/reset actions                                                         */
-/* -------------------------------------------------------------------------- */
-async function handleBrandingSubmit(event) {
+  /* -------------------------------------------------------------------------- */
+  /* Save/reset actions                                                         */
+  /* -------------------------------------------------------------------------- */
+  async function handleBrandingSubmit(event) {
     event.preventDefault();
     const payload = {
-      brandName:
-        (brandNameInputField?.value?.trim() || DEFAULT_BRAND_NAME).slice(0, 80),
-      homeTitle:
-        (homeTitleInputField?.value?.trim() || DEFAULT_HOME_TITLE).slice(0, 120),
+      brandName: (
+        brandNameInputField?.value?.trim() || DEFAULT_BRAND_NAME
+      ).slice(0, 80),
+      homeTitle: (
+        homeTitleInputField?.value?.trim() || DEFAULT_HOME_TITLE
+      ).slice(0, 120),
       theme: (themeSelect?.value || 'default').trim()
     };
     if (brandNameInputField) brandNameInputField.value = payload.brandName;
@@ -124,10 +129,10 @@ async function handleBrandingSubmit(event) {
     }
   }
 
-/* -------------------------------------------------------------------------- */
-/* Theme options + dirty state                                                */
-/* -------------------------------------------------------------------------- */
-function handleThemePreview() {
+  /* -------------------------------------------------------------------------- */
+  /* Theme options + dirty state                                                */
+  /* -------------------------------------------------------------------------- */
+  function handleThemePreview() {
     if (!themeSelect) return;
     const theme = (themeSelect.value || 'default').trim();
     applyThemeClass(theme);
@@ -162,8 +167,10 @@ function handleThemePreview() {
 
   function checkBrandingDirty() {
     const current = {
-      brandName: (brandNameInputField?.value || '').trim() || DEFAULT_BRAND_NAME,
-      homeTitle: (homeTitleInputField?.value || '').trim() || DEFAULT_HOME_TITLE,
+      brandName:
+        (brandNameInputField?.value || '').trim() || DEFAULT_BRAND_NAME,
+      homeTitle:
+        (homeTitleInputField?.value || '').trim() || DEFAULT_HOME_TITLE,
       theme: (themeSelect?.value || 'default').trim()
     };
     const isDirty =
@@ -176,7 +183,8 @@ function handleThemePreview() {
   async function handleBrandingReset() {
     const confirmed = await modalConfirm({
       title: 'Reset branding to defaults?',
-      message: 'This will reset branding to the default values and save them immediately.',
+      message:
+        'This will reset branding to the default values and save them immediately.',
       confirmLabel: 'Reset to defaults',
       cancelLabel: 'Cancel',
       variant: 'danger'
@@ -226,6 +234,4 @@ function handleThemePreview() {
   };
 }
 
-export {
-  createBrandingManager
-};
+export { createBrandingManager };

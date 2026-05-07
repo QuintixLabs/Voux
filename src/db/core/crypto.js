@@ -18,7 +18,13 @@ function hashPassword(password, salt = null) {
   const safePassword = String(password || '');
   const saltBytes = salt ? Buffer.from(salt, 'hex') : crypto.randomBytes(16);
   const iterations = 120000;
-  const hash = crypto.pbkdf2Sync(safePassword, saltBytes, iterations, 32, 'sha256');
+  const hash = crypto.pbkdf2Sync(
+    safePassword,
+    saltBytes,
+    iterations,
+    32,
+    'sha256'
+  );
   return `pbkdf2$${iterations}$${saltBytes.toString('hex')}$${hash.toString('hex')}`;
 }
 
@@ -30,9 +36,18 @@ function verifyPassword(storedHash, password) {
   const salt = parts[2];
   const expected = parts[3];
   if (!Number.isFinite(iterations) || !salt || !expected) return false;
-  const hash = crypto.pbkdf2Sync(String(password || ''), Buffer.from(salt, 'hex'), iterations, expected.length / 2, 'sha256');
+  const hash = crypto.pbkdf2Sync(
+    String(password || ''),
+    Buffer.from(salt, 'hex'),
+    iterations,
+    expected.length / 2,
+    'sha256'
+  );
   const expectedBuf = Buffer.from(expected, 'hex');
-  return expectedBuf.length === hash.length && crypto.timingSafeEqual(expectedBuf, hash);
+  return (
+    expectedBuf.length === hash.length &&
+    crypto.timingSafeEqual(expectedBuf, hash)
+  );
 }
 
 module.exports = {
