@@ -66,8 +66,6 @@ cp .env.example .env
 ```
 > [!IMPORTANT]
 > - Open `.env` and set your settings.
-> This is where you configure your **admin login**, **site URL**, **port**, and **other options**.
-> You must set `ADMIN_USERNAME` + `ADMIN_PASSWORD` before running the server.
 > - If you run **Voux** on a public domain, set `PUBLIC_BASE_URL` to your full URL (for example, [https://your-domain.com](https://your-domain.com)) <!-- so embeds and previews use the correct **HTTPS** address. -->
 > - If **Voux** is behind a **reverse proxy** or **tunnel** (for example `Nginx`, `Caddy`, `Cloudflare Tunnel`, etc.), also set: `TRUST_PROXY=1`
 
@@ -98,8 +96,6 @@ Run Voux via Docker:
 docker run -d \
   --name voux \
   -p 8787:8787 \
-  -e ADMIN_USERNAME=admin \
-  -e ADMIN_PASSWORD=change-this-password \
   # -e PUBLIC_BASE_URL=https://your-domain.com \
   # -e TRUST_PROXY=1 \
   -v $(pwd)/data:/app/data \
@@ -113,7 +109,6 @@ docker compose up -d
 ```
 
 > [!IMPORTANT]
-> - Change `ADMIN_USERNAME` + `ADMIN_PASSWORD` to your own login (do not leave it as the example).
 > - If deploying on a public domain, set `PUBLIC_BASE_URL` to your full site URL (for example, <a href="https://your-domain.com" target="_blank">https://your-domain.com</a>).
 > - If **Voux** is behind a **reverse proxy** or **tunnel** (for example `Nginx`, `Caddy`, `Cloudflare Tunnel`, etc.), also set: `TRUST_PROXY=1`
 
