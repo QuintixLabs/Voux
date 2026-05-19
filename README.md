@@ -1,5 +1,5 @@
 <h1 id="start-of-content" align="center">
-  <a id="start-of-content" href="http://voux.fr0st.xyz" target="_blank"><img src="./public/assets/banner-2.png" alt="Voux" width="900"></a>
+  <a id="start-of-content" href="http://voux.fr0st.xyz" target="_blank"><img src="./public/assets/banners/png/banner-2.png" alt="Voux" width="900"></a>
 </h1>
 <p align="center"><strong>Simple Free & Open Source Hit Counter for Blogs and Websites</strong></p>
 
