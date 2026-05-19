@@ -1,5 +1,5 @@
 /*
-  dashboard/features/adminUi.js
+  public/js/dashboard/features/admin-ui.js
 
   Dashboard admin-specific UI state and control helpers.
 */
@@ -9,22 +9,33 @@
 /* -------------------------------------------------------------------------- */
 function createDashboardAdminUi(deps) {
   const {
+    // State
     state,
+
+    // Filter controls
     modeFilterSelect,
     sortFilterSelect,
+
+    // Admin actions
     deleteFilteredBtn,
     deleteAllBtn,
     deleteSelectedBtn,
     ownerFilterWrap,
     tagFilterCreateBtn,
     createTagManageBtn,
+
+    // Admin mode + throttle
     adminCooldownSelect,
     adminThrottleHint,
+
+    // Create + embed UI
     createCard,
     adminEmbedBlock,
     adminEmbedSnippetCode,
     adminEmbedSvgSnippetCode,
     setEmbedMode,
+
+    // Preferences + mode helpers
     saveOwnerFilterPreference,
     applyAllowedModesToSelect
   } = deps;
@@ -55,12 +66,12 @@ function createDashboardAdminUi(deps) {
   function updateDeleteButtonLabels() {
     const myOnly = Boolean(state.ownerOnly);
     if (deleteAllBtn) {
-      deleteAllBtn.innerHTML = `<i class="ri-indeterminate-circle-line"></i> ${
+      deleteAllBtn.innerHTML = `<i class="icon" style="--icon:url('/assets/icons/ui/indeterminate-circle.svg')" aria-hidden="true"></i> ${
         myOnly ? 'Delete all of my counters' : 'Delete all counters'
       }`;
     }
     if (deleteFilteredBtn) {
-      deleteFilteredBtn.innerHTML = `<i class="ri-delete-bin-line"></i> ${
+      deleteFilteredBtn.innerHTML = `<i class="icon" style="--icon:url('/assets/icons/ui/delete.svg')" aria-hidden="true"></i> ${
         myOnly ? 'Delete my filtered' : 'Delete filtered'
       }`;
     }
@@ -74,10 +85,12 @@ function createDashboardAdminUi(deps) {
     if (sortFilterSelect) {
       sortFilterSelect.value = state.sort || 'newest';
     }
+
     const dangerAllowed =
       !state.isAdmin || state.user?.adminPermissions?.danger === true;
     const allowMyDanger = dangerAllowed || (state.isAdmin && state.ownerOnly);
     const isGlobal = state.modeFilter === 'all';
+    
     if (deleteFilteredBtn) {
       deleteFilteredBtn.disabled = isGlobal || !allowMyDanger;
       deleteFilteredBtn.classList.toggle('hidden', isGlobal || !allowMyDanger);
@@ -97,11 +110,14 @@ function createDashboardAdminUi(deps) {
     const hasUser = Boolean(state.user);
     tagFilterCreateBtn?.classList.toggle('hidden', !hasUser);
     createTagManageBtn?.classList.toggle('hidden', !hasUser);
+
     if (!isAdmin) {
       state.ownerOnly = false;
     }
+
     const dangerAllowed =
       !state.isAdmin || state.user?.adminPermissions?.danger === true;
+
     if (isAdmin && !dangerAllowed) {
       state.ownerOnly = true;
       state.ownerOnlyForced = true;
@@ -111,10 +127,12 @@ function createDashboardAdminUi(deps) {
       state.ownerOnlyForced = false;
       saveOwnerFilterPreference(false);
     }
+
     ownerFilterWrap?.classList.toggle(
       'hidden',
       !isAdmin || (isAdmin && !dangerAllowed)
     );
+    
     syncOwnerFilterToggle();
     updateDeleteFilteredState();
   }
@@ -139,11 +157,14 @@ function createDashboardAdminUi(deps) {
   }
 
   return {
+    // Owner/filter visibility
     syncOwnerFilterToggle,
     updateCreateCardVisibility,
     updateDeleteFilteredState,
     updateDeleteButtonLabels,
     updateAdminVisibility,
+
+    // Mode + throttle hints
     refreshAdminModeControls,
     renderAdminThrottleHint
   };

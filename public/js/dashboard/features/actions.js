@@ -1,5 +1,5 @@
 /*
-  dashboard/features/actions.js
+  public/js/dashboard/features/actions.js
 
   Counter create/delete actions and related API flows.
 */
@@ -9,18 +9,29 @@
 /* -------------------------------------------------------------------------- */
 function createDashboardActions(deps) {
   const {
+    // State
     state,
+
+    // Requests + auth
     authFetch,
     assertAuthorizedResponse,
+    refreshCounters,
+    canInsertCreatedCounter,
+    prependCreatedCounter,
+    ensureSessionForAction,
+
+    // Feedback
     showAlert,
     showConfirm,
     showConfirmWithInput,
     showToast,
     normalizeAuthMessage,
-    refreshCounters,
+
+    // Selection sync
     clearSelection,
     updateSelectionToolbar,
-    ensureSessionForAction,
+
+    // Counter create controls
     readStartValue,
     createLabelInput,
     createNoteInput,
@@ -29,12 +40,15 @@ function createDashboardActions(deps) {
     isModeAllowed,
     getFirstAllowedMode,
     refreshTagSelectors,
-    updateCounterMetadataRequest,
+
+    // Embed preview UI
     renderAdminPreview,
     setEmbedMode,
     adminEmbedSnippetCode,
     adminEmbedSvgSnippetCode,
     adminEmbedBlock,
+
+    // Counter list UI
     deleteAllBtn,
     deleteFilteredBtn,
     counterListEl,
@@ -47,6 +61,7 @@ function createDashboardActions(deps) {
   function getCooldownPayload(selectEl) {
     if (!selectEl) return 'unique';
     const mode = selectEl.value === 'unlimited' ? 'unlimited' : 'unique';
+
     if (!isModeAllowed(mode, state.allowedModes)) {
       return getFirstAllowedMode(state.allowedModes);
     }
@@ -59,9 +74,11 @@ function createDashboardActions(deps) {
   async function handleDeleteAll() {
     const siteUrl =
       window.location?.origin || window.location?.href || 'this site';
+
     const targetLabel = state.ownerOnly
       ? 'every counter and their data for your account'
       : 'every counter and their data';
+
     const confirmed = await showConfirm({
       title: 'Delete all counters?',
       message: `This will permanently remove ${targetLabel} on: ${siteUrl}. You'll confirm by typing DELETE next.`,
@@ -76,6 +93,7 @@ function createDashboardActions(deps) {
       cancelLabel: 'Cancel',
       variant: 'danger'
     });
+
     if (!confirmed) return;
     const confirmedFinal = await showConfirmWithInput({
       title: 'Delete all counters?',
@@ -88,6 +106,7 @@ function createDashboardActions(deps) {
       cancelLabel: 'Cancel',
       variant: 'danger'
     });
+
     if (!confirmedFinal) return;
     try {
       deleteAllBtn.disabled = true;
@@ -103,6 +122,7 @@ function createDashboardActions(deps) {
       const res = await authFetch(url, {
         method: 'DELETE'
       });
+
       await assertAuthorizedResponse(res);
       if (!res.ok) throw new Error('Failed to delete counters');
       const payload = await res.json().catch(() => ({}));
@@ -122,6 +142,7 @@ function createDashboardActions(deps) {
       await showAlert('Log in first.');
       return;
     }
+
     try {
       await ensureSessionForAction();
     } catch (error) {
@@ -130,20 +151,28 @@ function createDashboardActions(deps) {
       );
       return;
     }
+
     const noteValue = createNoteInput?.value?.trim() || '';
     const payload = {
       label: createLabelInput?.value?.trim() || '',
       startValue: readStartValue(createStartInput)
     };
+
+    if (noteValue) {
+      payload.note = noteValue;
+    }
+
     if (state.createTags.length) {
       payload.tags = state.createTags.slice(0, 20);
     }
+
     try {
       payload.mode = getCooldownPayload(adminCooldownSelect);
     } catch (error) {
       await showAlert(normalizeAuthMessage(error, 'Invalid counting mode'));
       return;
     }
+
     try {
       const res = await authFetch('/api/counters', {
         method: 'POST',
@@ -152,6 +181,7 @@ function createDashboardActions(deps) {
         },
         body: JSON.stringify(payload)
       });
+
       if (res.status === 403) {
         const err = await res.json().catch(() => ({}));
         if (err?.error === 'csrf_blocked') {
@@ -160,6 +190,7 @@ function createDashboardActions(deps) {
           });
         }
       }
+      
       await assertAuthorizedResponse(res);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -183,13 +214,16 @@ function createDashboardActions(deps) {
         }
         throw new Error(err.error || 'Failed to create counter');
       }
+
       const data = await res.json();
       if (adminEmbedSnippetCode) {
         adminEmbedSnippetCode.textContent = data.embedCode || '';
       }
+
       if (adminEmbedSvgSnippetCode) {
         adminEmbedSvgSnippetCode.textContent = data.embedSvgCode || '';
       }
+
       if (window.Prism?.highlightAll) {
         window.Prism.highlightAll();
       }
@@ -198,22 +232,18 @@ function createDashboardActions(deps) {
       if (data.embedUrl) {
         renderAdminPreview(data.embedUrl);
       }
-      if (noteValue) {
-        try {
-          await updateCounterMetadataRequest(data.counter.id, {
-            note: noteValue
-          });
-        } catch (err) {
-          console.warn('Failed to set note on create', err);
-        }
-      }
       if (createLabelInput) createLabelInput.value = payload.label;
       if (createNoteInput) createNoteInput.value = '';
       if (state.createTags.length) {
         state.createTags = [];
         refreshTagSelectors();
       }
-      await refreshCounters(state.page);
+      
+      if (canInsertCreatedCounter()) {
+        prependCreatedCounter(data.counter);
+      } else {
+        await refreshCounters(state.page);
+      }
     } catch (error) {
       await showAlert(normalizeAuthMessage(error, 'Failed to create counter'));
     }
@@ -231,6 +261,7 @@ function createDashboardActions(deps) {
       confirmLabel: 'Delete counter',
       variant: 'danger'
     });
+    
     if (!confirmed) return;
     try {
       const res = await authFetch(`/api/counters/${id}`, {
@@ -274,6 +305,7 @@ function createDashboardActions(deps) {
       cancelLabel: 'Cancel',
       variant: 'danger'
     });
+
     if (!confirmed) return;
     const confirmedFinal = await showConfirmWithInput({
       title: 'Delete filtered counters?',
@@ -286,6 +318,7 @@ function createDashboardActions(deps) {
       cancelLabel: 'Cancel',
       variant: 'danger'
     });
+
     if (!confirmedFinal) return;
     try {
       deleteFilteredBtn.disabled = true;
@@ -296,6 +329,7 @@ function createDashboardActions(deps) {
           method: 'DELETE'
         }
       );
+      
       await assertAuthorizedResponse(res);
       if (!res.ok) throw new Error('Failed to delete counters');
       await refreshCounters(1);

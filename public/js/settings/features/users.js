@@ -1,5 +1,5 @@
 /*
-  settings/features/users.js
+  public/js/settings/features/users.js
 
   Users list and user management logic for settings.
 */
@@ -9,16 +9,20 @@
 /* -------------------------------------------------------------------------- */
 function createUsersManager(deps) {
   const {
+    // User list UI
     usersPager,
     usersCard,
     usersList,
     usersFilterSelect,
     usersSearchInput,
-    userCreateOpen,
     usersPagination,
     usersPrevBtn,
     usersNextBtn,
     usersPageInfo,
+    usersCountLabel,
+
+    // User create UI
+    userCreateOpen,
     userForm,
     userNameInput,
     userDisplayInput,
@@ -28,6 +32,8 @@ function createUsersManager(deps) {
     userNameError,
     userCreateModal,
     userCreateCancel,
+
+    // User edit UI
     userEditModal,
     userEditMessage,
     userEditUsername,
@@ -35,17 +41,42 @@ function createUsersManager(deps) {
     userEditPassword,
     userEditSave,
     userEditCancel,
+
+    // Requests + auth
     authFetch,
     assertSession,
+
+    // Feedback + helpers
     showToast,
     showAlert,
     normalizeAuthMessage,
     modalConfirm,
+
+    // Session + callbacks
     getActiveUser,
     onOpenAdminPermissions
   } = deps;
 
   let activeUserEditor = null;
+
+  function canAssignAdminRole() {
+    return Boolean(getActiveUser()?.isOwner);
+  }
+
+  function syncCreateRoleOptions() {
+    if (!userRoleSelect) return;
+    const adminOption = userRoleSelect.querySelector('option[value="admin"]');
+    const allowAdmin = canAssignAdminRole();
+
+    if (adminOption) {
+      adminOption.disabled = !allowAdmin;
+      adminOption.hidden = !allowAdmin;
+    }
+
+    if (!allowAdmin && userRoleSelect.value !== 'user') {
+      userRoleSelect.value = 'user';
+    }
+  }
 
   /* -------------------------------------------------------------------------- */
   /* User list + filters                                                        */
@@ -79,15 +110,19 @@ function createUsersManager(deps) {
         (user.displayName || user.username || '').trim().toLowerCase();
       return (a, b) => normalize(a).localeCompare(normalize(b));
     };
+
     if (usersPager.filter === 'owner') {
       filtered = filtered.filter((user) => user.isOwner);
     }
+
     if (usersPager.filter === 'members') {
       filtered = filtered.filter((user) => user.role !== 'admin');
     }
+
     if (usersPager.filter === 'admins') {
       filtered = filtered.filter((user) => user.role === 'admin');
     }
+
     if (query) {
       filtered = filtered.filter((user) => {
         const name =
@@ -95,6 +130,7 @@ function createUsersManager(deps) {
         return name.includes(query);
       });
     }
+
     if (usersPager.filter === 'az') {
       filtered = [...filtered].sort(sortByName());
     }
@@ -106,6 +142,11 @@ function createUsersManager(deps) {
     return Math.max(1, Math.ceil(total / usersPager.pageSize));
   }
 
+  function formatUsersPageInfo(page, totalPages) {
+    const isSmallScreen = window.matchMedia('(max-width: 620px)').matches;
+    return isSmallScreen ? `${page} / ${totalPages}` : `Page ${page} / ${totalPages}`;
+  }
+
   function renderUsersPage() {
     const filtered = getFilteredUsers();
     const query = (usersSearchInput?.value || '').trim();
@@ -115,12 +156,20 @@ function createUsersManager(deps) {
     const start = (page - 1) * usersPager.pageSize;
     const slice = filtered.slice(start, start + usersPager.pageSize);
     renderUsers(slice, query);
+
     if (usersPageInfo) {
-      usersPageInfo.textContent = `Page ${page} / ${totalPages}`;
+      usersPageInfo.textContent = formatUsersPageInfo(page, totalPages);
     }
+
+    if (usersCountLabel) {
+      const total = usersPager.list.length;
+      usersCountLabel.textContent = `${total} user${total === 1 ? '' : 's'}`;
+    }
+
     if (usersPagination) {
       usersPagination.classList.toggle('hidden', totalPages <= 1);
     }
+    
     if (usersPrevBtn) usersPrevBtn.disabled = page <= 1;
     if (usersNextBtn) usersNextBtn.disabled = page >= totalPages;
   }
@@ -177,6 +226,8 @@ function createUsersManager(deps) {
       const requesterIsOwner = Boolean(activeUser?.isOwner);
       const canEditRole = requesterIsOwner && activeUser?.id !== user.id;
       if (canEditRole) {
+        const roleShell = document.createElement('div');
+        roleShell.className = 'select-shell';
         const roleSelect = document.createElement('select');
         roleSelect.innerHTML = `
         <option value="user">Member</option>
@@ -186,14 +237,22 @@ function createUsersManager(deps) {
         roleSelect.addEventListener('change', () =>
           handleUserRoleChange(user, roleSelect)
         );
-        actions.appendChild(roleSelect);
+        const roleIcon = document.createElement('span');
+        roleIcon.className = 'icon select-icon';
+        roleIcon.setAttribute('aria-hidden', 'true');
+        roleIcon.style.setProperty(
+          '--icon',
+          "url('/assets/icons/ui/arrow-down.svg')"
+        );
+        roleShell.append(roleSelect, roleIcon);
+        actions.appendChild(roleShell);
       }
 
       if (requesterIsOwner && user.role === 'admin' && !user.isOwner) {
         const permsBtn = document.createElement('button');
         permsBtn.type = 'button';
         permsBtn.className = 'ghost';
-        permsBtn.innerHTML = '<i class="ri-shield-keyhole-line"></i>';
+        permsBtn.innerHTML = `<i class="icon" style="--icon:url('/assets/icons/ui/shield-keyhole.svg')" aria-hidden="true"></i>`;
         permsBtn.addEventListener('click', () =>
           onOpenAdminPermissions?.(user)
         );
@@ -207,7 +266,7 @@ function createUsersManager(deps) {
         const editBtn = document.createElement('button');
         editBtn.type = 'button';
         editBtn.className = 'ghost';
-        editBtn.innerHTML = '<i class="ri-pencil-line"></i>';
+        editBtn.innerHTML = `<i class="icon" style="--icon:url('/assets/icons/ui/pencil.svg')" aria-hidden="true"></i>`;
         editBtn.addEventListener('click', () => openUserEditor(user));
         actions.appendChild(editBtn);
       }
@@ -219,7 +278,7 @@ function createUsersManager(deps) {
         const deleteBtn = document.createElement('button');
         deleteBtn.type = 'button';
         deleteBtn.className = 'danger ghost';
-        deleteBtn.innerHTML = '<i class="ri-delete-bin-line"></i>';
+        deleteBtn.innerHTML = `<i class="icon" style="--icon:url('/assets/icons/ui/delete.svg')" aria-hidden="true"></i>`;
         deleteBtn.addEventListener('click', () => handleUserDelete(user));
         actions.appendChild(deleteBtn);
       }
@@ -235,6 +294,7 @@ function createUsersManager(deps) {
   function openUserCreateModal() {
     if (!userCreateModal || !userForm) return;
     userForm.reset();
+    syncCreateRoleOptions();
     setUserStatus('');
     setUserNameError('');
     userCreateModal.classList.add('modal-overlay--open');
@@ -285,6 +345,8 @@ function createUsersManager(deps) {
       const message =
         error.message === 'username_exists'
           ? 'That username is already taken.'
+          : error.message === 'owner_only_admin_role'
+            ? 'Only the owner can create admin accounts.'
           : error.message || 'Failed to create user.';
       if (error.message === 'username_exists') {
         setUserNameError(message);
@@ -457,6 +519,7 @@ function createUsersManager(deps) {
   function setupUsers() {
     if (!usersCard) return;
     loadUsers();
+    syncCreateRoleOptions();
     userForm?.addEventListener('submit', handleUserCreate);
     userCreateOpen?.addEventListener('click', openUserCreateModal);
     userCreateCancel?.addEventListener('click', closeUserCreateModal);

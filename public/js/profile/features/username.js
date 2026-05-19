@@ -9,6 +9,7 @@
 /* -------------------------------------------------------------------------- */
 function createProfileUsernameFeature(deps) {
   const {
+    // Username controls
     profileUsernameEdit,
     profileUsernameText,
     profileUsernameModal,
@@ -18,10 +19,14 @@ function createProfileUsernameFeature(deps) {
     profileUsernameNewError,
     profileUsernameSave,
     profileUsernameCancel,
+
+    // Requests + feedback
     authFetch,
     showToast,
     normalizeProfileError,
     setInlineError,
+
+    // Profile sync
     syncProfile
   } = deps;
 
@@ -120,7 +125,9 @@ function createProfileUsernameFeature(deps) {
     );
   }
 
-  return { bind };
+  return {
+    bind
+  };
 }
 
 export { createProfileUsernameFeature };

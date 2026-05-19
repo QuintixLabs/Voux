@@ -6,16 +6,25 @@
 
 function registerUsersRoutes(app, deps) {
   const {
+    // Auth middleware
     requireAdmin,
     authenticateRequest,
     hasAdminPermission,
+
+    // User ownership
     getOwnerId,
+
+    // User reads
     listUsers,
+    getUserById,
+    countAdmins,
+
+    // User writes
     createUser,
     updateUser,
     deleteUser,
-    countAdmins,
-    getUserById,
+
+    // Avatar handling
     resolveAvatarUrl
   } = deps;
 
@@ -27,6 +36,7 @@ function registerUsersRoutes(app, deps) {
     if (auth?.type === 'admin' && !hasAdminPermission(auth, 'users')) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
+
     const ownerId = getOwnerId();
     const users = listUsers().map((user) => ({
       ...user,
@@ -43,18 +53,28 @@ function registerUsersRoutes(app, deps) {
     if (auth?.type === 'admin' && !hasAdminPermission(auth, 'users')) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
+
+    const ownerId = getOwnerId();
+    const requesterIsOwner = Boolean(ownerId && auth?.user?.id === ownerId);
     const { username, password, role, displayName, avatarUrl } = req.body || {};
+    if (role === 'admin' && !requesterIsOwner) {
+      return res.status(403).json({ error: 'owner_only_admin_role' });
+    }
+
     if (!username || !password) {
       return res.status(400).json({ error: 'username_password_required' });
     }
+
     if (String(password).length < 6) {
       return res.status(400).json({ error: 'password_too_short' });
     }
+
     const avatarResult = resolveAvatarUrl(
       `user-${Date.now()}`,
       avatarUrl,
       null
     );
+    
     if (avatarResult.error) {
       return res.status(400).json({ error: avatarResult.error });
     }
@@ -86,30 +106,41 @@ function registerUsersRoutes(app, deps) {
     if (auth?.type === 'admin' && !hasAdminPermission(auth, 'users')) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
+
     const { role, displayName, avatarUrl, password, username } = req.body || {};
     const target = getUserById(req.params.id);
     if (!target) {
       return res.status(404).json({ error: 'user_not_found' });
     }
+
     const ownerId = getOwnerId();
     const requesterIsOwner = Boolean(ownerId && auth?.user?.id === ownerId);
+    if (role === 'admin' && !requesterIsOwner) {
+      return res.status(403).json({ error: 'owner_only_admin_role' });
+    }
+
     if (ownerId && target.id === ownerId && !requesterIsOwner) {
       return res.status(403).json({ error: 'owner_locked' });
     }
+
     if (target.role === 'admin' && !requesterIsOwner) {
       return res.status(403).json({ error: 'admin_edit_forbidden' });
     }
+
     if (password && String(password).length < 6) {
       return res.status(400).json({ error: 'password_too_short' });
     }
+
     if (username !== undefined && !String(username || '').trim()) {
       return res.status(400).json({ error: 'username_required' });
     }
+
     const avatarResult = resolveAvatarUrl(
       target.id,
       avatarUrl,
       target.avatar_url
     );
+
     if (avatarResult.error) {
       return res.status(400).json({ error: avatarResult.error });
     }
@@ -144,21 +175,26 @@ function registerUsersRoutes(app, deps) {
     if (auth?.type === 'admin' && !hasAdminPermission(auth, 'users')) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
+
     if (auth?.user?.id === req.params.id) {
       return res.status(400).json({ error: 'cannot_delete_self' });
     }
+
     const target = getUserById(req.params.id);
     const ownerId = getOwnerId();
     const requesterIsOwner = Boolean(ownerId && auth?.user?.id === ownerId);
     if (ownerId && target?.id === ownerId && !requesterIsOwner) {
       return res.status(403).json({ error: 'owner_locked' });
     }
+
     if (target?.role === 'admin' && !requesterIsOwner) {
       return res.status(403).json({ error: 'admin_delete_forbidden' });
     }
+
     if (target?.role === 'admin' && countAdmins() <= 1) {
       return res.status(400).json({ error: 'last_admin' });
     }
+    
     const removed = deleteUser(req.params.id);
     if (!removed) {
       return res.status(404).json({ error: 'user_not_found' });

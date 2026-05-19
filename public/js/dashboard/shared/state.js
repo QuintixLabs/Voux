@@ -1,5 +1,5 @@
 /*
-  dashboard/shared/state.js
+  public/js/dashboard/shared/state.js
 
   Dashboard constants and shared mutable state.
 */

@@ -1,5 +1,5 @@
 /*
-  settings/features/toggles.js
+  public/js/settings/features/toggles.js
 
   Runtime toggles and status line handling for settings page.
 */
@@ -9,14 +9,21 @@
 /* -------------------------------------------------------------------------- */
 function createTogglesManager(deps) {
   const {
+    // Status + mode controls
     statusLabel,
     allowModeUniqueInput,
     allowModeUnlimitedInput,
+
+    // Requests + auth
     authFetch,
     assertSession,
+
+    // Feedback
     showToast,
     showAlert,
     normalizeAuthMessage,
+
+    // Config updates
     applyConfigUpdate
   } = deps;
 
@@ -89,8 +96,11 @@ function createTogglesManager(deps) {
   }
 
   return {
+    // Settings updates
     handleToggleChange,
     setStatus,
+
+    // Allowed mode constraints
     handleAllowedModesChange
   };
 }

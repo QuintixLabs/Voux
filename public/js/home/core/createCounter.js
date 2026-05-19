@@ -9,14 +9,23 @@
 /* -------------------------------------------------------------------------- */
 function createHomeCreateCounterManager(deps) {
   const {
+    // Form controls
     form,
     cooldownSelect,
     startValueInput,
+
+    // Home sections
     builderSection,
     privateDashboardCard,
+
+    // Limits
     START_VALUE_DIGIT_LIMIT,
+
+    // Feedback
     showAlert,
     buildCreateCounterErrorMessage,
+
+    // Home shell
     themeHelper,
     onGuideVisibilityChange,
     onCounterCreated

@@ -1,5 +1,5 @@
 /*
-  settings/features/runtime.js
+  public/js/settings/features/runtime.js
 
   Runtime settings actions (throttle + inactive counter cleanup).
 */
@@ -9,17 +9,26 @@
 /* -------------------------------------------------------------------------- */
 function createRuntimeManager(deps) {
   const {
+    // Runtime controls
     throttleSelect,
     purgeInactiveButton,
     inactiveHint,
+
+    // Runtime defaults
     DEFAULT_THROTTLE_SECONDS,
+
+    // Requests + auth
     authFetch,
     assertSession,
+
+    // Feedback
     showToast,
     showAlert,
     normalizeAuthMessage,
     modalConfirm,
     modalConfirmWithInput,
+
+    // Config + status updates
     applyConfigUpdate,
     setStatus
   } = deps;
@@ -41,7 +50,7 @@ function createRuntimeManager(deps) {
       ? inactiveDaysThreshold
       : 30;
     const label = days === 1 ? '1 day' : `${days} days`;
-    purgeInactiveButton.innerHTML = `<i class="ri-delete-bin-line"></i> Delete counters inactive for ${label}`;
+    purgeInactiveButton.innerHTML = `<i class="icon" style="--icon:url('/assets/icons/ui/delete.svg')" aria-hidden="true"></i> Delete counters inactive for ${label}`;
     if (inactiveHint) {
       inactiveHint.textContent = `Counters with no hits for ${label} will be permanently removed.`;
     }
@@ -78,6 +87,7 @@ function createRuntimeManager(deps) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to update throttle');
       }
+      
       const payload = await res.json().catch(() => ({}));
       applyConfigUpdate(payload);
       setStatus('');
@@ -97,6 +107,7 @@ function createRuntimeManager(deps) {
       await showAlert('Log in again to manage counters.');
       return;
     }
+
     const days = Number.isFinite(inactiveDaysThreshold)
       ? inactiveDaysThreshold
       : 30;
@@ -117,6 +128,7 @@ function createRuntimeManager(deps) {
       cancelLabel: 'Cancel',
       variant: 'danger'
     });
+
     if (!confirmedFinal) return;
     const confirmedInput = await modalConfirmWithInput({
       title: 'Delete inactive counters?',
@@ -129,6 +141,7 @@ function createRuntimeManager(deps) {
       cancelLabel: 'Cancel',
       variant: 'danger'
     });
+
     if (!confirmedInput) return;
     purgeInactiveButton.disabled = true;
     try {
@@ -139,11 +152,13 @@ function createRuntimeManager(deps) {
         },
         body: JSON.stringify({ days })
       });
+
       await assertSession(res);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to delete inactive counters');
       }
+
       const payload = await res.json().catch(() => ({}));
       const removed = payload.removed || 0;
       showToast(
@@ -159,8 +174,11 @@ function createRuntimeManager(deps) {
   }
 
   return {
+    // Inactive counter state
     setInactiveDaysThreshold,
     updateInactiveButtonLabel,
+
+    // Lifecycle
     setupRuntimeActions
   };
 }

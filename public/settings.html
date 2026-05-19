@@ -7,15 +7,9 @@
   <meta name="robots" content="noindex, nofollow">
   <title data-page-title="Settings">Voux · Settings</title>
 
-  <!-- External libraries -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet" />
-
   <!-- Icons -->
-  <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
-  <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/assets/logos/svg/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/assets/logos/svg/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
 
   <!-- Local styles -->
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
@@ -35,6 +29,16 @@
     }
   </script>
 
+  <script>
+    try {
+      if (
+        localStorage.getItem('voux_session_hint') === '1' &&
+        localStorage.getItem('voux_nav_user')
+      ) {
+        document.documentElement.classList.add('nav-auth-cached');
+      }
+    } catch {}
+  </script>
 </head>
 
 <body data-page="settings" class="settings-footer-hidden">
@@ -57,25 +61,25 @@
   
   <header class="site-nav">
     <a class="brand" href="/">
-      <img src="/assets/logo-text.png" alt="Voux" />
+      <img src="/assets/logos/png/logo-text.png" alt="Voux" />
     </a>
     <div class="nav-account">
-      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"></button>
+      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"><i class="icon" style="--icon:url('/assets/icons/ui/account-circle-fill.svg')" aria-hidden="true"></i></button>
             <div class="account-menu" id="navAccountMenu">
 <a href="/profile" class="account-menu__link">
-          <i class="ri-user-3-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/user.svg')" aria-hidden="true"></i>
           Profile
         </a>
 <a href="/dashboard" class="account-menu__link">
-          <i class="ri-eye-2-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/dashboard-eye.svg')" aria-hidden="true"></i>
           Dashboard
         </a>
 <a href="/settings" class="account-menu__link">
-          <i class="ri-settings-3-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/settings.svg')" aria-hidden="true"></i>
           Settings
         </a>
 <button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
-          <i class="ri-logout-box-r-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/logout.svg')" aria-hidden="true"></i>
           Log out
         </button>
       </div>
@@ -86,30 +90,40 @@
     <header class="hero">
       <p class="eyebrow">
         <span class="eyebrow-logo">
-          <img src="/assets/logo.png" alt="Voux logo" />
+          <img src="/assets/logos/png/logo.png" alt="" />
         </span>
         <span data-brand-text data-brand-page="Settings">Voux · Settings</span>
       </p>
       <h1>Instance Controls</h1>
-      <p>Manage your instance options and behavior. Only logged-in admins can make changes.</p>
+      <p>Manage settings that control how your instance runs.</p>
     </header>
 
     <div class="settings-tabs" id="settingsTabs" style="display:none">
-      <button type="button" class="settings-tab settings-tab--active" data-target="all"><i class="ri-grid-fill" aria-hidden="true"></i> All</button>
-      <button type="button" class="settings-tab" data-target="settingsPanel"><i class="ri-settings-4-line" aria-hidden="true"></i> Runtime</button>
-      <button type="button" class="settings-tab" data-target="brandingCard"><i class="ri-brush-line" aria-hidden="true"></i> Branding</button>
-      <button type="button" class="settings-tab" data-target="backupCard"><i class="ri-download-cloud-line" aria-hidden="true"></i> Backup</button>
-      <button type="button" class="settings-tab" data-target="apiKeysCard"><i class="ri-key-2-line" aria-hidden="true"></i> API keys</button>
-      <button type="button" class="settings-tab" data-target="usersCard"><i class="ri-user-3-line" aria-hidden="true"></i> Users</button>
+      <button type="button" class="settings-tab settings-tab--active" data-target="all"><i class="icon" style="--icon:url('/assets/icons/ui/grid-fill.svg')" aria-hidden="true"></i> All</button>
+      <button type="button" class="settings-tab" data-target="settingsPanel"><i class="icon" style="--icon:url('/assets/icons/ui/settings.svg')" aria-hidden="true"></i> Runtime</button>
+      <button type="button" class="settings-tab" data-target="brandingCard"><i class="icon" style="--icon:url('/assets/icons/ui/brush.svg')" aria-hidden="true"></i> Branding</button>
+      <button type="button" class="settings-tab" data-target="backupCard"><i class="icon" style="--icon:url('/assets/icons/ui/download-cloud.svg')" aria-hidden="true"></i> Backup</button>
+      <button type="button" class="settings-tab" data-target="apiKeysCard"><i class="icon" style="--icon:url('/assets/icons/ui/key-2.svg')" aria-hidden="true"></i> API Keys</button>
+      <button type="button" class="settings-tab" data-target="usersCard"><i class="icon" style="--icon:url('/assets/icons/ui/users.svg')" aria-hidden="true"></i> Users</button>
     </div>
 
     <section class="card settings-card hidden" id="settingsPanel">
-      <h2>Runtime Settings</h2>
+      <div class="runtime-intro">
+        <div class="runtime-head">
+          <div class="runtime-head__icon" aria-hidden="true">
+            <i class="icon" style="--icon:url('/assets/icons/ui/settings.svg')"></i>
+          </div>
+          <div class="runtime-head__copy">
+            <h2>Runtime</h2>
+            <span class="settings-desc">Manage how your instance works and behaves.</span>
+          </div>
+        </div>
+      </div>
       <div class="settings-grid">
         <label class="toggle">
           <input type="checkbox" id="togglePrivateMode" />
           <span>
-            <strong class="mode-chip__title"><i class="ri-lock-line"></i> · Private instance</strong>
+            <strong class="mode-chip__title"><i class="icon" style="--icon:url('/assets/icons/ui/lock.svg')" aria-hidden="true"></i> · Private instance</strong>
             <small>Only logged-in users can create counters.</small>
           </span>
         </label>
@@ -117,14 +131,14 @@
         <label class="toggle">
           <input type="checkbox" id="toggleShowGuides" />
           <span>
-            <strong class="mode-chip__title"><i class="ri-guide-line"></i> · Show guide cards</strong>
+            <strong class="mode-chip__title"><i class="icon" style="--icon:url('/assets/icons/ui/guide.svg')" aria-hidden="true"></i> · Show guide cards</strong>
             <small>Display the styling/self-hosting tips on the public page.</small>
           </span>
         </label>
 
         <div class="mode-selector">
           <div class="mode-selector__head">
-            <p><i class="ri-checkbox-multiple-line"></i> Allowed counting modes</p>
+            <p><i class="icon" style="--icon:url('/assets/icons/ui/checkbox-multiple.svg')" aria-hidden="true"></i> Allowed counting modes</p>
             <small>Pick the modes your instance should offer. Counters in disallowed modes keep working but new ones cannot be created.</small>
         </div>
         <div class="mode-selector__options">
@@ -146,18 +160,21 @@
       </div>
         <div class="field">
           <div class="field__label">Every-visit throttle</div>
-          <select id="throttleSelect">
-            <option value="0">No throttle (count every refresh)</option>
-            <option value="5">Throttle to 5 seconds per visitor</option>
-            <option value="10">Throttle to 10 seconds per visitor</option>
-            <option value="15">Throttle to 15 seconds per visitor</option>
-            <option value="20">Throttle to 20 seconds per visitor</option>
-          </select>
+          <div class="select-shell">
+            <select id="throttleSelect">
+              <option value="0">No throttle (count every refresh)</option>
+              <option value="5">Throttle to 5 seconds per visitor</option>
+              <option value="10">Throttle to 10 seconds per visitor</option>
+              <option value="15">Throttle to 15 seconds per visitor</option>
+              <option value="20">Throttle to 20 seconds per visitor</option>
+            </select>
+            <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
+          </div>
           <small class="hint">Limits how often the same IP can increment an "Every visit" counter. Unique mode is unaffected.</small>
         </div>
         <div class="field">
           <div class="field__label">Inactive counters</div>
-          <button type="button" id="purgeInactiveButton" class="danger ghost inactive-counters"><i class="ri-delete-bin-line"></i> Delete inactive counters</button>
+          <button type="button" id="purgeInactiveButton" class="danger ghost inactive-counters"><i class="icon" style="--icon:url('/assets/icons/ui/delete.svg')" aria-hidden="true"></i> Delete inactive counters</button>
           <small class="hint" id="inactiveHint">Counters with no hits for 30 days will be permanently removed.</small>
         </div>
       </div>
@@ -165,13 +182,23 @@
     </section>
 
     <section class="card settings-card hidden" id="brandingCard">
-      <h2>Branding</h2>
+      <div class="branding-intro">
+        <div class="branding-head">
+          <div class="branding-head__icon" aria-hidden="true">
+            <i class="icon" style="--icon:url('/assets/icons/ui/brush.svg')"></i>
+          </div>
+          <div class="branding-head__copy">
+            <h2>Branding</h2>
+            <span class="settings-desc">Customize how your instance looks and feels.</span>
+          </div>
+        </div>
+      </div>
       <form id="brandingForm" class="api-key-form" action="javascript:void(0);">
         <div class="field">
           <div class="field__label" id="brandNameLabel">
             Brand display name
             <span class="hint-icon" data-tooltip='Used anywhere you see "Brand · Page".' aria-label='Used anywhere you see "Brand · Page".'>
-              <i class="ri-question-mark" aria-hidden="true"></i>
+              <i class="icon" style="--icon:url('/assets/icons/ui/question-mark.svg')" aria-hidden="true"></i>
             </span>
           </div>
           <input type="text" id="brandNameInput" aria-labelledby="brandNameLabel" maxlength="80" placeholder="Voux" />
@@ -180,41 +207,53 @@
           <div class="field__label" id="themeSelectLabel">
             Theme
             <span class="hint-icon" data-tooltip="Pick a preset color palette for your instance." aria-label="Pick a preset color palette for your instance.">
-              <i class="ri-question-mark" aria-hidden="true"></i>
+              <i class="icon" style="--icon:url('/assets/icons/ui/question-mark.svg')" aria-hidden="true"></i>
             </span>
           </div>
-          <select id="themeSelect" aria-labelledby="themeSelectLabel">
-            <!--
-            it will detect them automatically 
-            configure themes in theme.js and theme.css
-            -->
-          </select>
+          <div class="select-shell">
+            <select id="themeSelect" aria-labelledby="themeSelectLabel">
+              <!--
+              it will detect them automatically 
+              configure themes in theme.js and theme.css
+              -->
+            </select>
+            <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
+          </div>
         </div>
         <div class="field">
           <div class="field__label" id="homeTitleLabel">
             Homepage title
             <span class="hint-icon" data-tooltip="Used on the homepage only." aria-label="Used on the homepage only.">
-              <i class="ri-question-mark" aria-hidden="true"></i>
+              <i class="icon" style="--icon:url('/assets/icons/ui/question-mark.svg')" aria-hidden="true"></i>
             </span>
           </div>
           <input type="text" id="homeTitleInput" aria-labelledby="homeTitleLabel" maxlength="120" placeholder="Voux · Simple Free & Open Source Hit Counter" />
         </div>
         <div class="branding-actions">
-          <button type="submit"><i class="ri-save-line"></i> Save branding</button>
-          <button type="button" class="danger ghost branding-reset" id="resetBranding"><i class="ri-restart-line"></i> Reset to defaults</button>
+          <button type="submit"><i class="icon" style="--icon:url('/assets/icons/ui/save.svg')" aria-hidden="true"></i> Save branding</button>
+          <button type="button" class="danger ghost branding-reset" id="resetBranding"><i class="icon" style="--icon:url('/assets/icons/ui/restart.svg')" aria-hidden="true"></i> Reset to defaults</button>
         </div>
       </form>
       <p class="hint branding-status" id="brandingStatus"></p>
     </section>
 
     <section class="card settings-card hidden" id="backupCard">
-      <h2>Backup &amp; Restore</h2>
-      <span class="settings-desc">Download all counters as JSON or restore from a previous backup when moving servers.</span>
+      <div class="backup-intro">
+        <div class="backup-head">
+          <div class="backup-head__icon" aria-hidden="true">
+            <i class="icon" style="--icon:url('/assets/icons/ui/download-cloud.svg')"></i>
+          </div>
+          <div class="backup-head__copy">
+            <h2>Backup</h2>
+            <span class="settings-desc">Back up your data and restore old backups.</span>
+          </div>
+        </div>
+      </div>
       <div class="backup-actions">
-        <button type="button" id="downloadBackup"><i class="ri-download-cloud-line"></i> Download backup</button>
+        <button type="button" id="downloadBackup"><i class="icon" style="--icon:url('/assets/icons/ui/download-cloud.svg')" aria-hidden="true"></i> Download backup</button>
         <label class="file-upload">
           <input type="file" id="restoreFile" accept="application/json" />
-          <span><i class="ri-loop-right-fill"></i> Restore backup</span>
+          <span><i class="icon" style="--icon:url('/assets/icons/ui/loop-right-fill.svg')" aria-hidden="true"></i> Restore backup</span>
         </label>
       </div>
       <div class="auto-backup" id="autoBackupSection">
@@ -223,14 +262,14 @@
             <strong>Automatic DB backups</strong>
             <small class="hint" id="autoBackupSummary">Off</small>
           </span>
-          <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></i>
         </button>
         <div class="auto-backup__body" id="autoBackupBody">
           <div class="auto-backup__inner">
             <p class="hint">Create <span class="code-inline">.db</span> snapshots on a schedule and keep only the latest backups.</p>
             <p class="auto-backup__path" id="autoBackupPath" title="">
               <span class="auto-backup__path-prefix">
-                <i class="ri-folder-5-fill" aria-hidden="true"></i>
+                <i class="icon" style="--icon:url('/assets/icons/ui/folder-fill.svg')" aria-hidden="true"></i>
                 <span class="auto-backup__path-label">Path:</span>
               </span>
               <span id="autoBackupPathValue"></span>
@@ -238,30 +277,36 @@
             <div class="auto-backup__grid">
               <div class="field">
                 <div class="field__label" id="autoBackupFrequencyLabel">Frequency</div>
-                <select id="autoBackupFrequency" aria-labelledby="autoBackupFrequencyLabel">
-                  <option value="off">Off</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                </select>
+                <div class="select-shell">
+                  <select id="autoBackupFrequency" aria-labelledby="autoBackupFrequencyLabel">
+                    <option value="off">Off</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                  </select>
+                  <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
+                </div>
               </div>
               <div class="field">
                 <div class="field__label" id="autoBackupTimeLabel">Time</div>
                 <div class="auto-backup__time-wrap">
                   <input type="time" id="autoBackupTime" aria-labelledby="autoBackupTimeLabel" value="03:00" />
-                  <i class="ri-time-line" aria-hidden="true"></i>
+                  <i class="icon" style="--icon:url('/assets/icons/ui/time.svg')" aria-hidden="true"></i>
                 </div>
               </div>
               <div class="field hidden" id="autoBackupWeekdayField">
                 <div class="field__label" id="autoBackupWeekdayLabel">Day</div>
-                <select id="autoBackupWeekday" aria-labelledby="autoBackupWeekdayLabel">
-                  <option value="0">Sunday</option>
-                  <option value="1">Monday</option>
-                  <option value="2">Tuesday</option>
-                  <option value="3">Wednesday</option>
-                  <option value="4">Thursday</option>
-                  <option value="5">Friday</option>
-                  <option value="6">Saturday</option>
-                </select>
+                <div class="select-shell">
+                  <select id="autoBackupWeekday" aria-labelledby="autoBackupWeekdayLabel">
+                    <option value="0">Sunday</option>
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                  </select>
+                  <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
+                </div>
               </div>
               <div class="field">
                 <div class="field__label" id="autoBackupRetentionLabel">Keep last</div>
@@ -284,8 +329,8 @@
               </label>
             </div>
             <div class="backup-actions">
-              <button type="button" id="saveAutoBackup"><i class="ri-save-line"></i> Save schedule</button>
-              <button type="button" class="ghost" id="runAutoBackupNow"><i class="ri-database-2-line"></i> Create backup now</button>
+              <button type="button" id="saveAutoBackup"><i class="icon" style="--icon:url('/assets/icons/ui/save.svg')" aria-hidden="true"></i> Save schedule</button>
+              <button type="button" class="ghost" id="runAutoBackupNow"><i class="icon" style="--icon:url('/assets/icons/ui/database.svg')" aria-hidden="true"></i> Create backup now</button>
             </div>
           </div>
         </div>
@@ -294,48 +339,106 @@
     </section>
 
     <section class="card settings-card hidden" id="apiKeysCard">
-      <h2>Owner API keys</h2>
-      <span class="settings-desc">Create scoped API keys so collaborators can reset or delete only their own counters, without needing an account.</span>
-      <div id="apiKeysList" class="api-keys-list" aria-live="polite"></div>
-      <div id="apiKeysPagination" class="api-keys-pagination hidden">
-        <button type="button" id="apiKeysPrev" class="ghost"><i class="ri-arrow-left-line"></i></button>
-        <span id="apiKeysPageInfo" class="pagination-info">Page 1</span>
-        <button type="button" id="apiKeysNext" class="ghost"><i class="ri-arrow-right-line"></i></button>
+      <div class="api-keys-intro">
+        <div class="api-keys-head">
+          <div class="api-keys-head__icon" aria-hidden="true">
+            <i class="icon" style="--icon:url('/assets/icons/ui/key-2.svg')"></i>
+          </div>
+          <div class="api-keys-head__copy">
+            <h2>API Keys</h2>
+            <span class="settings-desc">Create API keys to manage counters.</span>
+          </div>
+        </div>
       </div>
-      <form id="apiKeyForm" class="api-key-form" action="javascript:void(0);">
+      <div class="api-keys-toolbar">
+        <div class="api-keys-search">
+          <i class="icon" style="--icon:url('/assets/icons/ui/search.svg')" aria-hidden="true"></i>
+          <input type="search" id="apiKeySearch" placeholder="Search API keys" />
+        </div>
+        <div class="select-shell">
+          <select id="apiKeyFilter">
+            <option value="all">All keys</option>
+            <option value="" disabled>— Scope filters —</option>
+            <option value="global">Full access</option>
+            <option value="limited">Limited</option>
+            <option value="" disabled>— Usage filters —</option>
+            <option value="recent">Recently used</option>
+            <option value="unused">Unused</option>
+          </select>
+          <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
+        </div>
+        <button type="button" class="api-keys-create-btn" id="apiKeyCreateOpen">
+          <i class="icon" style="--icon:url('/assets/icons/ui/add.svg')" aria-hidden="true"></i>
+          Create API key
+        </button>
+      </div>
+      <div id="apiKeysList" class="api-keys-list" aria-live="polite"></div>
+      <div class="api-keys-footer users-footer">
+        <div class="api-keys-footer__count users-footer__count">
+          <i class="icon" style="--icon:url('/assets/icons/ui/key-2.svg')" aria-hidden="true"></i>
+          <span id="apiKeysCountLabel">0 keys</span>
+        </div>
+        <div id="apiKeysPagination" class="api-keys-pagination users-pagination hidden">
+          <button type="button" id="apiKeysPrev" class="ghost"><i class="icon" style="--icon:url('/assets/icons/ui/arrow-left.svg')" aria-hidden="true"></i></button>
+          <span id="apiKeysPageInfo" class="pagination-info">Page 1</span>
+          <button type="button" id="apiKeysNext" class="ghost"><i class="icon" style="--icon:url('/assets/icons/ui/arrow-right.svg')" aria-hidden="true"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <div class="modal-overlay" id="apiKeyModal" aria-hidden="true" data-modal-enter="#apiKeySave" data-modal-escape="#apiKeyCancel">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="apiKeyModalTitle">
+        <h2 class="modal__title" id="apiKeyModalTitle">Create API key</h2>
+        <p class="modal__message">Create a scoped API key for external access.</p>
+        <form id="apiKeyForm" class="modal__form" action="javascript:void(0);">
         <div class="field">
           <div class="field__label" id="apiKeyNameLabel">Key name</div>
-          <input type="text" id="apiKeyName" aria-labelledby="apiKeyNameLabel" maxlength="80" placeholder="My API key" required />
+          <input class="modal__input" type="text" id="apiKeyName" aria-labelledby="apiKeyNameLabel" maxlength="80" placeholder="My API key" required />
         </div>
         <div class="field">
           <div class="field__label" id="apiKeyScopeLabel">Scope</div>
-          <select id="apiKeyScope" aria-labelledby="apiKeyScopeLabel">
-            <option value="global">Full access (all counters)</option>
-            <option value="limited">Specific counters only</option>
-          </select>
+          <div class="select-shell">
+            <select class="modal__input" id="apiKeyScope" aria-labelledby="apiKeyScopeLabel">
+              <option value="global">Full access (all counters)</option>
+              <option value="limited">Specific counters only</option>
+            </select>
+            <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
+          </div>
         </div>
         <div class="field hidden" id="apiKeyCountersField">
           <div class="field__label" id="apiKeyCountersLabel">Allowed counter IDs</div>
-          <textarea id="apiKeyCounters" aria-labelledby="apiKeyCountersLabel" rows="3" placeholder="txtctg7s
+          <textarea class="modal__input" id="apiKeyCounters" aria-labelledby="apiKeyCountersLabel" rows="3" placeholder="txtctg7s
 9f2kx7q"></textarea>
+          <p class="modal__input-error is-hidden" id="apiKeyCountersError"></p>
           <small class="hint">Use the counter ID only (not the embed script). One ID per line.</small>
         </div>
-        <button type="submit"><i class="ri-key-line"></i> Generate key</button>
-      </form>
-      <p class="hint" id="apiKeyStatus"></p>
-    </section>
+          <div class="modal__actions">
+            <button type="submit" id="apiKeySave"><i class="icon" style="--icon:url('/assets/icons/ui/key.svg')" aria-hidden="true"></i> Generate key</button>
+            <button type="button" class="ghost" id="apiKeyCancel">Cancel</button>
+          </div>
+        </form>
+        <p class="hint" id="apiKeyStatus"></p>
+      </div>
+    </div>
 
     <section class="card settings-card hidden" id="usersCard">
-      <div class="users-head">
-        <div>
-          <h2>Users</h2>
-          <span class="settings-desc">Create accounts for people you trust. Admins have full access to all settings and counters. Members only manage their own counters.</span>
-        </div>
-        <div class="users-toolbar">
-          <div class="users-search">
-            <i class="ri-search-line" aria-hidden="true"></i>
-            <input type="search" id="usersSearch" placeholder="Search users" />
+      <div class="users-intro">
+        <div class="users-head">
+          <div class="users-head__icon" aria-hidden="true">
+            <i class="icon" style="--icon:url('/assets/icons/ui/users.svg')"></i>
           </div>
+          <div class="users-head__copy">
+            <h2>Users</h2>
+            <span class="settings-desc">Manage users and access permissions for your instance.</span>
+          </div>
+        </div>
+      </div>
+      <div class="users-toolbar">
+        <div class="users-search">
+          <i class="icon" style="--icon:url('/assets/icons/ui/search.svg')" aria-hidden="true"></i>
+          <input type="search" id="usersSearch" placeholder="Search users" />
+        </div>
+        <div class="select-shell">
           <select id="usersFilter">
             <option value="" disabled>— Filters —</option>
             <option value="all">All users</option>
@@ -345,19 +448,26 @@
             <option value="admins">Show admins</option>
             <option value="members">Show members</option>
           </select>
-          <button type="button" class="ghost users-create-btn hidden" id="adminDefaultsOpen" aria-label="Admin defaults">
-            <i class="ri-user-settings-line" aria-hidden="true"></i>
-          </button>
-          <button type="button" class="ghost users-create-btn" id="userCreateOpen" aria-label="Create user">
-            <i class="ri-user-add-line" aria-hidden="true"></i>
-          </button>
+          <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
         </div>
+        <button type="button" class="ghost users-create-btn hidden" id="adminDefaultsOpen" aria-label="Admin defaults">
+          <i class="icon" style="--icon:url('/assets/icons/ui/user-settings.svg')" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="ghost users-create-btn" id="userCreateOpen" aria-label="Create user">
+          <i class="icon" style="--icon:url('/assets/icons/ui/user-add.svg')" aria-hidden="true"></i>
+        </button>
       </div>
       <div id="usersList" class="users-list" aria-live="polite"></div>
-      <div id="usersPagination" class="users-pagination hidden">
-        <button type="button" id="usersPrev" class="ghost"><i class="ri-arrow-left-line"></i></button>
-        <span id="usersPageInfo" class="pagination-info">Page 1</span>
-        <button type="button" id="usersNext" class="ghost"><i class="ri-arrow-right-line"></i></button>
+      <div class="users-footer">
+        <div class="users-footer__count">
+          <i class="icon" style="--icon:url('/assets/icons/ui/users.svg')" aria-hidden="true"></i>
+          <span id="usersCountLabel">0 users</span>
+        </div>
+        <div id="usersPagination" class="users-pagination hidden">
+          <button type="button" id="usersPrev" class="ghost"><i class="icon" style="--icon:url('/assets/icons/ui/arrow-left.svg')" aria-hidden="true"></i></button>
+          <span id="usersPageInfo" class="pagination-info">Page 1</span>
+          <button type="button" id="usersNext" class="ghost"><i class="icon" style="--icon:url('/assets/icons/ui/arrow-right.svg')" aria-hidden="true"></i></button>
+        </div>
       </div>
     </section>
   </main>
@@ -366,10 +476,10 @@
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="userCreateTitle">
       <h2 class="modal__title" id="userCreateTitle">Create user</h2>
       <p class="modal__message" id="userCreateMessage">Add a new account for this instance.</p>
-      <form id="userForm" class="modal__form" action="javascript:void(0);">
+      <form id="userForm" class="modal__form" action="javascript:void(0);" autocomplete="off">
         <div class="field">
           <div class="field__label" id="userNameLabel">Username</div>
-          <input class="modal__input" type="text" id="userName" aria-labelledby="userNameLabel" maxlength="40" placeholder="Username" required />
+          <input class="modal__input" type="text" id="userName" aria-labelledby="userNameLabel" maxlength="40" placeholder="Username" autocomplete="off" required />
           <p class="modal__input-error is-hidden" id="userNameError"></p>
         </div>
         <div class="field">
@@ -378,17 +488,20 @@
         </div>
         <div class="field">
           <div class="field__label" id="userRoleLabel">Role</div>
-          <select class="modal__input" id="userRole" aria-labelledby="userRoleLabel">
-            <option value="user">Member</option>
-            <option value="admin">Admin</option>
-          </select>
+          <div class="select-shell">
+            <select class="modal__input" id="userRole" aria-labelledby="userRoleLabel">
+              <option value="user">Member</option>
+              <option value="admin">Admin</option>
+            </select>
+            <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
+          </div>
         </div>
         <div class="field">
           <div class="field__label" id="userPasswordLabel">Password</div>
           <div class="password-field password-field--no-icon">
-            <input class="modal__input" type="password" id="userPassword" aria-labelledby="userPasswordLabel" minlength="6" placeholder="Set a password" required />
+            <input class="modal__input" type="password" id="userPassword" aria-labelledby="userPasswordLabel" minlength="6" placeholder="Set a password" autocomplete="new-password" required />
             <button type="button" class="password-toggle" aria-label="Show password">
-              <i class="ri-eye-line" aria-hidden="true"></i>
+              <i class="icon" style="--icon:url('/assets/icons/ui/eye.svg')" aria-hidden="true"></i>
             </button>
           </div>
         </div>
@@ -418,7 +531,7 @@
         <div class="password-field password-field--no-icon">
           <input class="modal__input" type="password" id="userEditPassword" minlength="6" placeholder="New password" />
           <button type="button" class="password-toggle" aria-label="Show password">
-            <i class="ri-eye-line" aria-hidden="true"></i>
+            <i class="icon" style="--icon:url('/assets/icons/ui/eye.svg')" aria-hidden="true"></i>
           </button>
         </div>
         <small class="modal__input-hint">Leave blank to keep the current password.</small>
@@ -446,10 +559,10 @@
   <div data-footer-root></div>
 
   <!-- Local scripts -->
+  <script src="/js/layout/nav.js?v=%APP_VERSION%"></script>
   <script src="/js/utils/modal.js?v=%APP_VERSION%" defer></script>
   <script src="/js/utils/state.js?v=%APP_VERSION%" defer></script>
   <script src="/js/utils/errors.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/layout/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/appearance/brand.js?v=%APP_VERSION%" defer></script>
   <script src="/js/layout/footer.js?v=%APP_VERSION%" defer></script>
   <script src="/js/appearance/theme.js?v=%APP_VERSION%" defer></script>

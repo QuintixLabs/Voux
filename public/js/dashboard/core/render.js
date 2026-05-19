@@ -9,13 +9,20 @@
 /* -------------------------------------------------------------------------- */
 function createDashboardRender(deps) {
   const {
+    // State
     state,
     RANGE_LABELS,
+
+    // Requests + feedback
     authFetch,
     assertAuthorizedResponse,
     showToast,
+
+    // Admin preview
     adminPreview,
     adminPreviewTarget,
+
+    // Counter data
     getCounterDataOps
   } = deps;
 
@@ -44,6 +51,7 @@ function createDashboardRender(deps) {
   async function refreshCounters(page = 1, options = {}) {
     const { silent = false } = options;
     if (!state.user) throw new Error('Not authenticated.');
+
     const { fetchCounters, applyCounterResponse } = getCounterDataOps();
     try {
       const data = await fetchCounters(page);
@@ -66,8 +74,10 @@ function createDashboardRender(deps) {
   function renderAdminPreview(embedUrl) {
     if (!adminPreview || !adminPreviewTarget) return;
     adminPreviewTarget.innerHTML = '';
+
     const wrapper = document.createElement('span');
     wrapper.className = 'counter-widget counter-widget--preview';
+
     const script = document.createElement('script');
     script.async = true;
     script.src = appendPreviewParam(embedUrl);
@@ -84,6 +94,7 @@ function createDashboardRender(deps) {
       },
       body: JSON.stringify(payload)
     });
+
     await assertAuthorizedResponse(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -105,10 +116,11 @@ function createDashboardRender(deps) {
           clearTimeout(button._copyTimeout);
           button._copyTimeout = null;
         }
+
         const original = button.dataset.originalIcon || button.innerHTML;
         button.dataset.originalIcon = original;
         button.classList.add('copied');
-        button.innerHTML = '<i class="ri-check-line"></i>';
+        button.innerHTML = `<i class="icon" style="--icon:url('/assets/icons/ui/check.svg')" aria-hidden="true"></i>`;
         button._copyTimeout = setTimeout(() => {
           button.classList.remove('copied');
           button.innerHTML = button.dataset.originalIcon || original;
@@ -168,6 +180,7 @@ function createDashboardRender(deps) {
       const isAllowed = isModeAllowed(mode, allowed);
       option.disabled = !isAllowed;
       option.hidden = !isAllowed;
+
       if (mode === 'unlimited') {
         option.textContent = label;
       }
@@ -175,9 +188,11 @@ function createDashboardRender(deps) {
         firstAllowed = mode;
       }
     });
+
     if (!firstAllowed) {
       firstAllowed = 'unique';
     }
+    
     const current = selectEl.value === 'unlimited' ? 'unlimited' : 'unique';
     if (!isModeAllowed(current, allowed)) {
       selectEl.value = firstAllowed;
@@ -217,15 +232,22 @@ function createDashboardRender(deps) {
   }
 
   return {
+    // Activity stats
     getRangeStatLabel,
     getRangeStatValue,
+
+    // Counter data
     refreshCounters,
     renderAdminPreview,
     updateCounterMetadataRequest,
     copyEmbedSnippet,
+
+    // Auto refresh + edit state
     scheduleAutoRefresh,
     cancelAutoRefresh,
     changeEditPanelCount,
+
+    // Allowed modes
     applyAllowedModesToSelect,
     getFirstAllowedMode,
     normalizeAllowedModes,

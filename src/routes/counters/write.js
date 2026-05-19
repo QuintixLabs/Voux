@@ -6,27 +6,31 @@
 
 function registerCounterWriteRoutes(app, deps) {
   const {
+    // Auth + access
     requireAuth,
     requireAuthOrKey,
     authenticateRequest,
     hasAdminPermission,
     hasCounterAccess,
+
+    // Counter reads + validation
     normalizeModeFilter,
     getCounter,
     deleteCounter,
     updateCounterValue,
     validateCounterValue,
     updateCounterMetadata,
-    LABEL_LIMIT,
-    NOTE_LIMIT,
+
+    // Counter response helpers
     isKnownOwner,
     filterTagIds,
     serializeCounterWithStats,
+    getUserById,
     normalizeIdsInput,
-    deleteCountersByOwnerAndMode,
-    deleteCountersByOwner,
-    deleteCountersByMode,
-    deleteAllCounters,
+
+    // Limits + runtime guards
+    LABEL_LIMIT,
+    NOTE_LIMIT,
     isPrivateMode,
     getClientIp,
     checkCreationRate,
@@ -36,10 +40,15 @@ function registerCounterWriteRoutes(app, deps) {
     getDefaultMode,
     parseRequestedMode,
     isModeAllowed,
+
+    // Counter writes
+    deleteCountersByOwnerAndMode,
+    deleteCountersByOwner,
+    deleteCountersByMode,
+    deleteAllCounters,
     createCounter,
     recordCreationAttempt,
-    getBaseUrl,
-    serializeCounter
+    getBaseUrl
   } = deps;
 
   /* -------------------------------------------------------------------------- */
@@ -51,12 +60,14 @@ function registerCounterWriteRoutes(app, deps) {
     if (!ids.length) {
       return res.status(400).json({ error: 'ids_required' });
     }
+
     let deleted = 0;
     ids.forEach((id) => {
       const counter = getCounter(id);
       if (!counter) {
         return;
       }
+
       if (
         auth?.type === 'admin' &&
         !hasAdminPermission(auth, 'danger') &&
@@ -64,9 +75,11 @@ function registerCounterWriteRoutes(app, deps) {
       ) {
         return;
       }
+
       if (!hasCounterAccess(auth, counter)) {
         return;
       }
+
       if (deleteCounter(id)) {
         deleted += 1;
       }
@@ -82,6 +95,7 @@ function registerCounterWriteRoutes(app, deps) {
     if (!counter) {
       return res.status(404).json({ error: 'counter_not_found' });
     }
+
     if (
       req.auth?.type === 'admin' &&
       !hasAdminPermission(req.auth, 'danger') &&
@@ -89,9 +103,11 @@ function registerCounterWriteRoutes(app, deps) {
     ) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
+
     if (!hasCounterAccess(req.auth, counter)) {
       return res.status(403).json({ error: 'forbidden' });
     }
+    
     const removed = deleteCounter(req.params.id);
     if (!removed) {
       return res.status(404).json({ error: 'counter_not_found' });
@@ -110,10 +126,12 @@ function registerCounterWriteRoutes(app, deps) {
         .status(400)
         .json({ error: validation.error, message: validation.message });
     }
+
     const counter = getCounter(req.params.id);
     if (!counter) {
       return res.status(404).json({ error: 'counter_not_found' });
     }
+
     if (
       req.auth?.type === 'admin' &&
       !hasAdminPermission(req.auth, 'danger') &&
@@ -121,9 +139,11 @@ function registerCounterWriteRoutes(app, deps) {
     ) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
+
     if (!hasCounterAccess(req.auth, counter)) {
       return res.status(403).json({ error: 'forbidden' });
     }
+
     const updated = updateCounterValue(req.params.id, validation.value);
     if (!updated) {
       return res.status(404).json({ error: 'counter_not_found' });
@@ -139,6 +159,7 @@ function registerCounterWriteRoutes(app, deps) {
     if (!counter) {
       return res.status(404).json({ error: 'counter_not_found' });
     }
+
     if (
       req.auth?.type === 'admin' &&
       !hasAdminPermission(req.auth, 'danger') &&
@@ -146,9 +167,11 @@ function registerCounterWriteRoutes(app, deps) {
     ) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
+
     if (!hasCounterAccess(req.auth, counter)) {
       return res.status(403).json({ error: 'forbidden' });
     }
+
     const auth = authenticateRequest(req);
     const isAdmin = auth?.type === 'admin';
     const ownerKnown = isKnownOwner(counter.owner_id);
@@ -179,6 +202,7 @@ function registerCounterWriteRoutes(app, deps) {
       }
       nextValue = validation.value;
     }
+
     let nextNote = note;
     if (typeof nextNote === 'string') {
       nextNote = nextNote.trim().slice(0, NOTE_LIMIT);
@@ -187,12 +211,14 @@ function registerCounterWriteRoutes(app, deps) {
     } else {
       nextNote = '';
     }
+
     let nextTagIds = Array.isArray(counter.tags) ? [...counter.tags] : [];
     let includeTagsPatch = false;
     if (tags !== undefined && canEditTags) {
       nextTagIds = filterTagIds(Array.isArray(tags) ? tags : [], tagOwnerId);
       includeTagsPatch = true;
     }
+
     const stored = updateCounterMetadata(req.params.id, {
       label: nextLabel,
       value: nextValue,
@@ -203,6 +229,7 @@ function registerCounterWriteRoutes(app, deps) {
     if (!stored) {
       return res.status(500).json({ error: 'update_failed' });
     }
+
     const updated = getCounter(req.params.id);
     const canShowTags = Boolean(
       tagOwnerId &&
@@ -227,6 +254,7 @@ function registerCounterWriteRoutes(app, deps) {
     if (req.query.mode !== undefined && !modeFilter) {
       return res.status(400).json({ error: 'invalid_mode' });
     }
+
     const ownerOnly =
       auth?.type === 'admin' &&
       String(req.query.owner || '').toLowerCase() === 'me';
@@ -237,6 +265,7 @@ function registerCounterWriteRoutes(app, deps) {
     ) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
+
     if (auth?.type === 'user' || ownerOnly) {
       const ownerId = auth.user.id;
       if (modeFilter) {
@@ -253,13 +282,42 @@ function registerCounterWriteRoutes(app, deps) {
       const deletedCount = deleteCountersByOwner(ownerId);
       return res.json({ ok: true, deleted: deletedCount });
     }
+    
     if (modeFilter) {
       const deletedFiltered = deleteCountersByMode(modeFilter);
       return res.json({ ok: true, deleted: deletedFiltered, mode: modeFilter });
     }
+
     const deletedCount = deleteAllCounters();
     return res.json({ ok: true, deleted: deletedCount });
   });
+
+  function buildCreatedCounterPayload(counter, auth, tagOwnerId) {
+    const ownerKnown = isKnownOwner(counter.owner_id);
+    const isAdmin = auth?.type === 'admin';
+    const isOwner = Boolean(
+      counter.owner_id && auth?.user?.id === counter.owner_id
+    );
+    const canAdminTag = isAdmin && (!counter.owner_id || !ownerKnown);
+    const canEditTags = Boolean(isOwner || canAdminTag);
+    const canShowTags = Boolean(
+      tagOwnerId &&
+      ((counter.owner_id && counter.owner_id === tagOwnerId) ||
+        (isAdmin && (!counter.owner_id || !ownerKnown)))
+    );
+    return {
+      ...serializeCounterWithStats(counter, {
+        includeNote: true,
+        includeTags: canShowTags,
+        includeOwner: true,
+        tagOwnerId: canShowTags ? tagOwnerId : null
+      }),
+      canEditTags,
+      ownerUsername: counter.owner_id
+        ? getUserById(counter.owner_id)?.username || ''
+        : ''
+    };
+  }
 
   /* -------------------------------------------------------------------------- */
   /* Create Counter                                                             */
@@ -292,10 +350,18 @@ function registerCounterWriteRoutes(app, deps) {
 
     const runtimeConfig = getConfig();
     const defaultMode = getDefaultMode(runtimeConfig);
-    const { label = '', startValue = 0, tags = [], mode } = req.body || {};
+    const {
+      label = '',
+      note = '',
+      startValue = 0,
+      tags = [],
+      mode
+    } = req.body || {};
     const requestedModeInput = typeof mode === 'string' ? mode : defaultMode;
     const normalizedLabel =
       typeof label === 'string' ? label.trim().slice(0, 80) : '';
+    const normalizedNote =
+      typeof note === 'string' ? note.trim().slice(0, NOTE_LIMIT) : '';
     const startValidation = validateCounterValue(startValue);
     const auth = authenticateRequest(req);
     const ownerId =
@@ -307,10 +373,12 @@ function registerCounterWriteRoutes(app, deps) {
     if (modeResult.error) {
       return res.status(400).json({ error: modeResult.error });
     }
+
     const requestedMode = modeResult.mode;
     if (!isModeAllowed(requestedMode, runtimeConfig)) {
       return res.status(400).json({ error: 'mode_not_allowed' });
     }
+    
     if (startValidation.error) {
       const errorPayload = { error: startValidation.error };
       if (startValidation.message) {
@@ -321,6 +389,7 @@ function registerCounterWriteRoutes(app, deps) {
 
     const counter = createCounter({
       label: normalizedLabel,
+      note: normalizedNote,
       startValue: startValidation.value,
       mode: requestedMode,
       tags: tagIds,
@@ -336,11 +405,7 @@ function registerCounterWriteRoutes(app, deps) {
     const embedSvgUrl = `${baseUrl}/embed/${counter.id}.svg`;
     const embedSvgCode = `<img src="${embedSvgUrl}" alt="Voux counter">`;
     return res.status(201).json({
-      counter: serializeCounter(counter, {
-        includeNote: true,
-        includeTags: true,
-        tagOwnerId: ownerId
-      }),
+      counter: buildCreatedCounterPayload(counter, auth, ownerId),
       embedCode,
       embedUrl,
       embedSvgCode,

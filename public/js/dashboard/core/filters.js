@@ -9,20 +9,29 @@
 /* -------------------------------------------------------------------------- */
 function createDashboardFilters(deps) {
   const {
+    // State
     state,
+
+    // Filter controls
     counterSearchInput,
     counterSearchClear,
     ownerFilterToggle,
     modeFilterSelect,
     sortFilterSelect,
     activityRangeControls,
+
+    // Pagination controls
     paginationEl,
     paginationInfo,
     prevPageBtn,
     nextPageBtn,
     topPaginationInfo,
+
+    // Totals + persistence
     counterTotalValue,
     saveOwnerFilterPreference,
+
+    // Counter data
     refreshCounters,
     renderCounterList,
     updateDeleteFilteredState,
@@ -37,11 +46,14 @@ function createDashboardFilters(deps) {
   function handleSearchInput() {
     if (!counterSearchInput) return;
     toggleSearchClear();
+
     const value = counterSearchInput.value.trim().slice(0, 80);
     clearTimeout(searchDebounce);
     searchDebounce = setTimeout(() => {
+
       if (value === state.searchQuery) return;
       state.searchQuery = value;
+
       if (state.user) {
         refreshCounters(1);
       }
@@ -52,8 +64,10 @@ function createDashboardFilters(deps) {
     if (!counterSearchInput) return;
     counterSearchInput.value = '';
     toggleSearchClear();
+
     if (!state.searchQuery) return;
     state.searchQuery = '';
+
     if (state.user) {
       refreshCounters(1);
     }
@@ -62,8 +76,10 @@ function createDashboardFilters(deps) {
   function handleOwnerFilterToggle() {
     if (!state.isAdmin) return;
     state.ownerOnly = !state.ownerOnly;
+
     saveOwnerFilterPreference(state.ownerOnly);
     syncOwnerFilterToggle();
+
     if (state.user) {
       refreshCounters(1);
     }
@@ -108,9 +124,11 @@ function createDashboardFilters(deps) {
   function handleActivityRangeClick(event) {
     const button = event.target.closest('button[data-range]');
     if (!button) return;
+
     const range = button.dataset.range;
     if (!range || range === state.activityRange) return;
     state.activityRange = range;
+    
     updateActivityRangeButtons();
     renderCounterList(state.latestCounters);
   }
@@ -129,17 +147,20 @@ function createDashboardFilters(deps) {
   function updatePagination() {
     if (!paginationEl || !paginationInfo || !prevPageBtn || !nextPageBtn)
       return;
+
     if (state.totalPages <= 1) {
       paginationEl.classList.add('hidden');
       if (topPaginationInfo) topPaginationInfo.classList.add('hidden');
       return;
     }
+
     paginationEl.classList.remove('hidden');
     paginationInfo.textContent = `Page ${state.page} / ${state.totalPages}`;
     if (topPaginationInfo) {
       topPaginationInfo.textContent = `Page ${state.page} / ${state.totalPages}`;
       topPaginationInfo.classList.remove('hidden');
     }
+
     prevPageBtn.disabled = state.page <= 1;
     nextPageBtn.disabled = state.page >= state.totalPages;
   }
@@ -166,17 +187,20 @@ function createDashboardFilters(deps) {
           ));
       if (isTextInput) return;
     }
+
     const keepScroll = () => {
       const top = window.scrollY;
       requestAnimationFrame(() =>
         window.scrollTo({ top, left: 0, behavior: 'auto' })
       );
     };
+
     if (event.key === 'ArrowLeft' && !prevPageBtn?.disabled) {
       event.preventDefault();
       handlePageNavigation(Math.max(1, state.page - 1), { skipScroll: true });
       keepScroll();
     }
+
     if (event.key === 'ArrowRight' && !nextPageBtn?.disabled) {
       event.preventDefault();
       handlePageNavigation(Math.min(state.totalPages, state.page + 1), {
@@ -184,6 +208,7 @@ function createDashboardFilters(deps) {
       });
       keepScroll();
     }
+    
     if (event.shiftKey && (event.key === 'A' || event.key === 'a')) {
       event.preventDefault();
       handleSelectAll();
@@ -211,6 +236,7 @@ function createDashboardFilters(deps) {
   }
 
   return {
+    // Search + owner filters
     handleSearchInput,
     handleSearchClear,
     handleOwnerFilterToggle,
@@ -218,10 +244,14 @@ function createDashboardFilters(deps) {
     handleModeFilterChange,
     handleSortChange,
     toggleSearchClear,
+
+    // Activity range + totals
     handleActivityRangeClick,
     updateActivityRangeButtons,
     updatePagination,
     updateCounterTotal,
+
+    // Pagination controls
     handlePaginationHotkeys,
     handlePageNavigation
   };

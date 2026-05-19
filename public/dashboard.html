@@ -8,21 +8,26 @@
   <title data-page-title="Dashboard">Voux · Dashboard</title>
 
   <!-- External libraries -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
-    rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css"/> <!-- 'monolith' theme -->
   
   <!-- Icons -->
-  <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
-  <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/assets/logos/svg/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/assets/logos/svg/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
 
   <!-- Local styles -->
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
   <link rel="stylesheet" href="/css/styles.css?v=%APP_VERSION%" />
 
+  <script>
+    try {
+      if (
+        localStorage.getItem('voux_session_hint') === '1' &&
+        localStorage.getItem('voux_nav_user')
+      ) {
+        document.documentElement.classList.add('nav-auth-cached');
+      }
+    } catch {}
+  </script>
 </head>
 
 <body data-page="dashboard" class="dashboard-initializing">
@@ -45,25 +50,25 @@
 
   <header class="site-nav">
     <a class="brand" href="/">
-      <img src="/assets/logo-text.png" alt="Voux" />
+      <img src="/assets/logos/png/logo-text.png" alt="Voux" />
     </a>
     <div class="nav-account">
-      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"></button>
+      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"><i class="icon" style="--icon:url('/assets/icons/ui/account-circle-fill.svg')" aria-hidden="true"></i></button>
             <div class="account-menu" id="navAccountMenu">
 <a href="/profile" class="account-menu__link">
-          <i class="ri-user-3-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/user.svg')" aria-hidden="true"></i>
           Profile
         </a>
 <a href="/dashboard" class="account-menu__link">
-          <i class="ri-eye-2-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/dashboard-eye.svg')" aria-hidden="true"></i>
           Dashboard
         </a>
 <a href="/settings" class="account-menu__link">
-          <i class="ri-settings-3-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/settings.svg')" aria-hidden="true"></i>
           Settings
         </a>
 <button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
-          <i class="ri-logout-box-r-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/logout.svg')" aria-hidden="true"></i>
           Log out
         </button>
       </div>
@@ -74,7 +79,7 @@
     <header class="hero">
       <p class="eyebrow">
         <span class="eyebrow-logo">
-          <img src="/assets/logo.png" alt="Voux logo" />
+          <img src="/assets/logos/png/logo.png" alt="" />
         </span>
         <span data-brand-text data-brand-page="Dashboard">Voux · Dashboard</span>
       </p>
@@ -88,15 +93,15 @@
       <p id="loginStatus" class="hint hidden">Checking your session...</p>
       <form id="admin-form" class="admin-form login-form" action="javascript:void(0);" novalidate>
         <div class="input-icon">
-          <span class="input-icon__icon" aria-hidden="true"><i class="ri-user-3-line"></i></span>
+          <span class="input-icon__icon" aria-hidden="true"><i class="icon" style="--icon:url('/assets/icons/ui/user.svg')" aria-hidden="true"></i></span>
           <input type="text" id="loginUsername" placeholder="Username" autocomplete="username" required />
         </div>
         <div class="field login-form__field">
           <div class="password-field">
-            <span class="password-field__icon" aria-hidden="true"><i class="ri-lock-line"></i></span>
+            <span class="password-field__icon" aria-hidden="true"><i class="icon" style="--icon:url('/assets/icons/ui/lock.svg')" aria-hidden="true"></i></span>
             <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" required />
             <button type="button" class="password-toggle" aria-label="Show password">
-              <i class="ri-eye-line" aria-hidden="true"></i>
+              <i class="icon" style="--icon:url('/assets/icons/ui/eye.svg')" aria-hidden="true"></i>
             </button>
           </div>
           <small id="loginError" class="modal__input-error is-hidden" role="alert" aria-live="polite">Login failed. Check your details.</small>
@@ -148,7 +153,7 @@
                 <div class="tag-inline-actions">
                   <span class="tag-inline-hint" id="createTagCounterHint">0 counters</span>
                   <button type="button" class="ghost tag-inline-button" id="createTagManage">
-                    <i class="ri-price-tag-3-line" aria-hidden="true"></i>
+                    <i class="icon" style="--icon:url('/assets/icons/ui/price-tag.svg')" aria-hidden="true"></i>
                     <span>New tag</span>
                   </button>
                 </div>
@@ -159,10 +164,13 @@
             </div>
             <div class="field">
               <div class="field__label" id="adminModeLabel">Counting mode</div>
-              <select id="adminCooldownSelect" aria-labelledby="adminModeLabel">
-                <option value="unique">Unique visitors</option>
-                <option value="unlimited">Every visit</option>
-              </select>
+              <div class="select-shell">
+                <select id="adminCooldownSelect" aria-labelledby="adminModeLabel">
+                  <option value="unique">Unique visitors</option>
+                  <option value="unlimited">Every visit</option>
+                </select>
+                <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
+              </div>
             </div>
             <button type="submit">Generate</button>
           </form>
@@ -181,13 +189,13 @@
             </div>
             <div class="embed-snippet" data-embed-panel="script">
               <div class="code-snippet embed-code">
-                <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+                <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
                 <pre><code class="language-html" id="adminEmbedSnippetCode"></code></pre>
               </div>
             </div>
             <div class="embed-snippet embed-snippet--dual hidden" data-embed-panel="svg">
               <div class="code-snippet embed-code">
-                <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+                <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
                 <pre><code class="language-html" id="adminEmbedSvgSnippetCode"></code></pre>
               </div>
             </div>
@@ -211,15 +219,15 @@
                 <span class="counter-total__value" id="counterTotalValue">0</span>
               </div>
               <div class="admin-panel__delete-group">
-                <button type="button" id="deleteFiltered" class="danger ghost deleteclass hidden" disabled><i class="ri-delete-bin-line"></i> Delete filtered</button>
-                <button type="button" id="deleteAll" class="danger ghost deleteclass"><i class="ri-indeterminate-circle-line"></i> Delete all counters</button>
+                <button type="button" id="deleteFiltered" class="danger ghost deleteclass hidden" disabled><i class="icon" style="--icon:url('/assets/icons/ui/delete.svg')" aria-hidden="true"></i> Delete filtered</button>
+                <button type="button" id="deleteAll" class="danger ghost deleteclass"><i class="icon" style="--icon:url('/assets/icons/ui/indeterminate-circle.svg')" aria-hidden="true"></i> Delete all counters</button>
               </div>
             </div>
           </div>
           <div class="admin-search">
             <label class="sr-only" for="counterSearchInput">Search counters</label>
             <div class="admin-search__field">
-              <i class="ri-search-line" aria-hidden="true"></i>
+              <i class="icon" style="--icon:url('/assets/icons/ui/search.svg')" aria-hidden="true"></i>
               <input type="text" id="counterSearchInput" placeholder="Search by label, ID or Note" autocomplete="off" spellcheck="false" />
               <button
                 type="button"
@@ -234,34 +242,40 @@
           <div class="admin-filters">
             <label class="admin-filter">
               <span>Counting mode</span>
-              <select id="modeFilter">
-                <option value="all">All modes</option>
-                <option value="unique">Unique visitors</option>
-                <option value="unlimited">Every visit</option>
-              </select>
+              <div class="select-shell">
+                <select id="modeFilter">
+                  <option value="all">All modes</option>
+                  <option value="unique">Unique visitors</option>
+                  <option value="unlimited">Every visit</option>
+                </select>
+                <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
+              </div>
             </label>
             <label class="admin-filter">
               <span>Sort by</span>
-              <select id="sortFilter">
-                <option value="" disabled selected>— Date —</option>
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-                <option value="" disabled>— Views —</option>
-                <option value="views">Most views</option>
-                <option value="views_asc">Least views</option>
-                <option value="" disabled>— Activity —</option>
-                <option value="last_hit">Latest hit</option>
-                <option value="inactive">Inactive only</option>
-              </select>
+              <div class="select-shell">
+                <select id="sortFilter">
+                  <option value="" disabled selected>— Date —</option>
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="" disabled>— Views —</option>
+                  <option value="views">Most views</option>
+                  <option value="views_asc">Least views</option>
+                  <option value="" disabled>— Activity —</option>
+                  <option value="last_hit">Latest hit</option>
+                  <option value="inactive">Inactive only</option>
+                </select>
+                <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
+              </div>
             </label>
             <div class="admin-filter tag-filter" id="tagFilterControls">
               <span>Tags</span>
-              <button type="button" class="ghost filter-button" id="tagFilterButton"><i class="ri-price-tag-3-line"></i> Filter</button>
+              <button type="button" class="ghost filter-button" id="tagFilterButton"><i class="icon" style="--icon:url('/assets/icons/ui/price-tag.svg')" aria-hidden="true"></i> Filter</button>
               <div class="tag-filter__menu hidden" id="tagFilterMenu">
                 <div class="tag-filter__list toggle-filter" id="tagFilterList"></div>
                 <div class="tag-filter__footer">
-                  <button type="button" class="ghost filter-button2" id="clearTagFilter"><i class="ri-restart-line"></i> Clear</button>
-                  <button type="button" class="ghost filter-button2" id="tagFilterCreate"><i class="ri-add-circle-line"></i> New tag</button>
+                  <button type="button" class="ghost filter-button2" id="clearTagFilter"><i class="icon" style="--icon:url('/assets/icons/ui/restart.svg')" aria-hidden="true"></i> Clear</button>
+                  <button type="button" class="ghost filter-button2" id="tagFilterCreate"><i class="icon" style="--icon:url('/assets/icons/ui/add-circle.svg')" aria-hidden="true"></i> New tag</button>
                 </div>
                 <p class="tag-count-hint">0 tags</p>
               </div>
@@ -289,11 +303,11 @@
           <div class="selection-toolbar hidden" id="selectionToolbar">
             <span class="selection-toolbar__count" id="selectionCount">0 selected</span>
             <div class="selection-toolbar__actions">
-              <button type="button" class="ghost buttons-toolbar__actions" id="downloadSelected"><i class="ri-download-2-line"></i> Download JSON</button>
-              <button type="button" class="danger ghost buttons-toolbar__actions" id="deleteSelected"><i class="ri-delete-bin-line"></i> Delete</button>
-              <button type="button" class="ghost buttons-toolbar__actions" id="addTagsSelected"><i class="ri-price-tag-3-line"></i> Add tags</button>
-              <button type="button" class="ghost buttons-toolbar__actions" id="selectAll"><i class="ri-checkbox-multiple-line"></i> Select all</button>
-              <button type="button" class="ghost selection-toolbar__clear buttons-toolbar__actions" id="clearSelection"><i class="ri-close-circle-line"></i> Clear</button>
+              <button type="button" class="ghost buttons-toolbar__actions" id="downloadSelected"><i class="icon" style="--icon:url('/assets/icons/ui/download.svg')" aria-hidden="true"></i> Download JSON</button>
+              <button type="button" class="danger ghost buttons-toolbar__actions" id="deleteSelected"><i class="icon" style="--icon:url('/assets/icons/ui/delete.svg')" aria-hidden="true"></i> Delete</button>
+              <button type="button" class="ghost buttons-toolbar__actions" id="addTagsSelected"><i class="icon" style="--icon:url('/assets/icons/ui/price-tag.svg')" aria-hidden="true"></i> Add tags</button>
+              <button type="button" class="ghost buttons-toolbar__actions" id="selectAll"><i class="icon" style="--icon:url('/assets/icons/ui/checkbox-multiple.svg')" aria-hidden="true"></i> Select all</button>
+              <button type="button" class="ghost selection-toolbar__clear buttons-toolbar__actions" id="clearSelection"><i class="icon" style="--icon:url('/assets/icons/ui/close-circle.svg')" aria-hidden="true"></i> Clear</button>
             </div>
           </div>
           <div id="adminControls" class="hidden admin-controls">
@@ -301,9 +315,9 @@
               <p class="hint">No counters yet.</p>
             </div>
             <div id="adminPagination" class="admin-pagination hidden">
-              <button type="button" id="prevPage" class="ghost"><i class="ri-arrow-left-line"></i></button>
+              <button type="button" id="prevPage" class="ghost"><i class="icon" style="--icon:url('/assets/icons/ui/arrow-left.svg')" aria-hidden="true"></i></button>
               <span id="paginationInfo" class="pagination-info">Page 1</span>
-              <button type="button" id="nextPage" class="ghost"><i class="ri-arrow-right-line"></i></button>
+              <button type="button" id="nextPage" class="ghost"><i class="icon" style="--icon:url('/assets/icons/ui/arrow-right.svg')" aria-hidden="true"></i></button>
             </div>
           </div>
         </section>
@@ -314,11 +328,11 @@
   <div data-footer-root></div>
 
   <!-- Local scripts -->
+  <script src="/js/layout/nav.js?v=%APP_VERSION%"></script>
   <script src="/js/utils/modal.js?v=%APP_VERSION%" defer></script>
   <script src="/js/utils/state.js?v=%APP_VERSION%" defer></script>
   <script src="/js/utils/errors.js?v=%APP_VERSION%" defer></script>
   <script src="/js/appearance/theme.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/layout/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/layout/footer.js?v=%APP_VERSION%" defer></script>
   <script src="/js/dashboard/index.js?v=%APP_VERSION%" type="module"></script>
   <script src="/js/appearance/brand.js?v=%APP_VERSION%" defer></script>

@@ -1,5 +1,5 @@
 /*
-  settings/core/session.js
+  public/js/settings/core/session.js
 
   Session check and settings page bootstrap for admin/member views.
 */
@@ -9,6 +9,7 @@
 /* -------------------------------------------------------------------------- */
 function createSessionManager(deps) {
   const {
+    // Settings shell
     usersPager,
     togglePrivate,
     toggleGuides,
@@ -16,11 +17,17 @@ function createSessionManager(deps) {
     allowModeUnlimitedInput,
     autoBackupSection,
     backupDesc,
+
+    // Session state
     getActiveUser,
     setActiveUser,
     fetchSettings,
+
+    // Feedback
     showToast,
     setStatus,
+
+    // Settings modules
     setupBackupControls,
     setupApiKeys,
     setupUsers,
@@ -40,21 +47,21 @@ function createSessionManager(deps) {
     };
     const attempt = async () => {
       const getSession = window.VouxState?.getSession
-        ? window.VouxState.getSession({ force: true })
+        ? window.VouxState.getSession()
         : fetch('/api/session', { credentials: 'include', cache: 'no-store' })
             .then((res) => (res.ok ? res.json() : null))
             .catch(() => null);
       const data = await getSession;
-      if (!data || !data.user) {
+      if (data?.unauthorized) {
         return { ok: false, unauthorized: true };
+      }
+      if (!data || !data.user) {
+        return { ok: false, unauthorized: false };
       }
       return { ok: true, data };
     };
     try {
-      let result = await attempt();
-      if (!result.ok && result.unauthorized) {
-        result = await attempt();
-      }
+      const result = await attempt();
       if (!result.ok) {
         if (result.unauthorized) {
           window.location.href = '/dashboard';
@@ -102,6 +109,10 @@ function createSessionManager(deps) {
             usersPager.pageSize = usersPageSize;
           }
           const effectiveAdminPermissions = adminPermissions?.effective || null;
+          setActiveUser({
+            ...(getActiveUser() || {}),
+            adminPermissions: effectiveAdminPermissions
+          });
           adminPermissionsManager.applyAdminPermissionsUI(
             effectiveAdminPermissions,
             Boolean(getActiveUser()?.isOwner)

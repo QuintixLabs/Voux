@@ -12,18 +12,25 @@ import {
   bindSnippetCopyButtons
 } from '../utils/snippets.js';
 import {
+  // Form + results
   form,
   resultSection,
   snippetCode,
   svgSnippetCode,
+
+  // Embed preview
   embedToggles,
   embedPanels,
   embedDescs,
   previewTarget,
+
+  // Home sections
   builderSection,
   privateDashboardCard,
   stylingCard,
   selfHostCard,
+
+  // Counter inputs
   cooldownSelect,
   startValueInput
 } from './shared/dom.js';
@@ -32,9 +39,7 @@ import { initGuideExpanders, toggleGuideCards } from './features/guides.js';
 import { createHomeEmbedManager } from './features/embed.js';
 import { createHomeCreateCounterManager } from './core/createCounter.js';
 
-/* -------------------------------------------------------------------------- */
-/* Constants                                                                  */
-/* -------------------------------------------------------------------------- */
+// constants
 const START_VALUE_DIGIT_LIMIT = 18;
 const themeHelper = window.VouxTheme;
 
@@ -42,21 +47,31 @@ const themeHelper = window.VouxTheme;
 /* Setup                                                                      */
 /* -------------------------------------------------------------------------- */
 const embedManager = createHomeEmbedManager({
+  // Embed controls
   embedToggles,
   embedPanels,
   embedDescs,
+
+  // Embed preview
   previewTarget
 });
 
 const createCounterManager = createHomeCreateCounterManager({
+  // Form controls
   form,
   cooldownSelect,
   startValueInput,
+
+  // Home sections
   builderSection,
   privateDashboardCard,
+
+  // Limits + feedback
   START_VALUE_DIGIT_LIMIT,
   showAlert,
   buildCreateCounterErrorMessage,
+
+  // Home shell
   themeHelper,
   onGuideVisibilityChange: (shouldShow) =>
     toggleGuideCards([stylingCard, selfHostCard], shouldShow),

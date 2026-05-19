@@ -8,6 +8,9 @@ function createUsersApi(db, helpers, cryptoApi) {
   const { generateId, normalizeUserRow } = helpers;
   const { hashPassword } = cryptoApi;
 
+  /* -------------------------------------------------------------------------- */
+  /* User queries                                                               */
+  /* -------------------------------------------------------------------------- */
   const listUsersStmt = db.prepare(
     'SELECT id, username, role, display_name, avatar_url, created_at, updated_at, last_login_at FROM users ORDER BY created_at DESC'
   );
@@ -43,6 +46,9 @@ function createUsersApi(db, helpers, cryptoApi) {
     "SELECT COUNT(*) as total FROM users WHERE role = 'admin'"
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* User reads                                                                 */
+  /* -------------------------------------------------------------------------- */
   function listUsers() {
     return listUsersStmt.all().map(normalizeUserRow);
   }
@@ -62,6 +68,9 @@ function createUsersApi(db, helpers, cryptoApi) {
     return getUserByUsernameStmt.get(String(username).toLowerCase()) || null;
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* User writes                                                                */
+  /* -------------------------------------------------------------------------- */
   function createUser({
     username,
     password,
@@ -140,6 +149,9 @@ function createUsersApi(db, helpers, cryptoApi) {
     return getUserById(id);
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* User counts                                                                */
+  /* -------------------------------------------------------------------------- */
   function countUsers() {
     const { total } = countUsersStmt.get();
     const normalized = typeof total === 'bigint' ? Number(total) : total;
@@ -153,14 +165,21 @@ function createUsersApi(db, helpers, cryptoApi) {
   }
 
   return {
+    // User reads
     listUsers,
     getOwnerUser,
     getUserById,
     getUserByUsername,
+
+    // User writes
     createUser,
     updateUser,
+
+    // User counts
     countUsers,
     countAdmins,
+
+    // Shared statements
     _stmts: {
       deleteUserStmt,
       updateUserLoginStmt

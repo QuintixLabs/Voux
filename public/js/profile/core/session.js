@@ -46,6 +46,15 @@ function createProfileSession(deps) {
       profileDisplayText.textContent = user.displayName || 'No display name';
       profileDisplayText.classList.toggle('hint', !user.displayName);
     }
+    if (profileRoleText) {
+      profileRoleText.textContent = user.isOwner
+        ? 'Owner'
+        : user.role === 'admin' || user.isAdmin
+          ? 'Admin'
+          : user.role
+            ? 'Member'
+            : '';
+    }
     setAvatarPreview(user.avatarUrl || '', user.displayName || user.username);
   }
 
@@ -76,6 +85,22 @@ function createProfileSession(deps) {
       );
     }
 
+    try {
+      const currentSession = window.VouxState?.getSession
+        ? window.VouxState.getSession()
+        : null;
+      Promise.resolve(currentSession).then((sessionData) => {
+        const nextSession = {
+          ...(sessionData || {}),
+          user: {
+            ...(sessionData?.user || {}),
+            ...updated
+          }
+        };
+        window.VouxState?.setSession?.(nextSession);
+      });
+    } catch {}
+
     document.dispatchEvent(
       new CustomEvent('voux:session-updated', { detail: { user: updated } })
     );
@@ -87,8 +112,18 @@ function createProfileSession(deps) {
     };
 
     const cachedUser = readCachedUser();
+    const hasSessionHint = (() => {
+      try {
+        return localStorage.getItem('voux_session_hint') === '1';
+      } catch {
+        return false;
+      }
+    })();
     if (cachedUser) {
       applyCachedProfile(cachedUser);
+      if (hasSessionHint) {
+        revealPage();
+      }
     }
 
     const attempt = async () => {
@@ -104,10 +139,7 @@ function createProfileSession(deps) {
     };
 
     try {
-      let result = await attempt();
-      if (!result.ok && result.unauthorized) {
-        result = await attempt();
-      }
+      const result = await attempt();
 
       if (!result.ok) {
         if (result.unauthorized) {

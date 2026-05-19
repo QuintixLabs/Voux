@@ -5,6 +5,9 @@
 */
 
 function createCounterCreationLimiter(options = {}) {
+  /* -------------------------------------------------------------------------- */
+  /* Limit config                                                               */
+  /* -------------------------------------------------------------------------- */
   const limitCount = Math.max(1, Number(options.limitCount) || 5);
   const limitWindowMs = Math.max(
     1000,
@@ -27,11 +30,15 @@ function createCounterCreationLimiter(options = {}) {
   const tracker = new Map();
   let nextMaintenanceAt = 0;
 
+  /* -------------------------------------------------------------------------- */
+  /* Entry helpers                                                              */
+  /* -------------------------------------------------------------------------- */
   function getEntry(ip, now) {
     const existing = tracker.get(ip);
     if (!existing) {
       return { timestamps: [], lastSeen: now };
     }
+    
     const timestamps = Array.isArray(existing.timestamps)
       ? existing.timestamps.filter((ts) => now - ts < limitWindowMs)
       : [];
@@ -41,6 +48,9 @@ function createCounterCreationLimiter(options = {}) {
     return { timestamps, lastSeen };
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Tracker maintenance                                                        */
+  /* -------------------------------------------------------------------------- */
   function prune(now) {
     for (const [ip] of tracker.entries()) {
       const entry = getEntry(ip, now);

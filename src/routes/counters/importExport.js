@@ -6,10 +6,13 @@
 
 function registerCounterImportExportRoutes(app, deps) {
   const {
+    // Auth middleware
     requireAuth,
     authenticateRequest,
     hasAdminPermission,
     getOwnerId,
+
+    // Counter export
     exportCounters,
     exportDailyActivityFor,
     exportDailyActivity,
@@ -17,12 +20,16 @@ function registerCounterImportExportRoutes(app, deps) {
     listTagCatalog,
     exportCountersByIds,
     normalizeIdsInput,
+
+    // Counter import
     importCounters,
     importCountersForOwner,
     mergeTagCatalog,
     importDailyActivity,
     importDailyActivityFor,
     seedLastHitsFromDaily,
+
+    // Ownership checks
     isKnownOwner
   } = deps;
 
@@ -95,6 +102,7 @@ function registerCounterImportExportRoutes(app, deps) {
     if (!ids.length) {
       return res.status(400).json({ error: 'ids_required' });
     }
+
     const counters = exportCountersByIds(ids, ownerId)
       .map(normalizeCounterForExport)
       .filter(Boolean)
@@ -110,12 +118,15 @@ function registerCounterImportExportRoutes(app, deps) {
         }
         return counter;
       });
+      
     if (!counters.length) {
       return res.status(404).json({ error: 'counters_not_found' });
     }
+
     if (ownerId && counters.length !== ids.length) {
       return res.status(403).json({ error: 'forbidden' });
     }
+
     const counterIds = counters.map((counter) => counter.id);
     const daily = exportDailyActivityFor(counterIds);
     return res.json({
@@ -152,6 +163,7 @@ function registerCounterImportExportRoutes(app, deps) {
         dailyPayload = req.body.daily;
       }
     }
+
     if (!payload) {
       return res.status(400).json({ error: 'invalid_backup_format' });
     }
@@ -171,6 +183,7 @@ function registerCounterImportExportRoutes(app, deps) {
           replace: Boolean(replace),
           tagOwnerId: requesterIsOwner ? ownerId : null
         });
+
         let dailyImported = 0;
         if (dailyPayload.length) {
           dailyImported = importDailyActivity(dailyPayload);
@@ -178,6 +191,7 @@ function registerCounterImportExportRoutes(app, deps) {
         }
         return res.json({ ok: true, imported, dailyImported });
       }
+
       const userOwnerId = auth.user.id;
       const imported = importCountersForOwner(
         payload,
@@ -192,6 +206,7 @@ function registerCounterImportExportRoutes(app, deps) {
         dailyImported = importDailyActivityFor(ids, dailyPayload);
         seedLastHitsFromDaily(dailyPayload, { ids });
       }
+      
       return res.json({ ok: true, imported, dailyImported });
     } catch (error) {
       const message = error.message || 'import_failed';

@@ -49,9 +49,12 @@ function enhanceCodeSnippets(root = document) {
     const code = snippet.querySelector('code');
     const language = formatSnippetLanguage(code);
     lang.replaceChildren();
+    
     const icon = document.createElement('i');
-    icon.className = 'ri-code-s-slash-line';
+    icon.className = 'icon';
+    icon.style.setProperty('--icon', "url('/assets/icons/ui/code-s-slash.svg')");
     icon.setAttribute('aria-hidden', 'true');
+
     const label = document.createElement('span');
     label.textContent = language;
     lang.append(icon, label);
@@ -79,7 +82,7 @@ function bindSnippetCopyButtons(
 
       navigator.clipboard.writeText(text).then(() => {
         const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="ri-check-line"></i>';
+        button.innerHTML = `<i class="icon" style="--icon:url('/assets/icons/ui/check.svg')" aria-hidden="true"></i>`;
         button.classList.add('copied');
         button.disabled = true;
 

@@ -1,5 +1,5 @@
 /*
-  settings/core/tabs.js
+  public/js/settings/core/tabs.js
 
   Settings tab navigation and card visibility.
 */

@@ -1,5 +1,5 @@
 /*
-  dashboard/shared/helpers.js
+  public/js/dashboard/shared/helpers.js
 
   Shared helper functions for dashboard formatting and normalization.
 */
@@ -12,6 +12,7 @@ function formatNumber(value) {
   if (typeof value === 'bigint') {
     return value.toLocaleString();
   }
+
   if (typeof value === 'string' && /^\d+$/.test(value)) {
     try {
       return BigInt(value).toLocaleString();
@@ -19,6 +20,7 @@ function formatNumber(value) {
       // fall through
     }
   }
+
   const num = Number(value);
   if (!Number.isFinite(num)) return '0';
   return num.toLocaleString();
@@ -28,6 +30,7 @@ function formatLastHit(timestamp) {
   if (!timestamp) {
     return 'No hits yet';
   }
+
   const diff = Date.now() - timestamp;
   if (diff <= 0) return 'Just now';
   const seconds = Math.floor(diff / 1000);
@@ -37,18 +40,22 @@ function formatLastHit(timestamp) {
   if (seconds < minute) {
     return 'Just now';
   }
+
   if (seconds < hour) {
     const mins = Math.floor(seconds / minute);
     return `${mins}m ago`;
   }
+
   if (seconds < day) {
     const hours = Math.floor(seconds / hour);
     return `${hours}h ago`;
   }
+
   if (seconds < day * 30) {
     const days = Math.floor(seconds / day);
     return `${days}d ago`;
   }
+
   return new Date(timestamp).toLocaleDateString();
 }
 
@@ -119,12 +126,19 @@ function resolveActivityLevel(hits, ratio) {
 }
 
 export {
+  // Formatting helpers
   formatNumber,
   formatLastHit,
+
+  // Search/tag text helpers
   truncateQuery,
   extractTagIds,
   slugifyFilename,
+
+  // Color helpers
   normalizeHexColor,
   getTagContrastColor,
+  
+  // Activity helpers
   resolveActivityLevel
 };

@@ -10,6 +10,9 @@ function createSessionsApi(db, helpers, cryptoApi, usersApi) {
   const { generateId } = helpers;
   const { hashToken } = cryptoApi;
 
+  /* -------------------------------------------------------------------------- */
+  /* Session queries                                                            */
+  /* -------------------------------------------------------------------------- */
   const insertSessionStmt = db.prepare(`
     INSERT INTO sessions (id, user_id, token_hash, created_at, expires_at)
     VALUES (@id, @user_id, @token_hash, @created_at, @expires_at)
@@ -27,6 +30,9 @@ function createSessionsApi(db, helpers, cryptoApi, usersApi) {
     'UPDATE counters SET owner_id = NULL WHERE owner_id = ?'
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* User cleanup                                                               */
+  /* -------------------------------------------------------------------------- */
   function deleteUser(id) {
     const result = usersApi._stmts.deleteUserStmt.run(id);
     if (result.changes > 0) {
@@ -37,6 +43,9 @@ function createSessionsApi(db, helpers, cryptoApi, usersApi) {
     return false;
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Session CRUD                                                               */
+  /* -------------------------------------------------------------------------- */
   function createSession(userId, ttlMs) {
     const token = crypto.randomBytes(24).toString('hex');
     const now = Date.now();
@@ -72,15 +81,23 @@ function createSessionsApi(db, helpers, cryptoApi, usersApi) {
     return result.changes > 0;
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* User login bookkeeping                                                     */
+  /* -------------------------------------------------------------------------- */
   function recordUserLogin(userId) {
     usersApi._stmts.updateUserLoginStmt.run(Date.now(), userId);
   }
 
   return {
+    // Session CRUD
     createSession,
     findSession,
     deleteSession,
+
+    // User login bookkeeping
     recordUserLogin,
+
+    // User cleanup
     deleteUser
   };
 }

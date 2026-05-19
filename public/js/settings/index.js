@@ -1,5 +1,5 @@
 /*
-  settings/index.js
+  public/js/settings/index.js
 
   Admin settings page logic: toggles, backups, and API key management.
 */
@@ -41,16 +41,23 @@ import {
   // API keys UI
   apiKeysCard,
   apiKeysList,
+  apiKeySearchInput,
+  apiKeyFilterSelect,
+  apiKeyCreateOpen,
   apiKeyForm,
   apiKeyNameInput,
   apiKeyScopeSelect,
   apiKeyCountersField,
   apiKeyCountersInput,
+  apiKeyCountersError,
   apiKeyStatusLabel,
   apiKeysPagination,
   apiKeysPrevBtn,
   apiKeysNextBtn,
   apiKeysPageInfo,
+  apiKeysCountLabel,
+  apiKeyModal,
+  apiKeyCancel,
 
   // Branding UI
   brandingForm,
@@ -70,6 +77,7 @@ import {
   usersPrevBtn,
   usersNextBtn,
   usersPageInfo,
+  usersCountLabel,
   userForm,
   userNameInput,
   userDisplayInput,
@@ -165,16 +173,23 @@ const apiKeysManager = createApiKeysManager({
   apiKeyPager,
   apiKeysCard,
   apiKeysList,
+  apiKeySearchInput,
+  apiKeyFilterSelect,
+  apiKeyCreateOpen,
   apiKeyForm,
   apiKeyNameInput,
   apiKeyScopeSelect,
   apiKeyCountersField,
   apiKeyCountersInput,
+  apiKeyCountersError,
   apiKeyStatusLabel,
   apiKeysPagination,
   apiKeysPrevBtn,
   apiKeysNextBtn,
   apiKeysPageInfo,
+  apiKeysCountLabel,
+  apiKeyModal,
+  apiKeyCancel,
 
   // API keys requests + feedback
   authFetch,
@@ -184,7 +199,8 @@ const apiKeysManager = createApiKeysManager({
   normalizeAuthMessage,
   modalConfirm,
 
-  // API keys formatting
+  // API keys session + formatting
+  getActiveUser: () => activeUser,
   formatTimestamp,
   escapeHtml
 });
@@ -204,6 +220,7 @@ const usersManager = createUsersManager({
   usersPrevBtn,
   usersNextBtn,
   usersPageInfo,
+  usersCountLabel,
   userForm,
   userNameInput,
   userDisplayInput,
@@ -501,14 +518,15 @@ function applyConfigUpdate(payload) {
 /* -------------------------------------------------------------------------- */
 /* Formatting                                                                 */
 /* -------------------------------------------------------------------------- */
-function formatTimestamp(value) {
+function formatTimestamp(value, options = {}) {
   if (!value) return 'never';
   try {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'never';
     return date.toLocaleDateString(undefined, {
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      ...(options.includeYear ? { year: 'numeric' } : {})
     });
   } catch {
     return 'never';

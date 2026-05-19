@@ -13,6 +13,7 @@ function registerSettingsRoutes(app, deps) {
     hasAdminPermission,
     getOwnerId,
     getEffectiveAdminPermissions,
+    getCounter,
 
     // Config state
     getConfig,
@@ -40,7 +41,8 @@ function registerSettingsRoutes(app, deps) {
     deleteApiKey,
 
     // Counter cleanup
-    deleteInactiveCountersOlderThan
+    deleteInactiveCountersOlderThan,
+    deleteInactiveCountersOlderThanForOwner
   } = deps;
 
   /* -------------------------------------------------------------------------- */
@@ -83,6 +85,7 @@ function registerSettingsRoutes(app, deps) {
     const wantsAutoBackup = Boolean(
       req.body && Object.prototype.hasOwnProperty.call(req.body, 'autoBackup')
     );
+    
     if (auth?.type === 'admin') {
       const wantsRuntime =
         req.body &&
@@ -99,13 +102,16 @@ function registerSettingsRoutes(app, deps) {
       if (wantsRuntime && !hasAdminPermission(auth, 'runtime')) {
         return res.status(403).json({ error: 'admin_permission_denied' });
       }
+
       if (wantsBranding && !hasAdminPermission(auth, 'branding')) {
         return res.status(403).json({ error: 'admin_permission_denied' });
       }
+
       if (wantsAutoBackup && (!ownerId || auth.user?.id !== ownerId)) {
         return res.status(403).json({ error: 'owner_only' });
       }
     }
+
     const {
       privateMode,
       showGuides,
@@ -116,6 +122,7 @@ function registerSettingsRoutes(app, deps) {
       theme,
       autoBackup
     } = req.body || {};
+
     const patch = {};
     if (typeof privateMode === 'boolean') patch.privateMode = privateMode;
     if (typeof showGuides === 'boolean') patch.showGuides = showGuides;
@@ -125,10 +132,12 @@ function registerSettingsRoutes(app, deps) {
     if (typeof brandName === 'string') {
       patch.brandName = brandName.trim().slice(0, 80);
     }
+
     if (Number.isFinite(Number(unlimitedThrottleSeconds))) {
       const value = Math.max(0, Math.round(Number(unlimitedThrottleSeconds)));
       patch.unlimitedThrottleSeconds = value;
     }
+
     if (allowedModes && typeof allowedModes === 'object') {
       const normalizedModes = normalizeAllowedModesPatch(allowedModes);
       if (!normalizedModes) {
@@ -136,22 +145,28 @@ function registerSettingsRoutes(app, deps) {
       }
       patch.allowedModes = normalizedModes;
     }
+
     if (typeof theme === 'string') {
       patch.theme = theme.trim().toLowerCase();
     }
+
     if (wantsAutoBackup && autoBackup && typeof autoBackup === 'object') {
       patch.autoBackup = autoBackup;
     }
+
     if (Object.keys(patch).length === 0) {
       return res.status(400).json({ error: 'no_valid_settings' });
     }
+
     const updated = updateConfig(patch);
     if (patch.autoBackup) {
       backupService.restartScheduler();
     }
+
     if (patch.theme) {
       htmlCache.clear();
     }
+
     setUnlimitedThrottle((updated.unlimitedThrottleSeconds || 0) * 1000);
     const isOwner = Boolean(ownerId && auth?.user?.id === ownerId);
     const visibleConfig = isOwner
@@ -167,9 +182,11 @@ function registerSettingsRoutes(app, deps) {
     const auth = authenticateRequest(req);
     const ownerId = getOwnerId();
     const isOwner = Boolean(ownerId && auth?.user?.id === ownerId);
+
     if (!isOwner) {
       return res.status(403).json({ error: 'owner_only' });
     }
+
     if (backupService.isBusy()) {
       return res.status(409).json({ error: 'backup_busy' });
     }
@@ -192,9 +209,11 @@ function registerSettingsRoutes(app, deps) {
   app.get('/api/admin-permissions', requireAdmin, (req, res) => {
     const auth = authenticateRequest(req);
     const ownerId = getOwnerId();
+
     if (!ownerId || auth?.user?.id !== ownerId) {
       return res.status(403).json({ error: 'owner_only' });
     }
+
     const cfg = getConfig();
     return res.json({
       defaults: cfg.adminPermissions || {},
@@ -205,13 +224,16 @@ function registerSettingsRoutes(app, deps) {
   app.post('/api/admin-permissions', requireAdmin, (req, res) => {
     const auth = authenticateRequest(req);
     const ownerId = getOwnerId();
+
     if (!ownerId || auth?.user?.id !== ownerId) {
       return res.status(403).json({ error: 'owner_only' });
     }
+
     const { defaults } = req.body || {};
     if (!defaults || typeof defaults !== 'object') {
       return res.status(400).json({ error: 'invalid_permissions' });
     }
+
     const updated = updateConfig({ adminPermissions: defaults });
     return res.json({ defaults: updated.adminPermissions || {} });
   });
@@ -219,13 +241,16 @@ function registerSettingsRoutes(app, deps) {
   app.post('/api/admin-permissions/:id', requireAdmin, (req, res) => {
     const auth = authenticateRequest(req);
     const ownerId = getOwnerId();
+
     if (!ownerId || auth?.user?.id !== ownerId) {
       return res.status(403).json({ error: 'owner_only' });
     }
+
     const userId = String(req.params.id || '').trim();
     if (!userId) {
       return res.status(400).json({ error: 'user_id_required' });
     }
+
     const { override } = req.body || {};
     const cfg = getConfig();
     const overrides = { ...(cfg.adminPermissionOverrides || {}) };
@@ -238,6 +263,7 @@ function registerSettingsRoutes(app, deps) {
     } else {
       overrides[userId] = override;
     }
+
     const updated = updateConfig({ adminPermissionOverrides: overrides });
     return res.json({ overrides: updated.adminPermissionOverrides || {} });
   });
@@ -247,9 +273,11 @@ function registerSettingsRoutes(app, deps) {
   /* -------------------------------------------------------------------------- */
   app.get('/api/tags', requireAuth, (req, res) => {
     const auth = authenticateRequest(req);
+
     if (!auth || auth.type === 'key') {
       return res.status(401).json({ error: 'unauthorized' });
     }
+    
     return res.json({ tags: listTagCatalog(auth.user.id) });
   });
 
@@ -258,6 +286,7 @@ function registerSettingsRoutes(app, deps) {
     if (!auth || auth.type === 'key') {
       return res.status(401).json({ error: 'unauthorized' });
     }
+    
     const { name, color } = req.body || {};
     try {
       const tag = addTagToCatalog({ name, color, ownerId: auth.user.id });
@@ -266,9 +295,11 @@ function registerSettingsRoutes(app, deps) {
       if (error.message === 'tag_exists') {
         return res.status(409).json({ error: 'Tag already exists.' });
       }
+
       if (error.message === 'name_required') {
         return res.status(400).json({ error: 'Tag name required.' });
       }
+      
       return res.status(400).json({
         error: error.message || 'Failed to create tag.'
       });
@@ -280,10 +311,12 @@ function registerSettingsRoutes(app, deps) {
     if (!auth || auth.type === 'key') {
       return res.status(401).json({ error: 'unauthorized' });
     }
+
     const tagId = String(req.params.id || '').trim();
     if (!tagId) {
       return res.status(400).json({ error: 'tag_id_required' });
     }
+    
     const { name, color } = req.body || {};
     try {
       const updated = updateTagInCatalog(tagId, { name, color }, auth.user.id);
@@ -295,9 +328,11 @@ function registerSettingsRoutes(app, deps) {
       if (error.message === 'tag_exists') {
         return res.status(409).json({ error: 'Tag already exists.' });
       }
+
       if (error.message === 'name_required') {
         return res.status(400).json({ error: 'Tag name required.' });
       }
+
       return res.status(400).json({
         error: error.message || 'Failed to update tag.'
       });
@@ -309,14 +344,17 @@ function registerSettingsRoutes(app, deps) {
     if (!auth || auth.type === 'key') {
       return res.status(401).json({ error: 'unauthorized' });
     }
+
     const tagId = String(req.params.id || '').trim();
     if (!tagId) {
       return res.status(400).json({ error: 'tag_id_required' });
     }
+
     const removed = removeTagFromCatalog(tagId, auth.user.id);
     if (!removed) {
       return res.status(404).json({ error: 'tag_not_found' });
     }
+    
     const cleared = removeTagAssignments(tagId);
     return res.json({ ok: true, removed, cleared });
   });
@@ -338,7 +376,18 @@ function registerSettingsRoutes(app, deps) {
     if (auth?.type === 'admin' && !hasAdminPermission(auth, 'apiKeys')) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
+
+    // only let admins create api limited keys for their counters
+    const ownerId = getOwnerId();
+    const requesterIsOwner = Boolean(ownerId && auth?.user?.id === ownerId);
     const { name, scope = 'global', counters } = req.body || {};
+    if (
+      auth?.type === 'admin' &&
+      scope !== 'limited' &&
+      !hasAdminPermission(auth, 'danger')
+    ) {
+      return res.status(403).json({ error: 'danger_permission_required' });
+    }
     try {
       const allowed = Array.isArray(counters)
         ? counters
@@ -348,6 +397,21 @@ function registerSettingsRoutes(app, deps) {
               .map((value) => value.trim())
               .filter(Boolean)
           : [];
+      if (
+        auth?.type === 'admin' &&
+        scope === 'limited' &&
+        !requesterIsOwner &&
+        !hasAdminPermission(auth, 'danger')
+      ) {
+        const hasForbiddenCounter = allowed.some((counterId) => {
+          const counter = getCounter(counterId);
+          return !counter || counter.owner_id !== auth.user?.id;
+        });
+        if (hasForbiddenCounter) {
+          return res.status(403).json({ error: 'forbidden_counter_scope' });
+        }
+      }
+
       const result = createApiKey({ name, scope, counters: allowed });
       return res.status(201).json({ key: result.key, token: result.token });
     } catch (error) {
@@ -366,10 +430,12 @@ function registerSettingsRoutes(app, deps) {
     if (auth?.type === 'admin' && !hasAdminPermission(auth, 'apiKeys')) {
       return res.status(403).json({ error: 'admin_permission_denied' });
     }
+
     const removed = deleteApiKey(req.params.id);
     if (!removed) {
       return res.status(404).json({ error: 'api_key_not_found' });
     }
+
     return res.json({ ok: true });
   });
 
@@ -378,9 +444,7 @@ function registerSettingsRoutes(app, deps) {
   /* -------------------------------------------------------------------------- */
   app.post('/api/counters/purge-inactive', requireAdmin, (req, res) => {
     const auth = authenticateRequest(req);
-    if (auth?.type === 'admin' && !hasAdminPermission(auth, 'danger')) {
-      return res.status(403).json({ error: 'admin_permission_denied' });
-    }
+
     const requestedDays = Number(req.body?.days);
     const safeDays = Math.max(
       1,
@@ -388,8 +452,19 @@ function registerSettingsRoutes(app, deps) {
         ? Math.round(requestedDays)
         : INACTIVE_THRESHOLD_DAYS
     );
-    const removed = deleteInactiveCountersOlderThan(safeDays);
-    return res.json({ ok: true, removed, days: safeDays });
+    const ownerId = getOwnerId();
+    const requesterIsOwner = Boolean(ownerId && auth?.user?.id === ownerId);
+    const canDanger = auth?.type === 'admin' && hasAdminPermission(auth, 'danger');
+    const removed =
+      requesterIsOwner || canDanger
+        ? deleteInactiveCountersOlderThan(safeDays)
+        : deleteInactiveCountersOlderThanForOwner(safeDays, auth?.user?.id);
+    return res.json({
+      ok: true,
+      removed,
+      days: safeDays,
+      scope: requesterIsOwner || canDanger ? 'global' : 'own'
+    });
   });
 }
 

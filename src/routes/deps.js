@@ -123,6 +123,8 @@ function buildRouteDeps(input) {
     /* Embeds + Auth Routes                                                       */
     /* -------------------------------------------------------------------------- */
     deleteInactiveCountersOlderThan: input.deleteInactiveCountersOlderThan,
+    deleteInactiveCountersOlderThanForOwner:
+      input.deleteInactiveCountersOlderThanForOwner,
     isPreviewRequest: input.isPreviewRequest,
     recordHit: input.recordHit,
     normalizeCounterValue: input.normalizeCounterValue,

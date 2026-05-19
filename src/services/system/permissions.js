@@ -21,6 +21,7 @@ function createPermissionsService(deps) {
     const cfg = getConfig();
     const defaults = cfg.adminPermissions || {};
     const ownerId = getOwnerId();
+    
     if (ownerId && userId === ownerId) {
       const ownerPerms = {};
       Object.keys(defaults).forEach((key) => {
@@ -28,6 +29,7 @@ function createPermissionsService(deps) {
       });
       return ownerPerms;
     }
+
     const overrides = cfg.adminPermissionOverrides || {};
     const override = overrides[userId];
     const merged = {};
@@ -43,8 +45,10 @@ function createPermissionsService(deps) {
 
   function hasAdminPermission(auth, key) {
     if (!auth || auth.type !== 'admin') return false;
+
     const ownerId = getOwnerId();
     if (ownerId && auth.user?.id === ownerId) return true;
+
     const perms = getEffectiveAdminPermissions(auth.user?.id);
     return perms && perms[key] !== false;
   }

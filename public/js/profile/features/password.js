@@ -9,6 +9,7 @@
 /* -------------------------------------------------------------------------- */
 function createProfilePasswordFeature(deps) {
   const {
+    // Password controls
     profilePasswordReset,
     profilePasswordModal,
     profilePasswordMessage,
@@ -18,12 +19,18 @@ function createProfilePasswordFeature(deps) {
     profilePasswordNewError,
     profilePasswordSave,
     profilePasswordCancel,
+
+    // Profile text
     profileUsernameText,
     profileDisplayText,
+
+    // Requests + feedback
     authFetch,
     showToast,
     showAlert,
     normalizeProfileError,
+
+    // Inline errors
     setInlineError
   } = deps;
 
@@ -130,7 +137,9 @@ function createProfilePasswordFeature(deps) {
     );
   }
 
-  return { bind };
+  return {
+    bind
+  };
 }
 
 export { createProfilePasswordFeature };

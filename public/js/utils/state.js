@@ -136,12 +136,27 @@
     sessionCacheTs = 0;
   }
 
+  function setSession(data) {
+    sessionCache = data || null;
+    sessionCacheTs = Date.now();
+  }
+
+  function peekSession() {
+    if (!sessionCache) return null;
+    if (Date.now() - sessionCacheTs >= SESSION_TTL_MS) {
+      return null;
+    }
+    return sessionCache;
+  }
+
   /* ------------------------------------------------------------------------ */
   /* Public API                                                               */
   /* ------------------------------------------------------------------------ */
   window.VouxState = {
     getConfig: (opts = {}) => fetchConfig(Boolean(opts.force)),
     getSession: (opts = {}) => fetchSession(Boolean(opts.force)),
+    peekSession,
+    setSession,
     clearSession,
     clearConfig,
     setConfig

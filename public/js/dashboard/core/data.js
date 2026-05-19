@@ -9,16 +9,25 @@
 /* -------------------------------------------------------------------------- */
 function createDashboardData(deps) {
   const {
+    // State
     state,
+
+    // Requests + auth
     authFetch,
     buildUnauthorizedError,
+
+    // Counter rendering
     canPatchCounters,
     patchCounterRows,
     renderCounterList,
+
+    // Pagination + totals
     updatePagination,
     updateCounterTotal,
     updateTagCounterHints,
     updateDeleteFilteredState,
+
+    // Dashboard shell
     adminControls,
     counterListEl
   } = deps;
@@ -30,12 +39,15 @@ function createDashboardData(deps) {
     const { silent = false } = options;
     const selectionSnapshot = silent ? snapshotDashboardTextSelection() : null;
     let patched = false;
+    
     if (silent && canPatchCounters(state.latestCounters, counters)) {
       patched = patchCounterRows(counters);
     }
+
     if (!patched) {
       renderCounterList(counters);
     }
+
     state.latestCounters = counters;
     updateCounterCache(counters);
     state.page = data.pagination?.page || 1;
@@ -43,12 +55,14 @@ function createDashboardData(deps) {
     state.total = data.pagination?.total || (data.counters?.length ?? 0);
     state.totalOverall =
       data.totals?.overall ?? state.totalOverall ?? state.total;
+
     updatePagination();
     updateCounterTotal();
     updateTagCounterHints();
     updateDeleteFilteredState();
     adminControls?.classList.remove('hidden');
     adminControls?.classList.remove('is-loading');
+
     if (selectionSnapshot) {
       restoreDashboardTextSelection(selectionSnapshot);
     }
@@ -89,7 +103,7 @@ function createDashboardData(deps) {
       if (!restored) return;
       applySelectionRange(selection, restored, snapshot.backward);
     } catch {
-      // If DOM changed too much to restore, skip silently.
+      // If DOM changed too much to restore, skip silently
     }
   }
 
@@ -221,36 +235,44 @@ function createDashboardData(deps) {
       page: String(page),
       pageSize: String(state.pageSize)
     });
+
     if (state.searchQuery) {
       params.append('q', state.searchQuery);
     }
+
     if (state.modeFilter && state.modeFilter !== 'all') {
       params.append('mode', state.modeFilter);
     }
+
     if (state.sort === 'inactive') {
       params.append('inactive', '1');
     } else if (state.sort && state.sort !== 'newest') {
       params.append('sort', state.sort);
     }
+
     if (state.tagFilter && state.tagFilter.length) {
       state.tagFilter.forEach((tagId) => {
         params.append('tags', tagId);
       });
     }
+
     if (state.ownerOnly && state.isAdmin) {
       params.append('owner', 'me');
     }
+
     const url = `/api/counters?${params.toString()}`;
     const res = await authFetch(url);
     if (res.status === 401 || res.status === 403) {
       const err = await res.json().catch(() => ({}));
       throw buildUnauthorizedError(err?.message || 'unauthorized');
     }
+
     if (res.status === 429) {
       const err = await res.json().catch(() => ({}));
       const rateError = new Error(
         err?.message || 'Too many attempts. Try again soon.'
       );
+
       rateError.retryAfterSeconds = err?.retryAfterSeconds;
       rateError.code = 'rate_limit';
       throw rateError;
@@ -274,10 +296,52 @@ function createDashboardData(deps) {
     });
   }
 
+  function canInsertCreatedCounter() {
+    return (
+      state.page === 1 &&
+      !state.searchQuery &&
+      state.modeFilter === 'all' &&
+      state.sort === 'newest' &&
+      (!state.tagFilter || state.tagFilter.length === 0)
+    );
+  }
+
+  function prependCreatedCounter(counter) {
+    if (!counter?.id || !canInsertCreatedCounter()) {
+      return false;
+    }
+
+    const nextCounters = [
+      counter,
+      ...state.latestCounters.filter((entry) => entry?.id !== counter.id)
+    ].slice(0, state.pageSize);
+
+    renderCounterList(nextCounters);
+    state.latestCounters = nextCounters;
+    updateCounterCache([counter]);
+    state.page = 1;
+    state.total = Math.max(0, Number(state.total) || 0) + 1;
+    state.totalOverall = Math.max(0, Number(state.totalOverall) || 0) + 1;
+    state.totalPages = Math.max(
+      1,
+      Math.ceil(Math.max(state.total, 1) / state.pageSize)
+    );
+    
+    updatePagination();
+    updateCounterTotal();
+    updateTagCounterHints();
+    updateDeleteFilteredState();
+    adminControls?.classList.remove('hidden');
+    adminControls?.classList.remove('is-loading');
+    return true;
+  }
+
   return {
     applyCounterResponse,
     fetchCounters,
-    updateCounterCache
+    updateCounterCache,
+    canInsertCreatedCounter,
+    prependCreatedCounter
   };
 }
 

@@ -7,15 +7,11 @@
   <title data-home-title="true">Voux · Simple Free & Open Source Hit Counter for Blogs and Websites</title>
   
   <!-- External libraries -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
 
   <!-- Icons -->
-  <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
-  <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/assets/logos/svg/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/assets/logos/svg/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
 
   <!-- Local styles -->
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
@@ -35,8 +31,18 @@
   <meta name="twitter:title" content="Voux">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:description" content="Create your own self-hosted counter with Voux. Free, open source, and easy to add to any blog or website.">
-  <meta name="twitter:image" content="/assets/banner-2.png">
+  <meta name="twitter:image" content="/assets/banners/png/banner-2.png">
 
+  <script>
+    try {
+      if (
+        localStorage.getItem('voux_session_hint') === '1' &&
+        localStorage.getItem('voux_nav_user')
+      ) {
+        document.documentElement.classList.add('nav-auth-cached');
+      }
+    } catch {}
+  </script>
 </head>
 
 <body class="config-pending" data-page="home">
@@ -59,25 +65,25 @@
   
   <header class="site-nav">
     <a class="brand" href="/">
-      <img src="/assets/logo-text.png" alt="Voux" />
+      <img src="/assets/logos/png/logo-text.png" alt="Voux" />
     </a>
     <div class="nav-account">
-      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"></button>
+      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"><i class="icon" style="--icon:url('/assets/icons/ui/account-circle-fill.svg')" aria-hidden="true"></i></button>
             <div class="account-menu" id="navAccountMenu">
 <a href="/profile" class="account-menu__link">
-          <i class="ri-user-3-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/user.svg')" aria-hidden="true"></i>
           Profile
         </a>
 <a href="/dashboard" class="account-menu__link">
-          <i class="ri-eye-2-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/dashboard-eye.svg')" aria-hidden="true"></i>
           Dashboard
         </a>
 <a href="/settings" class="account-menu__link">
-          <i class="ri-settings-3-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/settings.svg')" aria-hidden="true"></i>
           Settings
         </a>
 <button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
-          <i class="ri-logout-box-r-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/logout.svg')" aria-hidden="true"></i>
           Log out
         </button>
       </div>
@@ -88,7 +94,7 @@
     <header class="hero">
       <p class="eyebrow">
         <span class="eyebrow-logo">
-          <img src="/assets/logo.png" alt="Voux logo" />
+          <img src="/assets/logos/png/logo.png" alt="" />
         </span>
         <span data-brand-text data-brand-page="Home">Voux · Home</span>
       </p>
@@ -123,10 +129,13 @@
 
         <div class="field">
           <div class="field__label" id="publicModeLabel">Counting mode</div>
-          <select id="cooldownSelect" name="cooldownSelect" aria-labelledby="publicModeLabel">
-            <option value="unique">Unique visitors</option>
-            <option value="unlimited">Every visit</option>
-          </select>
+          <div class="select-shell">
+            <select id="cooldownSelect" name="cooldownSelect" aria-labelledby="publicModeLabel">
+              <option value="unique">Unique visitors</option>
+              <option value="unlimited">Every visit</option>
+            </select>
+            <span class="icon select-icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></span>
+          </div>
         </div>
 
         <button type="submit">Generate counter</button>
@@ -154,14 +163,14 @@
       </div>
       <div class="embed-snippet" data-embed-panel="script">
         <div class="code-snippet embed-code">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-html" id="embedSnippetCode"></code></pre>
         </div>
       </div>
 
       <div class="embed-snippet embed-snippet--dual hidden" data-embed-panel="svg">
         <div class="code-snippet embed-code">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-html" id="embedSvgSnippetCode"></code></pre>
         </div>
       </div>
@@ -176,7 +185,7 @@
 <details class="card instructions config-guard expander" id="stylingCard">
   <summary>
     <span>Styling your counter</span>
-    <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+    <i class="icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></i>
   </summary>
   <div class="expander__content">
     <div>
@@ -184,7 +193,7 @@
         <h4>🎨 · Styling script embeds</h4>
         <p>Styling your counter with <b>Voux</b> is super simple. All you need to do is wrap your counter script inside an element. We'll use a <span class="code-inline">&lt;span&gt;</span> in this example:</p>
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-html">&lt;span class="counter-widget"&gt;
   &lt;!---------------------replace this with urs---------------------&gt;
   &lt;script async src="https://your-domain/embed/abc123.js"&gt;&lt;/script&gt;
@@ -192,7 +201,7 @@
         </div>
         <p>Once that's in place, you can style it however you like using <b>CSS</b>. Here's a simple example that centers the counter on the screen and makes the text black:</p>
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-css">.counter-widget {
   position: fixed;
   top: 50%;
@@ -211,12 +220,12 @@
         <p class="hint">Voux also provides an <b>SVG</b> embed for cases where you cannot use <b>JavaScript</b>, 
         such as <b>READMEs</b>, <b>Markdown files</b>, or <b>restricted platforms</b>.</p>
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-html">&lt;img src="https://your-domain/embed/abc123.svg" alt="Voux counter"&gt;</code></pre>
         </div>
         <p class="hint">You can also customize the <b>SVG</b> by passing <b>parameters</b> in the <span class="code-inline">URL</span> query string:</p>
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-html">&lt;img src="https://your-domain/embed/abc123.svg?bg=F54927&color=ffffff"
 alt="Voux counter"&gt;</code></pre>
         </div>
@@ -231,7 +240,7 @@ alt="Voux counter"&gt;</code></pre>
 <details class="card instructions config-guard expander" id="selfHostCard">
   <summary>
     <span>Self-hosting Voux</span>
-    <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+    <i class="icon" style="--icon:url('/assets/icons/ui/arrow-down.svg')" aria-hidden="true"></i>
   </summary>
   <div class="expander__content">
     <div>
@@ -242,7 +251,7 @@ alt="Voux counter"&gt;</code></pre>
 
         <p><strong>1. Clone the project</strong></p>
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-bash">git clone https://github.com/QuintixLabs/Voux.git
 cd Voux</code></pre>
         </div>
@@ -250,7 +259,7 @@ cd Voux</code></pre>
         <p>Make sure you are running <span class="code-inline">Node.js 22</span>. If you use <a href="https://github.com/Schniz/fnm" target="_blank">fnm</a>. :</p>
 
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-bash">fnm install 22
 fnm use 22
 node -v</code></pre>
@@ -259,14 +268,14 @@ node -v</code></pre>
         <p><strong>2. Install Voux</strong></p>
         <p>Use one of these:</p>
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-bash">npm install                # normal install
 npm install --production   # for production installs</code></pre>
         </div>
 
         <p><strong>3. Create your .env file</strong></p>
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-bash">cp .env.example .env</code></pre>
         </div>
 
@@ -281,13 +290,13 @@ npm install --production   # for production installs</code></pre>
         <p><strong>4. Start Voux</strong></p>
         <p>Development (auto-reload) :</p>
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-bash">npm run dev</code></pre>
         </div>
 
         <p>Production :</p>
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-bash">npm start</code></pre>
         </div>
 
@@ -303,7 +312,7 @@ npm install --production   # for production installs</code></pre>
         <p><span class="code-inline">🐋 Docker</span></p>
         <p>Run Voux via Docker and pull the prebuilt image from GHCR:</p>
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-bash">docker run -d \
   --name voux \
   -p 8787:8787 \
@@ -314,7 +323,7 @@ npm install --production   # for production installs</code></pre>
         </div>
         <p>Or use our <a href="https://github.com/QuintixLabs/Voux/blob/master/docker-compose.yml" target="_blank">docker-compose.yml</a>, which is simpler. Just run:</p>
         <div class="code-snippet">
-          <button class="copy-button"><i class="ri-file-copy-line"></i></button>
+          <button class="copy-button"><i class="icon" style="--icon:url('/assets/icons/ui/copy.svg')" aria-hidden="true"></i></button>
           <pre><code class="language-bash">docker compose up -d</code></pre>
         </div>
 
@@ -339,9 +348,9 @@ npm install --production   # for production installs</code></pre>
   <div data-footer-root></div>
 
   <!-- Local scripts -->
+  <script src="/js/layout/nav.js?v=%APP_VERSION%"></script>
   <script src="/js/utils/modal.js?v=%APP_VERSION%" defer></script>
   <script src="/js/utils/state.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/layout/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/layout/footer.js?v=%APP_VERSION%" defer></script>
   <script src="/js/appearance/theme.js?v=%APP_VERSION%" defer></script>
   <script src="/js/home/index.js?v=%APP_VERSION%" type="module"></script>

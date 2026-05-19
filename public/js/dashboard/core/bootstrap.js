@@ -19,13 +19,18 @@ function ensurePickrLoaded() {
 /* -------------------------------------------------------------------------- */
 function createDashboardBootstrapHelpers(deps) {
   const {
+    // State
     state,
     START_VALUE_DIGIT_LIMIT,
+
+    // Requests + auth
     authFetch,
     buildUnauthorizedError,
     buildForbiddenError,
     assertAuthorizedResponseUi,
     setUserSession,
+
+    // Embed controls
     embedToggles,
     embedPanels,
     embedDescs

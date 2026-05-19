@@ -41,11 +41,14 @@ function createHomeEmbedManager(deps) {
   function renderPreview(embedUrl) {
     if (!previewTarget) return;
     previewTarget.innerHTML = '';
+
     const wrapper = document.createElement('span');
     wrapper.className = 'counter-widget counter-widget--preview';
+
     const script = document.createElement('script');
     script.async = true;
     script.src = appendPreviewParam(embedUrl);
+    
     wrapper.appendChild(script);
     previewTarget.appendChild(wrapper);
   }

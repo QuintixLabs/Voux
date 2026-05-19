@@ -1,5 +1,5 @@
 /*
-  settings/features/backup.js
+  public/js/settings/features/backup.js
 
   Manual backup restore/download and automatic backup schedule controls.
 */
@@ -9,9 +9,12 @@
 /* -------------------------------------------------------------------------- */
 function createBackupManager(deps) {
   const {
+    // Manual backup controls
     downloadBackupBtn,
     restoreFileInput,
     backupStatusLabel,
+
+    // Auto backup controls
     autoBackupSection,
     autoBackupToggle,
     autoBackupSummary,
@@ -26,13 +29,21 @@ function createBackupManager(deps) {
     autoBackupIncludeJsonInput,
     saveAutoBackupBtn,
     runAutoBackupNowBtn,
+
+    // Auto backup config
     AUTO_BACKUP_WEEKDAYS,
+
+    // Requests + auth
     authFetch,
     assertSession,
+
+    // Feedback
     showToast,
     showAlert,
     normalizeAuthMessage,
     modalConfirm,
+
+    // Settings updates
     applyConfigUpdate
   } = deps;
 
@@ -52,12 +63,14 @@ function createBackupManager(deps) {
     if (!canManageAutoBackups) {
       return;
     }
+
     autoBackupToggle?.addEventListener('click', () => toggleAutoBackupBody());
     autoBackupFrequencyInput?.addEventListener('change', syncAutoBackupUiState);
     autoBackupTimeInput?.addEventListener(
       'pointerdown',
       handleTimePickerHotspot
     );
+
     autoBackupRetentionInput?.addEventListener('input', syncAutoBackupUiState);
     autoBackupTimeInput?.addEventListener('input', syncAutoBackupUiState);
     autoBackupWeekdayInput?.addEventListener('change', syncAutoBackupUiState);
@@ -65,6 +78,7 @@ function createBackupManager(deps) {
       'change',
       syncAutoBackupUiState
     );
+
     saveAutoBackupBtn?.addEventListener('click', () => handleSaveAutoBackup());
     runAutoBackupNowBtn?.addEventListener('click', () =>
       handleRunAutoBackupNow()
@@ -78,12 +92,14 @@ function createBackupManager(deps) {
     if (!input || typeof input.showPicker !== 'function') {
       return;
     }
+
     const rect = input.getBoundingClientRect();
     const hotspotWidth = 44;
     const isHotspot = event.clientX >= rect.right - hotspotWidth;
     if (!isHotspot) {
       return;
     }
+
     event.preventDefault();
     try {
       input.showPicker();
@@ -100,6 +116,7 @@ function createBackupManager(deps) {
       showToast('Finish the current backup task first', 'danger');
       return;
     }
+    
     try {
       backupBusy = true;
       if (downloadBackupBtn) downloadBackupBtn.disabled = true;
@@ -111,12 +128,14 @@ function createBackupManager(deps) {
       const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: 'application/json'
       });
+
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       link.href = url;
       link.download = `voux-backup-${timestamp}.json`;
       document.body.appendChild(link);
+
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
@@ -157,12 +176,14 @@ function createBackupManager(deps) {
           tagCatalogPayload = parsed.tagCatalog;
         }
       }
+
       if (!payload) throw new Error('Invalid backup file.');
       const confirmed = await modalConfirm({
         title: 'Restore backup?',
         message: 'This will merge the backup counters into your current list.',
         confirmLabel: 'Restore backup'
       });
+
       if (!confirmed) {
         event.target.value = '';
         setBackupStatus('');
@@ -177,6 +198,7 @@ function createBackupManager(deps) {
       if (dailyPayload.length) {
         body.daily = dailyPayload;
       }
+
       if (tagCatalogPayload.length) {
         body.tagCatalog = tagCatalogPayload;
       }
@@ -192,6 +214,7 @@ function createBackupManager(deps) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to restore backup');
       }
+
       const result = await res.json();
       const count = result.imported || payload.length;
       const dailyCount = result.dailyImported || dailyPayload.length || 0;
@@ -231,6 +254,7 @@ function createBackupManager(deps) {
     if (autoBackupWeekdayField) {
       autoBackupWeekdayField.classList.toggle('hidden', frequency !== 'weekly');
     }
+
     if (autoBackupSummary) {
       const retention = Number(autoBackupRetentionInput?.value || 7);
       const keep = Number.isFinite(retention)
@@ -241,6 +265,7 @@ function createBackupManager(deps) {
         autoBackupSummary.textContent = 'Off';
         return;
       }
+      
       const jsonSuffix = autoBackupIncludeJsonInput?.checked ? ' · JSON' : '';
       if (frequency === 'weekly') {
         const weekday = Number(autoBackupWeekdayInput?.value || 0);
@@ -285,6 +310,7 @@ function createBackupManager(deps) {
       autoBackupBody.removeEventListener('transitionend', onTransitionEnd);
     };
     autoBackupBody.removeEventListener('transitionend', onTransitionEnd);
+
     if (nextOpen) {
       autoBackupBody.classList.add('is-open');
       autoBackupToggle.setAttribute('aria-expanded', 'true');
@@ -294,6 +320,7 @@ function createBackupManager(deps) {
       autoBackupBody.addEventListener('transitionend', onTransitionEnd);
       return;
     }
+
     autoBackupToggle.setAttribute('aria-expanded', 'false');
     autoBackupBody.style.height = `${autoBackupBody.scrollHeight}px`;
     void autoBackupBody.offsetHeight;
@@ -310,6 +337,7 @@ function createBackupManager(deps) {
         : 'off';
       autoBackupFrequencyInput.value = frequency;
     }
+
     if (autoBackupTimeInput) {
       const time =
         typeof autoBackup.time === 'string' &&
@@ -318,12 +346,14 @@ function createBackupManager(deps) {
           : '03:00';
       autoBackupTimeInput.value = time;
     }
+
     if (autoBackupWeekdayInput) {
       const weekday = Number(autoBackup.weekday);
       autoBackupWeekdayInput.value = Number.isFinite(weekday)
         ? String(Math.max(0, Math.min(6, Math.floor(weekday))))
         : '0';
     }
+
     if (autoBackupRetentionInput) {
       const retention = Number(autoBackup.retention);
       const safeRetention = Number.isFinite(retention)
@@ -382,11 +412,13 @@ function createBackupManager(deps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ autoBackup: payload })
       });
+
       await assertSession(res);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to save backup schedule');
       }
+      
       const data = await res.json().catch(() => ({}));
       applyConfigUpdate(data);
       applyAutoBackupForm(data?.config?.autoBackup || payload);
@@ -436,7 +468,10 @@ function createBackupManager(deps) {
   }
 
   return {
+    // Lifecycle
     setupBackupControls,
+
+    // Auto backup state
     applyAutoBackupForm,
     applyAutoBackupPath
   };

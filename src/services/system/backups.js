@@ -6,19 +6,25 @@
 
 function createBackupService(options = {}) {
   const {
+    // Filesystem + paths
     fs,
     path,
     dataDir,
     staticDir,
     uploadsDir,
     requestedBackupDir,
+
+    // Runtime config + backup hooks
     getConfig,
     createDatabaseBackup,
     exportCounters,
     exportDailyActivity,
+
+    // Counter export normalization
     normalizeCounterForExport
   } = options;
 
+  // variables
   const autoBackupTickMs = 60 * 1000;
   const defaultBackupDir = path.resolve(path.join(dataDir, 'backups'));
   const backupDir = resolveBackupDir(requestedBackupDir || defaultBackupDir);
@@ -27,6 +33,9 @@ function createBackupService(options = {}) {
   let autoBackupRunKey = '';
   let autoBackupBusy = false;
 
+  /* -------------------------------------------------------------------------- */
+  /* Service lifecycle                                                          */
+  /* -------------------------------------------------------------------------- */
   function init() {
     ensureBackupDirIsSafe();
     restartScheduler();
@@ -54,16 +63,21 @@ function createBackupService(options = {}) {
     }
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Scheduler                                                                  */
+  /* -------------------------------------------------------------------------- */
   function restartScheduler() {
     if (autoBackupTimer) {
       clearInterval(autoBackupTimer);
       autoBackupTimer = null;
     }
+
     autoBackupRunKey = '';
     const schedule = getConfig().autoBackup || {};
     if (!schedule || schedule.frequency === 'off') {
       return;
     }
+
     autoBackupTimer = setInterval(() => {
       maybeRunScheduledBackup().catch((error) => {
         console.error('Automatic backup failed', error);
@@ -74,6 +88,9 @@ function createBackupService(options = {}) {
     });
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Backup creation                                                            */
+  /* -------------------------------------------------------------------------- */
   async function createAndStoreBackups(source = 'auto') {
     ensureBackupDir();
     const timestamp = buildBackupTimestamp(new Date());
@@ -83,6 +100,7 @@ function createBackupService(options = {}) {
     if (schedule.includeJson === true) {
       jsonBackup = createJsonBackupFile(timestamp, source);
     }
+
     const retention = sanitizeBackupRetention(schedule.retention);
     pruneOldBackups(retention, 'db');
     if (jsonBackup) {
@@ -94,32 +112,41 @@ function createBackupService(options = {}) {
     };
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Scheduled backup execution                                                 */
+  /* -------------------------------------------------------------------------- */
   async function maybeRunScheduledBackup(now = new Date()) {
     const schedule = getConfig().autoBackup || {};
     if (!schedule || schedule.frequency === 'off') {
       return;
     }
+
     if (autoBackupBusy) {
       return;
     }
+    
     const [targetHour, targetMinute] = parseBackupTime(schedule.time);
     if (now.getHours() !== targetHour || now.getMinutes() !== targetMinute) {
       return;
     }
+
     if (schedule.frequency === 'weekly') {
       const targetWeekday = sanitizeBackupWeekday(schedule.weekday);
       if (now.getDay() !== targetWeekday) {
         return;
       }
     }
+
     const runKey = getBackupRunKey(schedule.frequency, now);
     if (runKey === autoBackupRunKey) {
       return;
     }
+
     if (hasBackupForScheduledMinute(now)) {
       autoBackupRunKey = runKey;
       return;
     }
+
     autoBackupBusy = true;
     try {
       await createAndStoreBackups('auto');
@@ -129,6 +156,9 @@ function createBackupService(options = {}) {
     }
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Backup file creation                                                       */
+  /* -------------------------------------------------------------------------- */
   async function createDbBackupFile(timestamp, source = 'auto') {
     const fileName = `voux-db-${timestamp}.db`;
     const outputPath = path.join(backupDir, fileName);
@@ -167,6 +197,7 @@ function createBackupService(options = {}) {
         }
       }
     }
+
     const stat = fs.statSync(outputPath);
     return {
       fileName,
@@ -176,6 +207,9 @@ function createBackupService(options = {}) {
     };
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Backup directory safety                                                    */
+  /* -------------------------------------------------------------------------- */
   function ensureBackupDir() {
     if (!fs.existsSync(backupDir)) {
       fs.mkdirSync(backupDir, { recursive: true });
@@ -201,6 +235,9 @@ function createBackupService(options = {}) {
     return requested;
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Backup naming + scheduled detection                                        */
+  /* -------------------------------------------------------------------------- */
   function isSameOrInsidePath(targetPath, basePath) {
     const target = path.resolve(targetPath);
     const base = path.resolve(basePath);
@@ -251,6 +288,9 @@ function createBackupService(options = {}) {
     return `${hour}${minute}`;
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Backup retention + schedule parsing                                        */
+  /* -------------------------------------------------------------------------- */
   function pruneOldBackups(retention = 7, type = 'db') {
     const keep = sanitizeBackupRetention(retention);
     const pattern =
@@ -306,6 +346,7 @@ function createBackupService(options = {}) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
+
     if (frequency === 'weekly') {
       const dayOfWeek = date.getDay();
       const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -315,14 +356,22 @@ function createBackupService(options = {}) {
       const mondayDay = String(monday.getDate()).padStart(2, '0');
       return `weekly-${monday.getFullYear()}-${mondayMonth}-${mondayDay}`;
     }
+    // and finally return gah damn
     return `${frequency || 'daily'}-${year}-${month}-${day}`;
   }
 
   return {
+    // Service lifecycle
     init,
+
+    // Backup state
     isBusy,
+
+    // Backup actions
     createNow,
     restartScheduler,
+
+    // Backup paths
     getBackupDirectory
   };
 }

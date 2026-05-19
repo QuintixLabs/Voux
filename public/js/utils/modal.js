@@ -27,20 +27,26 @@
   /* ------------------------------------------------------------------------ */
   function handleGlobalModalKeys(event) {
     if (event.defaultPrevented) return;
-    const activeOverlay = document.querySelector(
+    const openOverlays = document.querySelectorAll(
       `.${OVERLAY_CLASS}.${OPEN_CLASS}`
     );
+    const activeOverlay = openOverlays[openOverlays.length - 1];
+
     if (!activeOverlay) return;
     const allowEscape = activeOverlay.dataset.modalAllowEscape !== 'false';
     const allowEnter = activeOverlay.dataset.modalAllowEnter !== 'false';
+
+    // esc key
     if (event.key === 'Escape' && allowEscape) {
       event.preventDefault();
+      event.stopImmediatePropagation();
       if (activeOverlay === overlay) {
         if (dismissible) {
           closeModal(false);
         }
         return;
       }
+
       const escapeSelector = activeOverlay.dataset.modalEscape;
       const escapeTarget = escapeSelector
         ? activeOverlay.querySelector(escapeSelector)
@@ -48,9 +54,12 @@
       escapeTarget?.click();
       return;
     }
+
+    // enter key
     if (event.key === 'Enter' && allowEnter) {
       if (event.target?.tagName === 'TEXTAREA') return;
       event.preventDefault();
+      event.stopImmediatePropagation();
       if (activeOverlay === overlay) {
         const primary = activeOverlay.querySelector('.modal__button--primary');
         if (primary && !primary.disabled) {
@@ -128,7 +137,7 @@
   function setModalMessage(message, allowHtml, messageParts) {
     if (!messageEl) return;
     if (Array.isArray(messageParts) && messageParts.length) {
-      // render a "rich" message without using innerHTML (prevents XSS).
+      // render a "rich" message without using innerHTML (prevents XSS)
       messageEl.textContent = '';
       messageParts.forEach((part) => {
         if (part == null) return;
@@ -159,10 +168,12 @@
       });
       return;
     }
+
     if (!allowHtml) {
       messageEl.textContent = message || '';
       return;
     }
+
     const template = document.createElement('template');
     template.innerHTML = message || '';
     const allowed = new Set(['STRONG', 'EM', 'BR', 'HR']);
@@ -171,6 +182,7 @@
       NodeFilter.SHOW_ELEMENT,
       null
     );
+
     const toStrip = [];
     while (walker.nextNode()) {
       const el = walker.currentNode;
@@ -184,6 +196,7 @@
       const text = document.createTextNode(el.textContent || '');
       el.replaceWith(text);
     });
+    
     messageEl.textContent = '';
     messageEl.appendChild(template.content);
   }
@@ -213,6 +226,7 @@
     clearInput();
     actionsEl.innerHTML = '';
     let confirmButton = null;
+    
     buttons.forEach((btn) => {
       const buttonEl = document.createElement('button');
       buttonEl.type = 'button';
@@ -252,6 +266,7 @@
         hintEl.textContent = input.hint;
         inputWrap.appendChild(hintEl);
       }
+
       modal.insertBefore(inputWrap, actionsEl);
       if (confirmButton) {
         confirmButton.disabled = true;
@@ -259,6 +274,7 @@
         const check = () => {
           confirmButton.disabled = inputEl.value.trim() !== required;
         };
+        
         inputEl.addEventListener('input', check);
         inputEl.addEventListener('keydown', (event) => {
           if (event.key === 'Enter' && !confirmButton.disabled) {

@@ -1,5 +1,5 @@
 /*
-  dashboard/features/selection.js
+  public/js/dashboard/features/selection.js
 
   Selection state and bulk counter actions.
 */
@@ -9,25 +9,38 @@
 /* -------------------------------------------------------------------------- */
 function createDashboardSelection(deps) {
   const {
+    // State
     state,
     counterListEl,
+
+    // Selection UI
     selectionToolbar,
     selectionCountEl,
     deleteSelectedBtn,
     downloadSelectedBtn,
     addTagsSelectedBtn,
+
+    // Counter permissions
     canDangerOnCounter,
+
+    // Requests + auth
     authFetch,
     assertAuthorizedResponse,
+
+    // Feedback
     showAlert,
     showConfirm,
     showToast,
     showActionToast,
     normalizeAuthMessage,
+
+    // Counter data
     refreshCounters,
     extractTagIds,
     openBulkTagDialog,
     updateCounterMetadataRequest,
+
+    // Export helpers
     slugifyFilename
   } = deps;
 
@@ -66,9 +79,11 @@ function createDashboardSelection(deps) {
         invalidIds.push(id);
       }
     });
+
     if (invalidIds.length) {
       invalidIds.forEach((id) => state.selectedIds.delete(id));
     }
+
     if (counterListEl) {
       counterListEl.querySelectorAll('.counter-row').forEach((row) => {
         const counterId = row.dataset?.counterId;
@@ -88,6 +103,7 @@ function createDashboardSelection(deps) {
     if (selectionCountEl) {
       selectionCountEl.textContent = `${count} selected`;
     }
+    
     const active = count > 0;
     selectionToolbar?.classList.toggle('hidden', !active);
     document.body.classList.toggle('selection-active', active);
@@ -367,15 +383,20 @@ function createDashboardSelection(deps) {
   }
 
   return {
+    // Selection state
     toggleSelection,
     clearSelection,
     refreshSelectionState,
     updateSelectionToolbar,
+
+    // Bulk actions
     handleDownloadSelected,
     handleAddTagsSelected,
-    handleDownloadSingle,
     handleDeleteSelected,
-    handleSelectAll
+    handleSelectAll,
+
+    // JSON export
+    handleDownloadSingle,
   };
 }
 

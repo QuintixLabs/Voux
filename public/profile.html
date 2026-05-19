@@ -7,16 +7,9 @@
   <meta name="robots" content="noindex, nofollow">
   <title data-page-title="Profile">Voux · Profile</title>
 
-  <!-- External libraries -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
-    rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet" />
-  
   <!-- Icons -->
-  <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
-  <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/assets/logos/svg/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/assets/logos/svg/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
 
   <!-- Local styles -->
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
@@ -36,6 +29,16 @@
     }
   </script>
 
+  <script>
+    try {
+      if (
+        localStorage.getItem('voux_session_hint') === '1' &&
+        localStorage.getItem('voux_nav_user')
+      ) {
+        document.documentElement.classList.add('nav-auth-cached');
+      }
+    } catch {}
+  </script>
 </head>
 
 <body data-page="profile">
@@ -58,25 +61,25 @@
 
   <header class="site-nav">
     <a class="brand" href="/">
-      <img src="/assets/logo-text.png" alt="Voux" />
+      <img src="/assets/logos/png/logo-text.png" alt="Voux" />
     </a>
     <div class="nav-account">
-      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"></button>
+      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"><i class="icon" style="--icon:url('/assets/icons/ui/account-circle-fill.svg')" aria-hidden="true"></i></button>
             <div class="account-menu" id="navAccountMenu">
 <a href="/profile" class="account-menu__link">
-          <i class="ri-user-3-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/user.svg')" aria-hidden="true"></i>
           Profile
         </a>
 <a href="/dashboard" class="account-menu__link">
-          <i class="ri-eye-2-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/dashboard-eye.svg')" aria-hidden="true"></i>
           Dashboard
         </a>
 <a href="/settings" class="account-menu__link">
-          <i class="ri-settings-3-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/settings.svg')" aria-hidden="true"></i>
           Settings
         </a>
 <button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
-          <i class="ri-logout-box-r-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/logout.svg')" aria-hidden="true"></i>
           Log out
         </button>
       </div>
@@ -87,7 +90,7 @@
     <header class="hero">
       <p class="eyebrow">
         <span class="eyebrow-logo">
-          <img src="/assets/logo.png" alt="Voux logo" />
+          <img src="/assets/logos/png/logo.png" alt="" />
         </span>
         <span data-brand-text data-brand-page="Profile">Voux · Profile</span>
       </p>
@@ -101,7 +104,7 @@
           <div class="profile-avatar">
             <button type="button" class="profile-avatar__button" id="profileAvatarButton" aria-label="Upload profile photo">
               <img id="profileAvatarPreview" alt="" class="hidden" />
-              <span id="profileAvatarFallback">?</span>
+              <span id="profileAvatarFallback"></span>
             </button>
             <div class="profile-avatar__meta">
               <div class="profile-avatar__copy">
@@ -116,18 +119,18 @@
         <div class="field">
           <div class="field__label">Display name <span class="optional-tag">Optional</span></div>
           <div class="profile-display">
-            <span id="profileDisplayText" class="profile-display__value">No display name</span>
+            <span id="profileDisplayText" class="profile-display__value hint"></span>
             <button type="button" class="ghost profile-display__edit" id="profileDisplayEdit" aria-label="Edit display name">
-              <i class="ri-pencil-line"></i>
+              <i class="icon" style="--icon:url('/assets/icons/ui/pencil.svg')" aria-hidden="true"></i>
             </button>
           </div>
         </div>
         <div class="field">
           <div class="field__label">Username <span class="optional-tag">Used to sign in</span></div>
           <div class="profile-username">
-            <span id="profileUsernameText" class="profile-username__value">username</span>
+            <span id="profileUsernameText" class="profile-username__value"></span>
             <button type="button" class="ghost profile-username__edit" id="profileUsernameEdit" aria-label="Edit username">
-              <i class="ri-pencil-line"></i>
+              <i class="icon" style="--icon:url('/assets/icons/ui/pencil.svg')" aria-hidden="true"></i>
             </button>
           </div>
         </div>
@@ -153,7 +156,7 @@
         <div class="password-field password-field--no-icon">
           <input class="modal__input" type="password" id="profilePasswordCurrent" autocomplete="current-password" placeholder="Current password" />
           <button type="button" class="password-toggle" aria-label="Show password">
-            <i class="ri-eye-line" aria-hidden="true"></i>
+            <i class="icon" style="--icon:url('/assets/icons/ui/eye.svg')" aria-hidden="true"></i>
           </button>
         </div>
         <small class="modal__input-error is-hidden" id="profilePasswordCurrentError"></small>
@@ -163,7 +166,7 @@
         <div class="password-field password-field--no-icon">
           <input class="modal__input" type="password" id="profilePasswordNew" autocomplete="new-password" minlength="6" placeholder="New password" />
           <button type="button" class="password-toggle" aria-label="Show password">
-            <i class="ri-eye-line" aria-hidden="true"></i>
+            <i class="icon" style="--icon:url('/assets/icons/ui/eye.svg')" aria-hidden="true"></i>
           </button>
         </div>
         <small class="modal__input-error is-hidden" id="profilePasswordNewError"></small>
@@ -189,7 +192,7 @@
         <div class="password-field password-field--no-icon">
           <input class="modal__input" type="password" id="profileUsernamePassword" autocomplete="current-password" placeholder="Current password" />
           <button type="button" class="password-toggle" aria-label="Show password">
-            <i class="ri-eye-line" aria-hidden="true"></i>
+            <i class="icon" style="--icon:url('/assets/icons/ui/eye.svg')" aria-hidden="true"></i>
           </button>
         </div>
         <small class="modal__input-error is-hidden" id="profileUsernameError"></small>
@@ -220,10 +223,11 @@
   <div data-footer-root></div>
 
   <!-- Local scripts -->
+  <script src="/js/layout/nav.js?v=%APP_VERSION%"></script>
+  <script src="/js/profile/core/bootstrap.js?v=%APP_VERSION%"></script>
   <script src="/js/utils/modal.js?v=%APP_VERSION%" defer></script>
   <script src="/js/utils/state.js?v=%APP_VERSION%" defer></script>
   <script src="/js/utils/errors.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/layout/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/appearance/brand.js?v=%APP_VERSION%" defer></script>
   <script src="/js/layout/footer.js?v=%APP_VERSION%" defer></script>
   <script src="/js/appearance/theme.js?v=%APP_VERSION%" defer></script>

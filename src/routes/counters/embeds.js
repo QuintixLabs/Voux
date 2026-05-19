@@ -6,12 +6,17 @@
 
 function registerEmbedRoutes(app, deps) {
   const {
+    // Counter data
     getCounter,
     getBaseUrl,
     serializeCounterWithStats,
+
+    // Embed hit handling
     isPreviewRequest,
     recordHit,
     getClientIp,
+
+    // Counter formatting
     normalizeCounterValue
   } = deps;
 
@@ -127,10 +132,12 @@ function registerEmbedRoutes(app, deps) {
       if (!counter) {
         return res.status(200).send(renderErrorSvg('Counter not found'));
       }
+
       let hitIp = isGitHubCamo ? 'github-camo' : getClientIp(req);
       if (!hitIp) {
         hitIp = 'unknown-svg';
       }
+
       result = recordHit(req.params.id, hitIp);
       if (!result) {
         return res.status(404).send('Counter not found');
@@ -145,6 +152,7 @@ function registerEmbedRoutes(app, deps) {
       /\B(?=(\d{3})+(?!\d))/g,
       ','
     );
+
     const label = labelRaw.replace(
       /[<>&'"]/g,
       (char) =>
@@ -156,6 +164,7 @@ function registerEmbedRoutes(app, deps) {
           '"': '&quot;'
         })[char]
     );
+
     const valueText = valueFormatted.replace(
       /[<>&'"]/g,
       (char) =>
@@ -167,10 +176,12 @@ function registerEmbedRoutes(app, deps) {
           '"': '&quot;'
         })[char]
     );
+
     const queryValue = (key) => {
       const raw = req.query[key];
       return Array.isArray(raw) ? raw[0] : raw;
     };
+
     const parseBool = (raw, fallback = false) => {
       if (raw === undefined || raw === null) return fallback;
       const normalized = String(raw).trim().toLowerCase();
@@ -178,6 +189,7 @@ function registerEmbedRoutes(app, deps) {
       if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
       return fallback;
     };
+
     const parseHexColor = (raw, fallback) => {
       if (!raw) return fallback;
       const normalized = String(raw).trim().replace(/^#/, '');
@@ -189,11 +201,13 @@ function registerEmbedRoutes(app, deps) {
       }
       return fallback;
     };
+
     const parseSize = (raw, fallback) => {
       const num = Number(raw);
       if (!Number.isFinite(num)) return fallback;
       return Math.min(48, Math.max(12, Math.round(num)));
     };
+    
     const parseAlign = (raw) => {
       if (!raw) return 'left';
       const normalized = String(raw).trim().toLowerCase();

@@ -9,22 +9,29 @@
 /* -------------------------------------------------------------------------- */
 function createDashboardSession(deps) {
   const {
+    // State
     state,
+
+    // Session requests
     hasSessionHint,
     loadOwnerFilterPreference,
     saveOwnerFilterPreference,
     fetchRuntimeConfig,
     fetchSession,
     loginRequest,
+
+    // Login UI
     themeHelper,
     loginCard,
-    dashboardCard,
     adminForm,
     loginUsernameInput,
     loginPasswordInput,
     loginRememberDeviceInput,
     loginError,
     loginStatus,
+
+    // Dashboard shell
+    dashboardCard,
     dashboardSubtitle,
     adminControls,
     adminEmbedBlock,
@@ -32,10 +39,14 @@ function createDashboardSession(deps) {
     adminEmbedSvgSnippetCode,
     paginationEl,
     deleteAllBtn,
+
+    // Tag state sync
     renderTagFilterList,
     updateTagFilterButton,
     refreshTagSelectors,
     closeTagFilterMenu,
+
+    // Dashboard state sync
     syncOwnerFilterToggle,
     refreshCounters,
     fetchTags,
@@ -91,7 +102,7 @@ function createDashboardSession(deps) {
     setLoginLoading(true);
     setLoginPending(false);
     try {
-      const data = await fetchSession(true).catch(() => null);
+      const data = await fetchSession(false).catch(() => null);
       if (!data || !data.user) {
         if (hasSessionHint()) {
           if (!sessionGraceUntil) {
@@ -287,6 +298,7 @@ function createDashboardSession(deps) {
     }
     state.isAdmin = Boolean(user?.isAdmin || user?.role === 'admin');
     if (!state.user) {
+      window.VouxState?.clearSession?.();
       if (window.VouxErrors?.cacheNavUser) {
         window.VouxErrors.cacheNavUser(null);
       }
@@ -297,6 +309,10 @@ function createDashboardSession(deps) {
       revealLoginCard();
       return;
     }
+    window.VouxState?.setSession?.({
+      user: state.user,
+      adminPermissions: adminPermissions || state.user?.adminPermissions || null
+    });
     state.ownerOnly = state.isAdmin ? loadOwnerFilterPreference() : false;
     if (state.isAdmin && state.user?.adminPermissions?.danger === false) {
       state.ownerOnly = true;
@@ -359,16 +375,21 @@ function createDashboardSession(deps) {
   }
 
   return {
+    // Config + session checks
     fetchConfig,
     checkSession,
     onLoginSubmit,
     attemptLogin,
+
+    // Dashboard/login visibility
     showDashboard,
     hideDashboard,
     showLoginError,
     hideLoginError,
     setLoginLoading,
     setUserSession,
+
+    // Login status UI
     setLoginPending,
     revealLoginCard,
     showStatusHint

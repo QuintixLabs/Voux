@@ -1,5 +1,5 @@
 /*
-  settings/features/branding.js
+  public/js/settings/features/branding.js
 
   Branding/theme form behavior for settings.
 */
@@ -9,21 +9,30 @@
 /* -------------------------------------------------------------------------- */
 function createBrandingManager(deps) {
   const {
+    // Branding controls
     brandingForm,
     brandNameInputField,
     homeTitleInputField,
     themeSelect,
     brandingStatusLabel,
     resetBrandingBtn,
+
+    // Branding defaults
     DEFAULT_BRAND_NAME,
     DEFAULT_HOME_TITLE,
     ALLOWED_THEMES,
+
+    // Requests + auth
     authFetch,
     assertSession,
+
+    // Feedback
     showToast,
     showAlert,
     normalizeAuthMessage,
     modalConfirm,
+
+    // Config + theme updates
     applyConfigUpdate,
     applyThemeClass
   } = deps;
@@ -229,7 +238,10 @@ function createBrandingManager(deps) {
   }
 
   return {
+    // Lifecycle
     setupBrandingForm,
+
+    // Branding state
     applyBrandingFromConfig
   };
 }

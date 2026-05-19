@@ -4,34 +4,136 @@
   Navigation/account menu behavior and redirect to dashboard when needed.
 */
 
+const GUEST_BUTTON_MARKUP =
+  `<i class="icon" style="--icon:url('/assets/icons/ui/account-circle-fill.svg')" aria-hidden="true"></i>`;
+
+function setNavAuthCachedClass(active) {
+  document.documentElement.classList.toggle('nav-auth-cached', Boolean(active));
+}
+
+(() => {
+  /* ------------------------------------------------------------------------ */
+  /* Early cached account state                                               */
+  /* ------------------------------------------------------------------------ */
+  const menuButton = document.getElementById('navAccountButton');
+  if (!menuButton) return;
+  if (document.body?.dataset?.page === 'setup') {
+    setNavAuthCachedClass(false);
+    return;
+  }
+
+  let user = null;
+  try {
+    if (localStorage.getItem('voux_session_hint') !== '1') {
+      localStorage.removeItem('voux_nav_user');
+      setNavAuthCachedClass(false);
+      return;
+    }
+    const raw = localStorage.getItem('voux_nav_user') || '';
+    if (raw) {
+      user = JSON.parse(raw);
+    }
+  } catch {}
+
+  if (!user || typeof user !== 'object') {
+    setNavAuthCachedClass(false);
+    return;
+  }
+
+  setNavAuthCachedClass(true);
+  menuButton.dataset.accountKey = JSON.stringify({
+    username: user.username || '',
+    displayName: user.displayName || '',
+    avatarUrl: user.avatarUrl || ''
+  });
+
+  if (user.avatarUrl) {
+    menuButton.classList.add('nav-account__button--avatar');
+    menuButton.textContent = '';
+
+    const fallbackName = (user.username || '?').trim();
+    const displayName = (user.displayName || '').trim();
+    const letter = (displayName || fallbackName || '?').charAt(0).toUpperCase();
+
+    const fallback = document.createElement('span');
+    fallback.className =
+      'nav-account__avatar nav-account__avatar--fallback hidden';
+    fallback.dataset.letter = letter;
+    fallback.setAttribute('aria-label', letter);
+
+    const img = document.createElement('img');
+    img.className = 'nav-account__avatar nav-account__avatar--image';
+    img.src = user.avatarUrl;
+    img.alt = '';
+    img.setAttribute('aria-hidden', 'true');
+    img.addEventListener('error', () => {
+      img.remove();
+      fallback.classList.remove('hidden');
+      menuButton.dataset.accountKey = '';
+    });
+
+    menuButton.append(fallback, img);
+    return;
+  }
+
+  const fallbackName = (user.username || '?').trim();
+  const displayName = (user.displayName || '').trim();
+  const letter = (displayName || fallbackName || '?').charAt(0).toUpperCase();
+
+  menuButton.classList.add('nav-account__button--avatar');
+  menuButton.textContent = '';
+  const fallback = document.createElement('span');
+  fallback.className = 'nav-account__avatar nav-account__avatar--fallback';
+  fallback.dataset.letter = letter;
+  fallback.setAttribute('aria-label', letter);
+  menuButton.appendChild(fallback);
+})();
+
 (() => {
   /* ------------------------------------------------------------------------ */
   /* Password toggles                                                         */
   /* ------------------------------------------------------------------------ */
-  const toggles = document.querySelectorAll('.password-toggle');
-  if (!toggles.length) return;
-  toggles.forEach((toggle) => {
-    const field = toggle.closest('.password-field');
-    const input = field?.querySelector('input');
-    const icon = toggle.querySelector('i');
+  function initPasswordToggles() {
+    const toggles = document.querySelectorAll('.password-toggle');
+    if (!toggles.length) return;
+    toggles.forEach((toggle) => {
+      const field = toggle.closest('.password-field');
+      const input = field?.querySelector('input');
+      const icon = toggle.querySelector('i');
 
-    const syncToggleState = () => {
-      if (!input) return;
-      const hidden = input.type === 'password';
-      if (icon) icon.className = hidden ? 'ri-eye-line' : 'ri-eye-off-line';
-      toggle.setAttribute(
-        'aria-label',
-        hidden ? 'Show password' : 'Hide password'
-      );
-    };
+      const syncToggleState = () => {
+        if (!input) return;
+        const hidden = input.type === 'password';
+        if (icon) {
+          icon.style.setProperty(
+            '--icon',
+            hidden
+              ? "url('/assets/icons/ui/eye.svg')"
+              : "url('/assets/icons/ui/eye-off.svg')"
+          );
+        }
+        toggle.setAttribute(
+          'aria-label',
+          hidden ? 'Show password' : 'Hide password'
+        );
+      };
 
-    syncToggleState();
-    toggle.addEventListener('click', () => {
-      if (!input) return;
-      input.type = input.type === 'password' ? 'text' : 'password';
       syncToggleState();
+      toggle.addEventListener('click', () => {
+        if (!input) return;
+        input.type = input.type === 'password' ? 'text' : 'password';
+        syncToggleState();
+      });
     });
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPasswordToggles, {
+      once: true
+    });
+  } else {
+    initPasswordToggles();
+  }
 })();
 
 (() => {
@@ -61,6 +163,9 @@
     writeCachedUser(null);
   }
   updateAccountButton(cachedUser);
+  if (cachedUser || localStorage.getItem('voux_session_hint') === '1') {
+    checkSession();
+  }
 
   /* ------------------------------------------------------------------------ */
   /* Menu events                                                              */
@@ -94,6 +199,7 @@
     await fetch('/api/logout', { method: 'POST', credentials: 'include' });
     sessionUser = null;
     cachedUser = null;
+    window.VouxState?.clearSession?.();
     writeCachedUser(null);
     closeMenu();
     window.location.href = '/dashboard';
@@ -118,7 +224,7 @@
     sessionCheckInFlight = (async () => {
       try {
         const getSession = window.VouxState?.getSession
-          ? window.VouxState.getSession({ force: true })
+          ? window.VouxState.getSession()
           : fetch('/api/session', { credentials: 'include', cache: 'no-store' })
               .then((res) => (res.ok ? res.json() : null))
               .catch(() => null);
@@ -143,6 +249,7 @@
           sessionRetryCount = 0;
           sessionGraceUntil = 0;
           sessionChecked = true;
+          notifySessionUpdated(null);
           updateMenuState();
           return sessionUser;
         }
@@ -152,6 +259,7 @@
         if (window.VouxErrors?.cacheNavUser) {
           window.VouxErrors.cacheNavUser(sessionUser);
         }
+        notifySessionUpdated(sessionUser);
         updateMenuState();
         if (!sessionUser && menu.classList.contains('account-menu--open')) {
           closeMenu();
@@ -162,7 +270,12 @@
           console.warn('Failed to check session', error);
         }
         sessionChecked = true;
-        sessionUser = null;
+        sessionUser = cachedUser || sessionUser || null;
+        if (sessionUser) {
+          updateMenuState();
+          return sessionUser;
+        }
+        notifySessionUpdated(null);
         updateMenuState();
         if (menu.classList.contains('account-menu--open')) {
           closeMenu();
@@ -190,15 +303,25 @@
 
   function updateAccountButton(user) {
     if (!menuButton) return;
-    if (!user) {
-      menuButton.classList.remove('nav-account__button--avatar');
-      menuButton.textContent = '';
-      const icon = document.createElement('i');
-      icon.className = 'ri-account-circle-fill';
-      menuButton.appendChild(icon);
+    const currentKey = menuButton.dataset.accountKey || '';
+    const nextKey = user
+      ? JSON.stringify({
+          username: user.username || '',
+          displayName: user.displayName || '',
+          avatarUrl: user.avatarUrl || ''
+        })
+      : 'guest';
+    if (currentKey === nextKey) {
       return;
     }
-    const display = user.displayName || user.username || '?';
+    menuButton.dataset.accountKey = nextKey;
+    if (!user) {
+      setNavAuthCachedClass(false);
+      menuButton.classList.remove('nav-account__button--avatar');
+      menuButton.innerHTML = GUEST_BUTTON_MARKUP;
+      return;
+    }
+    setNavAuthCachedClass(true);
     if (user.avatarUrl) {
       menuButton.classList.add('nav-account__button--avatar');
       menuButton.textContent = '';
@@ -207,28 +330,30 @@
       const letter = (displayName || fallbackName || '?')
         .charAt(0)
         .toUpperCase();
+
       const fallback = document.createElement('span');
       fallback.className =
         'nav-account__avatar nav-account__avatar--fallback hidden';
       fallback.dataset.letter = letter;
       fallback.setAttribute('aria-label', letter);
+
       const img = document.createElement('img');
-      img.className =
-        'nav-account__avatar nav-account__avatar--image is-loading';
+      img.className = 'nav-account__avatar nav-account__avatar--image';
       img.src = user.avatarUrl;
-      img.alt = display;
-      img.addEventListener('load', () => {
-        img.classList.remove('is-loading');
-        fallback.classList.add('hidden');
-      });
+      img.alt = '';
+      img.setAttribute('aria-hidden', 'true');
+      fallback.classList.add('hidden');
       img.addEventListener('error', () => {
+        menuButton.dataset.accountKey = '';
         img.remove();
         fallback.classList.remove('hidden');
       });
+
       menuButton.appendChild(fallback);
       menuButton.appendChild(img);
       return;
     }
+    
     const displayName = (user.displayName || '').trim();
     const fallbackName = (user.username || '?').trim();
     const letter = (displayName || fallbackName || '?').charAt(0).toUpperCase();
@@ -246,6 +371,10 @@
   /* ------------------------------------------------------------------------ */
   function readCachedUser() {
     try {
+      if (localStorage.getItem('voux_session_hint') !== '1') {
+        localStorage.removeItem('voux_nav_user');
+        return null;
+      }
       const raw = localStorage.getItem('voux_nav_user');
       if (!raw) return null;
       const parsed = JSON.parse(raw);
@@ -266,11 +395,20 @@
       const payload = {
         username: user.username || '',
         displayName: user.displayName || '',
-        avatarUrl: user.avatarUrl || ''
+        avatarUrl: user.avatarUrl || '',
+        role: user.role || '',
+        isOwner: Boolean(user.isOwner),
+        isAdmin: Boolean(user.isAdmin || user.role === 'admin')
       };
       localStorage.setItem('voux_nav_user', JSON.stringify(payload));
       localStorage.setItem('voux_session_hint', '1');
     } catch {}
+  }
+
+  function notifySessionUpdated(user) {
+    document.dispatchEvent(
+      new CustomEvent('voux:session-updated', { detail: { user: user || null } })
+    );
   }
 
   function applyCachedAccountButton() {

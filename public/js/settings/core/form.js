@@ -1,5 +1,5 @@
 /*
-  settings/core/form.js
+  public/js/settings/core/form.js
 
   Settings payload fetch + form population helpers.
 */
@@ -9,12 +9,17 @@
 /* -------------------------------------------------------------------------- */
 function createSettingsFormManager(deps) {
   const {
+    // Requests
     authFetch,
+
+    // Core toggles
     togglePrivate,
     toggleGuides,
     allowModeUniqueInput,
     allowModeUnlimitedInput,
     throttleSelect,
+
+    // Branding + backup
     applyBrandingFromConfig,
     applyAutoBackupForm,
     applyAutoBackupPath

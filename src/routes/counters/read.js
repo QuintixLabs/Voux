@@ -6,20 +6,29 @@
 
 function registerCounterReadRoutes(app, deps) {
   const {
+    // Auth middleware
     requireAuth,
     authenticateRequest,
+
+    // Filter normalization
     normalizeModeFilter,
     normalizeSort,
     normalizeInactiveFilter,
     normalizeTagFilter,
     extractSearchQuery,
+
+    // Pagination + inactivity
     DEFAULT_PAGE_SIZE,
     INACTIVE_THRESHOLD_DAYS,
     DAY_MS,
+
+    // Counter data
     countCounters,
     listCountersPage,
     getUserById,
     isKnownOwner,
+
+    // Counter serialization
     serializeCounterWithStats
   } = deps;
 

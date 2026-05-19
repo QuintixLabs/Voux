@@ -6,21 +6,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title data-page-title="About">Voux · About</title>
 
-  <!-- External libraries -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap"
-    rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet" />
-
   <!-- Icons -->
-  <link rel="icon" href="/assets/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
-  <link rel="icon" href="/assets/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/assets/logos/svg/logo-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/assets/logos/svg/logo-light.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
 
   <!-- Local styles -->
   <link rel="stylesheet" href="/css/theme.css?v=%APP_VERSION%" />
   <link rel="stylesheet" href="/css/styles.css?v=%APP_VERSION%" />
 
+  <script>
+    try {
+      if (
+        localStorage.getItem('voux_session_hint') === '1' &&
+        localStorage.getItem('voux_nav_user')
+      ) {
+        document.documentElement.classList.add('nav-auth-cached');
+      }
+    } catch {}
+  </script>
 </head>
 
 <body data-page="about">
@@ -43,25 +46,25 @@
   
   <header class="site-nav">
     <a class="brand" href="/">
-      <img src="/assets/logo-text.png" alt="Voux" />
+      <img src="/assets/logos/png/logo-text.png" alt="Voux" />
     </a>
     <div class="nav-account">
-      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"></button>
+      <button class="nav-link ghost nav-account__button" id="navAccountButton" aria-label="Account menu"><i class="icon" style="--icon:url('/assets/icons/ui/account-circle-fill.svg')" aria-hidden="true"></i></button>
             <div class="account-menu" id="navAccountMenu">
 <a href="/profile" class="account-menu__link">
-          <i class="ri-user-3-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/user.svg')" aria-hidden="true"></i>
           Profile
         </a>
 <a href="/dashboard" class="account-menu__link">
-          <i class="ri-eye-2-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/dashboard-eye.svg')" aria-hidden="true"></i>
           Dashboard
         </a>
 <a href="/settings" class="account-menu__link">
-          <i class="ri-settings-3-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/settings.svg')" aria-hidden="true"></i>
           Settings
         </a>
 <button type="button" class="account-menu__link account-menu__logout" id="navAccountLogout">
-          <i class="ri-logout-box-r-line"></i>
+          <i class="icon" style="--icon:url('/assets/icons/ui/logout.svg')" aria-hidden="true"></i>
           Log out
         </button>
       </div>
@@ -72,7 +75,7 @@
     <header class="hero">
       <p class="eyebrow">
         <span class="eyebrow-logo">
-          <img src="/assets/logo.png" alt="Voux logo" />
+          <img src="/assets/logos/png/logo.png" alt="Voux logo" />
         </span>
         <span data-brand-text data-brand-page="About">Voux · About</span>
       </p>
@@ -108,9 +111,9 @@
   <div data-footer-root></div>
 
   <!-- Local scripts -->
+  <script src="/js/layout/nav.js?v=%APP_VERSION%"></script>
   <script src="/js/utils/modal.js?v=%APP_VERSION%" defer></script>
   <script src="/js/utils/state.js?v=%APP_VERSION%" defer></script>
-  <script src="/js/layout/nav.js?v=%APP_VERSION%" defer></script>
   <script src="/js/appearance/theme.js?v=%APP_VERSION%" defer></script>
   <script src="/js/layout/footer.js?v=%APP_VERSION%" defer></script>
   <script src="/js/appearance/brand.js?v=%APP_VERSION%" defer></script>

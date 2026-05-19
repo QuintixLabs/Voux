@@ -6,25 +6,36 @@
 
 function registerAuthRoutes(app, deps) {
   const {
+    // Auth serialization
     authenticateRequest,
     getOwnerId,
     serializeUser,
     getEffectiveAdminPermissions,
+
+    // User setup + lookup
     countUsers,
     createUser,
+
+    // Rate limit + client info
     getClientIp,
     checkLoginBlock,
     setRetryAfter,
     rateLimitPayload,
+
+    // Credentials
     getUserByUsername,
     verifyPassword,
     recordLoginFailure,
     clearLoginFailures,
+
+    // Session creation
     createSession,
     SESSION_TTL_MS,
     REMEMBER_DEVICE_TTL_MS,
     recordUserLogin,
     setSessionCookie,
+
+    // Session cleanup
     deleteSession,
     getSessionToken,
     clearSessionCookie
@@ -92,18 +103,21 @@ function registerAuthRoutes(app, deps) {
     if (countUsers() === 0) {
       return res.status(409).json({ error: 'setup_required' });
     }
+
     const ip = getClientIp(req);
     const block = checkLoginBlock(ip);
     if (block.blocked) {
       setRetryAfter(res, block.retryAfterSeconds);
       return res.status(429).json(rateLimitPayload(block.retryAfterSeconds));
     }
+
     const { username, password, rememberDevice } = req.body || {};
     const normalizedUsername =
       typeof username === 'string' ? username.trim().toLowerCase() : '';
     if (!normalizedUsername || !password) {
       return res.status(400).json({ error: 'username_password_required' });
     }
+
     const user = getUserByUsername(normalizedUsername);
     if (!user || !verifyPassword(user.password_hash, password)) {
       const result = recordLoginFailure(ip);
@@ -113,6 +127,7 @@ function registerAuthRoutes(app, deps) {
       }
       return res.status(401).json({ error: 'invalid_credentials' });
     }
+    
     clearLoginFailures(ip);
     const ttlMs =
       rememberDevice === true ? REMEMBER_DEVICE_TTL_MS : SESSION_TTL_MS;

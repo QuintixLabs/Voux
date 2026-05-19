@@ -40,6 +40,7 @@ function registerPageRoutes(app, serveHtml, deps = {}) {
     return serveHtml('setup.html')(req, res);
   };
 
+  // yay! routes! ._.
   app.get('/', redirectToSetupIfNeeded('index.html'));
   app.get('/index.html', redirectToSetupIfNeeded('index.html'));
   app.get('/dashboard', redirectToSetupIfNeeded('dashboard.html'));
@@ -92,7 +93,14 @@ function registerStaticAndErrorHandlers(app, deps) {
     express.static(staticDir, {
       extensions: ['html'],
       setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+        if (filePath.endsWith('.js')) {
+          if (isDev) {
+            res.setHeader('Cache-Control', 'no-store');
+          } else {
+            // revalidate JS modules so nested ESM imports update after deploys
+            res.setHeader('Cache-Control', 'public, no-cache');
+          }
+        } else if (filePath.endsWith('.css')) {
           if (isDev) {
             res.setHeader('Cache-Control', 'no-store');
           } else {

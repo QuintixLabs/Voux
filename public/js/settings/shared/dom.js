@@ -1,5 +1,5 @@
 /*
-  settings/shared/dom.js
+  public/js/settings/shared/dom.js
 
   DOM references used by the settings module.
 */
@@ -51,6 +51,9 @@ export const runAutoBackupNowBtn = document.getElementById('runAutoBackupNow');
 /* -------------------------------------------------------------------------- */
 export const apiKeysCard = document.getElementById('apiKeysCard');
 export const apiKeysList = document.getElementById('apiKeysList');
+export const apiKeySearchInput = document.getElementById('apiKeySearch');
+export const apiKeyFilterSelect = document.getElementById('apiKeyFilter');
+export const apiKeyCreateOpen = document.getElementById('apiKeyCreateOpen');
 export const apiKeyForm = document.getElementById('apiKeyForm');
 export const apiKeyNameInput = document.getElementById('apiKeyName');
 export const apiKeyScopeSelect = document.getElementById('apiKeyScope');
@@ -58,11 +61,15 @@ export const apiKeyCountersField = document.getElementById(
   'apiKeyCountersField'
 );
 export const apiKeyCountersInput = document.getElementById('apiKeyCounters');
+export const apiKeyCountersError = document.getElementById('apiKeyCountersError');
 export const apiKeyStatusLabel = document.getElementById('apiKeyStatus');
 export const apiKeysPagination = document.getElementById('apiKeysPagination');
 export const apiKeysPrevBtn = document.getElementById('apiKeysPrev');
 export const apiKeysNextBtn = document.getElementById('apiKeysNext');
 export const apiKeysPageInfo = document.getElementById('apiKeysPageInfo');
+export const apiKeysCountLabel = document.getElementById('apiKeysCountLabel');
+export const apiKeyModal = document.getElementById('apiKeyModal');
+export const apiKeyCancel = document.getElementById('apiKeyCancel');
 
 /* -------------------------------------------------------------------------- */
 /* Branding + runtime refs                                                    */
@@ -91,6 +98,7 @@ export const usersPagination = document.getElementById('usersPagination');
 export const usersPrevBtn = document.getElementById('usersPrev');
 export const usersNextBtn = document.getElementById('usersNext');
 export const usersPageInfo = document.getElementById('usersPageInfo');
+export const usersCountLabel = document.getElementById('usersCountLabel');
 export const settingsTabs = document.getElementById('settingsTabs');
 export const settingsTabButtons = settingsTabs
   ? Array.from(settingsTabs.querySelectorAll('.settings-tab'))

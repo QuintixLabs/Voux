@@ -8,6 +8,9 @@ function createApiKeysApi(db, helpers, cryptoApi) {
   const { normalizeApiKeyRow, generateId } = helpers;
   const { generateApiKeyToken, hashToken } = cryptoApi;
 
+  /* -------------------------------------------------------------------------- */
+  /* API key queries                                                            */
+  /* -------------------------------------------------------------------------- */
   const insertApiKeyStmt = db.prepare(`
     INSERT INTO api_keys (id, name, token_hash, scope, allowed_counters, created_at, last_used_at, disabled)
     VALUES (@id, @name, @token_hash, @scope, @allowed_counters, @created_at, NULL, 0)
@@ -23,6 +26,9 @@ function createApiKeysApi(db, helpers, cryptoApi) {
     'UPDATE api_keys SET last_used_at = ? WHERE id = ?'
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* API key CRUD                                                               */
+  /* -------------------------------------------------------------------------- */
   function createApiKey({ name, scope = 'global', counters = [] }) {
     const trimmedName = String(name || '')
       .trim()
@@ -72,6 +78,9 @@ function createApiKeysApi(db, helpers, cryptoApi) {
     return result.changes > 0;
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* API key lookup + usage                                                     */
+  /* -------------------------------------------------------------------------- */
   function findApiKeyByToken(token) {
     if (!token) return null;
     const hash = hashToken(token);
@@ -90,9 +99,12 @@ function createApiKeysApi(db, helpers, cryptoApi) {
   }
 
   return {
+    // API key CRUD
     createApiKey,
     listApiKeys,
     deleteApiKey,
+
+    // API key lookup + usage
     findApiKeyByToken,
     recordApiKeyUsage
   };

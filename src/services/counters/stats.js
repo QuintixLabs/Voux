@@ -8,6 +8,9 @@ function createCounterStatsService(deps) {
   const { weekdayLabels, activityWindowDays, inactiveThresholdDays, dayMs } =
     deps;
 
+  /* -------------------------------------------------------------------------- */
+  /* Activity formatting                                                        */
+  /* -------------------------------------------------------------------------- */
   function formatActivityTrend(trend = []) {
     const chronological = Array.isArray(trend)
       ? trend.slice(-activityWindowDays)
@@ -35,6 +38,9 @@ function createCounterStatsService(deps) {
     };
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Week ordering                                                              */
+  /* -------------------------------------------------------------------------- */
   function orderWeekByLabel(days = []) {
     const map = new Map();
     days.forEach((entry) => {
@@ -42,6 +48,7 @@ function createCounterStatsService(deps) {
       if (idx === null || idx === undefined) return;
       map.set(idx, entry);
     });
+
     const ordered = [];
     for (let i = 0; i < weekdayLabels.length; i += 1) {
       const found = map.get(i);
@@ -57,11 +64,15 @@ function createCounterStatsService(deps) {
   function getWeekdayIndex(timestamp) {
     if (timestamp === null || timestamp === undefined) return null;
     const date = new Date(timestamp);
+    
     if (Number.isNaN(date.getTime())) return null;
     const weekDay = date.getDay();
     return (weekDay + 6) % 7;
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Inactive status                                                            */
+  /* -------------------------------------------------------------------------- */
   function buildInactiveStatus(counter, lastHit) {
     const reference = toSafeNumber(lastHit || counter.created_at || 0);
     if (!reference) {
@@ -83,6 +94,9 @@ function createCounterStatsService(deps) {
     };
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Time helpers                                                               */
+  /* -------------------------------------------------------------------------- */
   function getDayStart() {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -98,8 +112,11 @@ function createCounterStatsService(deps) {
   }
 
   return {
+    // Activity formatting
     formatActivityTrend,
     buildInactiveStatus,
+
+    // Time helpers
     getDayStart,
     toSafeNumber
   };

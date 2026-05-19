@@ -7,6 +7,9 @@
 function createCounterRequestService(deps) {
   const { startValueDigitLimit, filterTagIds } = deps;
 
+  /* -------------------------------------------------------------------------- */
+  /* Counter value parsing                                                      */
+  /* -------------------------------------------------------------------------- */
   function validateCounterValue(rawValue) {
     const normalizedRaw =
       rawValue === undefined || rawValue === null
@@ -37,10 +40,14 @@ function createCounterRequestService(deps) {
     }
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Request query parsing                                                      */
+  /* -------------------------------------------------------------------------- */
   function extractSearchQuery(value) {
     if (value === undefined || value === null) {
       return null;
     }
+
     const raw = Array.isArray(value) ? value[0] : value;
     const trimmed = String(raw).trim();
     if (!trimmed) {
@@ -52,12 +59,17 @@ function createCounterRequestService(deps) {
   function isPreviewRequest(req) {
     const previewParam = req.query.preview;
     if (previewParam === undefined) return false;
+
     const value = Array.isArray(previewParam) ? previewParam[0] : previewParam;
     if (value === undefined || value === null) return false;
+
     const normalized = String(value).trim().toLowerCase();
     return normalized === '1' || normalized === 'true' || normalized === 'yes';
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* ID + counter normalization                                                 */
+  /* -------------------------------------------------------------------------- */
   function normalizeIdsInput(value, limit = 200) {
     if (!Array.isArray(value)) return [];
     const normalized = [];
@@ -76,13 +88,16 @@ function createCounterRequestService(deps) {
     if (value === undefined || value === null) {
       return '0';
     }
+
     if (typeof value === 'bigint') {
       return value < 0n ? '0' : value.toString();
     }
+
     if (typeof value === 'number') {
       if (!Number.isFinite(value) || value < 0) return '0';
       return Math.floor(value).toString();
     }
+
     const digits = String(value).replace(/[^\d]/g, '');
     return digits || '0';
   }
@@ -96,11 +111,16 @@ function createCounterRequestService(deps) {
     };
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Filter normalization                                                       */
+  /* -------------------------------------------------------------------------- */
   function normalizeModeFilter(value) {
     if (value === undefined || value === null) return null;
     const raw = Array.isArray(value) ? value[0] : value;
+
     if (raw === undefined || raw === null) return null;
     const normalized = String(raw).trim().toLowerCase();
+
     if (normalized === 'unique' || normalized === 'unlimited') {
       return normalized;
     }
@@ -110,8 +130,10 @@ function createCounterRequestService(deps) {
   function normalizeSort(value) {
     if (value === undefined || value === null) return null;
     const raw = Array.isArray(value) ? value[0] : value;
+
     if (raw === undefined || raw === null) return null;
     const normalized = String(raw).trim().toLowerCase();
+
     if (
       normalized === 'newest' ||
       normalized === 'oldest' ||
@@ -127,11 +149,14 @@ function createCounterRequestService(deps) {
   function normalizeInactiveFilter(value) {
     if (value === undefined || value === null) return null;
     const raw = Array.isArray(value) ? value[0] : value;
+
     if (raw === undefined || raw === null) return null;
     const normalized = String(raw).trim().toLowerCase();
+
     if (normalized === '1' || normalized === 'true' || normalized === 'yes') {
       return true;
     }
+
     if (normalized === '0' || normalized === 'false' || normalized === 'no') {
       return false;
     }
@@ -141,6 +166,7 @@ function createCounterRequestService(deps) {
   function normalizeTagFilter(value, ownerId) {
     if (value === undefined || value === null) return [];
     const entries = Array.isArray(value) ? value : [value];
+    
     const flattened = entries
       .flatMap((entry) => String(entry || '').split(','))
       .map((part) => part.trim())
@@ -149,6 +175,9 @@ function createCounterRequestService(deps) {
     return filterTagIds(flattened, ownerId);
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Settings patch normalization                                               */
+  /* -------------------------------------------------------------------------- */
   function normalizeAllowedModesPatch(input) {
     if (!input || typeof input !== 'object') return null;
     const normalized = {
@@ -170,16 +199,25 @@ function createCounterRequestService(deps) {
   }
 
   return {
+    // Counter value parsing
     validateCounterValue,
+
+    // Request query parsing
     extractSearchQuery,
     isPreviewRequest,
+
+    // ID + counter normalization
     normalizeIdsInput,
     normalizeCounterValue,
     normalizeCounterForExport,
+
+    // Filter normalization
     normalizeModeFilter,
     normalizeSort,
     normalizeInactiveFilter,
     normalizeTagFilter,
+
+    // Settings patch normalization
     normalizeAllowedModesPatch
   };
 }

@@ -26,6 +26,9 @@
     if (message === 'backup_not_owned') {
       return 'You can only restore backups that belong to your account.';
     }
+    if (message === 'forbidden_counter_scope') {
+      return 'You can only create limited API keys for counters you own.';
+    }
     return message || fallback;
   }
 
@@ -45,7 +48,10 @@
         const payload = {
           username: user.username || '',
           displayName: user.displayName || '',
-          avatarUrl: user.avatarUrl || ''
+          avatarUrl: user.avatarUrl || '',
+          role: user.role || '',
+          isOwner: Boolean(user.isOwner),
+          isAdmin: Boolean(user.isAdmin || user.role === 'admin')
         };
         localStorage.setItem('voux_nav_user', JSON.stringify(payload));
       } catch {}

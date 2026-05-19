@@ -1,5 +1,5 @@
 /*
-  dashboard/index.js
+  public/js/dashboard/index.js
 
   Admin dashboard logic: login, list/manage counters, create counters, tags, and previews.
 */
@@ -143,12 +143,15 @@ import {
 } from './shared/state.js';
 
 // Dashboard feature modules
-import { applyTagStyles, buildTagBadges } from './features/tags.js';
-import { createDashboardTagManager } from './features/tagManager.js';
+import {
+  applyTagStyles,
+  buildTagBadges
+} from './features/tags/render/selectors.js';
+import { createDashboardTagManager } from './features/tags/index.js';
 import { createDashboardSelection } from './features/selection.js';
 import { createDashboardActions } from './features/actions.js';
-import { createDashboardCounters } from './features/counters.js';
-import { createDashboardAdminUi } from './features/adminUi.js';
+import { createDashboardCounters } from './features/counters/index.js';
+import { createDashboardAdminUi } from './features/admin-ui.js';
 
 // Dashboard core modules
 import { createDashboardSession } from './core/session.js';
@@ -171,23 +174,37 @@ function setSessionEventUser(user) {
 /* Shared bootstrap helpers                                                   */
 /* -------------------------------------------------------------------------- */
 const bootstrapHelpers = createDashboardBootstrapHelpers({
+  // Shared state
   state,
+
+  // Counter form limits
   START_VALUE_DIGIT_LIMIT,
+
+  // Request and auth helpers
   authFetch,
   buildUnauthorizedError,
   buildForbiddenError,
   assertAuthorizedResponseUi,
   setUserSession: (...args) => setUserSession(...args),
+
+  // Embed UI
   embedToggles,
   embedPanels,
   embedDescs
 });
 
 const {
+  // Session and auth
   ensureSessionForAction,
   assertAuthorizedResponse,
+
+  // Counter permissions
   canDangerOnCounter,
+
+  // Counter form helpers
   readStartValue,
+
+  // Embed controls
   setEmbedMode
 } = bootstrapHelpers;
 
@@ -197,10 +214,17 @@ attachNoteMarkdownPasteBehavior(createNoteInput);
 /* Render manager                                                             */
 /* -------------------------------------------------------------------------- */
 const renderManager = createDashboardRender({
+  // Shared state
   state,
+
+  // Range labels
   RANGE_LABELS,
+
+  // Request and auth helpers
   authFetch,
   assertAuthorizedResponse,
+
+  // UI helpers
   showToast,
   adminPreview,
   adminPreviewTarget,
@@ -211,14 +235,23 @@ const renderManager = createDashboardRender({
 });
 
 const {
+  // Range stats
   getRangeStatLabel,
   getRangeStatValue,
+
+  // Counter rendering
   refreshCounters,
   renderAdminPreview,
   updateCounterMetadataRequest,
+
+  // Embed actions
   copyEmbedSnippet,
+
+  // Render state
   cancelAutoRefresh,
   changeEditPanelCount,
+
+  // Mode controls
   applyAllowedModesToSelect,
   getFirstAllowedMode,
   isModeAllowed
@@ -256,6 +289,7 @@ const tagManager = createDashboardTagManager({
 });
 
 const {
+  // Tag filter UI
   fetchTags,
   renderTagFilterList,
   updateTagFilterButton,
@@ -266,11 +300,17 @@ const {
   handleGlobalKeydown,
   clearTagFilterSelection,
   updateTagCounterHints,
+
+  // Tag CRUD
   handleTagCreate,
+
+  // Tag selector registry
   registerTagSelector,
   refreshTagSelectorEntry,
   refreshTagSelectors,
   cleanupTagSelectors,
+
+  // Tag dialogs
   openBulkTagDialog
 } = tagManager;
 
@@ -439,7 +479,8 @@ const actionsManager = createDashboardActions({
   assertAuthorizedResponse,
   ensureSessionForAction,
   refreshCounters,
-  updateCounterMetadataRequest,
+  canInsertCreatedCounter: (...args) => canInsertCreatedCounter(...args),
+  prependCreatedCounter: (...args) => prependCreatedCounter(...args),
 
   // Feedback
   showAlert,
@@ -603,7 +644,12 @@ const dataManager = createDashboardData({
   counterListEl
 });
 
-const { applyCounterResponse, fetchCounters } = dataManager;
+const {
+  applyCounterResponse,
+  fetchCounters,
+  canInsertCreatedCounter,
+  prependCreatedCounter
+} = dataManager;
 
 /* -------------------------------------------------------------------------- */
 /* Dashboard bootstrap                                                       */

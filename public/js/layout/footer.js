@@ -4,35 +4,39 @@
   Injects footer markup and sets year, version, branding text.
 */
 
+/* -------------------------------------------------------------------------- */
+/* Variables                                                                  */
+/* -------------------------------------------------------------------------- */
+const RELEASES_URL = 'https://github.com/QuintixLabs/Voux/releases/latest';
+const RELEASES_API_URL = 'https://api.github.com/repos/QuintixLabs/Voux/releases/latest'; // prettier-ignore
+
+let footerRoots = [];
+let footerConfig = null;
+let footerSessionUser = null;
+
+/* -------------------------------------------------------------------------- */
+/* Footer bootstrap                                                           */
+/* -------------------------------------------------------------------------- */
 async function injectFooter() {
   const roots = document.querySelectorAll('[data-footer-root]');
   if (!roots.length) return;
+  footerRoots = Array.from(roots);
+  footerSessionUser = window.VouxState?.peekSession?.()?.user || null;
 
   try {
     const configPromise = window.VouxState?.getConfig
       ? window.VouxState.getConfig()
       : fetch('/api/config').then((res) => (res.ok ? res.json() : null));
-    const hasSessionHint = (() => {
-      try {
-        return localStorage.getItem('voux_session_hint') === '1';
-      } catch {
-        return false;
-      }
-    })();
-    const sessionPromise = hasSessionHint
-      ? window.VouxState?.getSession
-        ? window.VouxState.getSession()
-        : fetch('/api/session', { credentials: 'include', cache: 'no-store' })
-            .then((res) => (res.ok ? res.json() : null))
-            .catch(() => null)
-      : Promise.resolve(null);
+    const sessionPromise = Promise.resolve(
+      window.VouxState?.peekSession ? window.VouxState.peekSession() : null
+    );
 
     const footerMarkup = await fetch('/footer.html').then((res) => {
       if (!res.ok) throw new Error('footer_load_failed');
       return res.text();
     });
 
-    roots.forEach((root) => {
+    footerRoots.forEach((root) => {
       root.innerHTML = footerMarkup;
       hydrateFooter(root, null, null);
     });
@@ -41,8 +45,10 @@ async function injectFooter() {
       configPromise,
       sessionPromise
     ]);
-    roots.forEach((root) => {
-      hydrateFooter(root, config, session?.user || null);
+    footerConfig = config || null;
+    footerSessionUser = session?.user || footerSessionUser || null;
+    footerRoots.forEach((root) => {
+      hydrateFooter(root, footerConfig, footerSessionUser);
     });
   } catch (error) {
     if (error?.name !== 'AbortError') {
@@ -70,6 +76,7 @@ function hydrateFooter(root, config, user) {
   if (updateEl) {
     updateEl.classList.add('hidden');
   }
+  
   const brandName = (config?.brandName || 'Voux').trim() || 'Voux';
   const brandHeading = root.querySelector('[data-brand-name]');
   if (brandHeading) {
@@ -97,9 +104,11 @@ function compareVersions(a, b) {
   const partsA = strip(a)
     .split('.')
     .map((part) => parseInt(part, 10) || 0);
+
   const partsB = strip(b)
     .split('.')
     .map((part) => parseInt(part, 10) || 0);
+
   const maxLen = Math.max(partsA.length, partsB.length);
   for (let i = 0; i < maxLen; i += 1) {
     const left = partsA[i] || 0;
@@ -113,9 +122,7 @@ function compareVersions(a, b) {
 async function checkForUpdates(updateEl, currentVersion) {
   if (!updateEl || !currentVersion) return;
   try {
-    const res = await fetch(
-      'https://api.github.com/repos/QuintixLabs/voux/releases/latest'
-    );
+    const res = await fetch(RELEASES_API_URL);
     if (!res.ok) return;
     const data = await res.json().catch(() => ({}));
     const latest = data?.tag_name || data?.name || '';
@@ -123,8 +130,7 @@ async function checkForUpdates(updateEl, currentVersion) {
     if (compareVersions(latest, currentVersion) > 0) {
       const label = `New version available · ${normalizeVersionLabel(latest)}`;
       updateEl.dataset.tooltip = label;
-      updateEl.dataset.updateUrl =
-        'https://github.com/QuintixLabs/voux/releases/latest';
+      updateEl.dataset.updateUrl = RELEASES_URL;
       updateEl.classList.remove('hidden');
       setupUpdateTooltip(updateEl);
     }
@@ -142,9 +148,7 @@ function setupUpdateTooltip(updateEl) {
     tooltip.className = 'footer__update-tooltip';
     updateEl.appendChild(tooltip);
   }
-  tooltip.href =
-    updateEl.dataset.updateUrl ||
-    'https://github.com/QuintixLabs/voux/releases/latest';
+  tooltip.href = updateEl.dataset.updateUrl || RELEASES_URL;
   tooltip.target = '_blank';
   tooltip.rel = 'noopener';
   tooltip.textContent = updateEl.dataset.tooltip || 'New version available';
@@ -183,3 +187,11 @@ if (document.readyState === 'loading') {
 } else {
   injectFooter();
 }
+
+document.addEventListener('voux:session-updated', (event) => {
+  footerSessionUser = event.detail?.user || null;
+  if (!footerRoots.length) return;
+  footerRoots.forEach((root) => {
+    hydrateFooter(root, footerConfig, footerSessionUser);
+  });
+});

@@ -4,9 +4,9 @@
   Auth helpers for sessions, users, and API keys.
 */
 
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 /* Dependencies                                                               */
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 const {
   findApiKeyByToken,
   recordApiKeyUsage,
@@ -20,14 +20,12 @@ const {
   clearLoginFailures
 } = require('../services/auth/loginLimiter');
 
-/* ========================================================================== */
-/* Constants                                                                  */
-/* ========================================================================== */
+// constants
 const SESSION_COOKIE = 'voux_session';
 
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 /* Cookie + session helpers                                                   */
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 function parseCookies(req) {
   const header = req.headers?.cookie;
   if (!header) return {};
@@ -52,9 +50,9 @@ function getSessionToken(req) {
   return cookies[SESSION_COOKIE] || '';
 }
 
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 /* Auth resolution                                                            */
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 function authenticateRequest(req) {
   if (req.auth) {
     return req.auth;
@@ -82,9 +80,9 @@ function authenticateRequest(req) {
   return null;
 }
 
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 /* Role guards                                                                */
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 function verifyAdmin(req) {
   const auth = authenticateRequest(req);
   return Boolean(auth && auth.type === 'admin');
@@ -122,9 +120,9 @@ function requireAuthOrKey(req, res, next) {
   next();
 }
 
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 /* Access checks                                                              */
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 function hasCounterAccess(auth, counter) {
   if (!auth || !counter) return false;
   if (auth.type === 'admin') return true;
@@ -141,9 +139,9 @@ function hasCounterAccess(auth, counter) {
   return false;
 }
 
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 /* Rate limiting                                                              */
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 function getClientIdentifier(req) {
   return getClientIp(req);
 }
@@ -163,20 +161,27 @@ function setRetryAfter(res, seconds) {
   res.set('Retry-After', String(retrySeconds));
 }
 
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
 /* Exports                                                                    */
-/* ========================================================================== */
+/* -------------------------------------------------------------------------- */
+// Admin guards
 module.exports = requireAdmin;
 module.exports.verifyAdmin = verifyAdmin;
 module.exports.requireAdminOrKey = requireAdminOrKey;
+
+// Auth guards
 module.exports.requireAuth = requireAuth;
 module.exports.requireAuthOrKey = requireAuthOrKey;
 module.exports.hasCounterAccess = hasCounterAccess;
 module.exports.authenticateRequest = authenticateRequest;
+
+// Login/rate-limit helpers
 module.exports.getClientIdentifier = getClientIdentifier;
 module.exports.checkLoginBlock = checkLoginBlock;
 module.exports.recordLoginFailure = recordLoginFailure;
 module.exports.clearLoginFailures = clearLoginFailures;
 module.exports.rateLimitPayload = rateLimitPayload;
 module.exports.setRetryAfter = setRetryAfter;
+
+// Session helpers
 module.exports.getSessionToken = getSessionToken;

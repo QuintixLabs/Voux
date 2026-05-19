@@ -1,5 +1,5 @@
 /*
-  dashboard/shared/dom.js
+  public/js/dashboard/shared/dom.js
 
   DOM references used by the dashboard module.
 */

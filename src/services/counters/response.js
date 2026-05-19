@@ -6,17 +6,27 @@
 
 function createCounterResponseService(deps) {
   const {
+    // Counter formatting
     normalizeCounterValue,
     describeModeLabel,
+
+    // Tag resolution
     listTagCatalog,
     toSafeNumber,
+
+    // Counter stats
     getLastHitTimestamp,
     getCounterDailyTrend,
     formatActivityTrend,
     buildInactiveStatus,
+
+    // Activity window
     activityWindowDays
   } = deps;
 
+  /* -------------------------------------------------------------------------- */
+  /* Tag mapping                                                                */
+  /* -------------------------------------------------------------------------- */
   function mapTagIdsToObjects(ids, ownerId) {
     if (!Array.isArray(ids) || !ids.length || !ownerId) return [];
     const catalog = listTagCatalog(ownerId);
@@ -27,6 +37,9 @@ function createCounterResponseService(deps) {
       .map((tag) => ({ ...tag }));
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Counter serialization                                                      */
+  /* -------------------------------------------------------------------------- */
   function serializeCounter(counter, options = {}) {
     if (!counter) return null;
     const {
@@ -59,6 +72,9 @@ function createCounterResponseService(deps) {
     return payload;
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Counter stats serialization                                                */
+  /* -------------------------------------------------------------------------- */
   function serializeCounterWithStats(counter, options = {}) {
     const base = serializeCounter(counter, options);
     if (!base) return base;
@@ -77,6 +93,9 @@ function createCounterResponseService(deps) {
     };
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* User serialization                                                         */
+  /* -------------------------------------------------------------------------- */
   function serializeUser(user, ownerId = null) {
     if (!user) return null;
     return {
@@ -91,8 +110,11 @@ function createCounterResponseService(deps) {
   }
 
   return {
+    // Counter serialization
     serializeCounter,
     serializeCounterWithStats,
+
+    // User serialization
     serializeUser
   };
 }

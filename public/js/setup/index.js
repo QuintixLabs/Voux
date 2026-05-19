@@ -44,7 +44,7 @@ function setPending(pending) {
     submitButton.disabled = pending;
     submitButton.textContent = pending
       ? 'Creating account...'
-      : 'Create admin account';
+      : 'Create owner account';
   }
 }
 
@@ -168,13 +168,28 @@ async function handleSubmit(event) {
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
       if (payload?.error === 'setup_unavailable') {
-        window.location.href = '/dashboard';
+        window.location.href = '/';
         return;
       }
       throw new Error(normalizeSetupError(payload?.error));
     }
 
-    window.location.href = '/dashboard';
+    const payload = await res.json().catch(() => ({}));
+    if (payload?.user) {
+      try {
+        localStorage.setItem('voux_session_hint', '1');
+      } catch {}
+      if (window.VouxErrors?.cacheNavUser) {
+        window.VouxErrors.cacheNavUser(payload.user);
+      }
+      if (window.VouxState?.setSession) {
+        window.VouxState.setSession({
+          user: payload.user,
+          adminPermissions: payload.adminPermissions || null
+        });
+      }
+    }
+    window.location.href = '/';
   } catch (error) {
     showError(error?.message || 'Failed to create the first admin account.');
   } finally {

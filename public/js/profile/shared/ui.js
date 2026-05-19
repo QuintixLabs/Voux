@@ -33,8 +33,13 @@ function showToast(message, variant = 'success') {
   toast.className = `toast toast--${variant}`;
 
   const icon = document.createElement('i');
-  icon.className =
-    variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line';
+  icon.className = 'icon';
+  icon.style.setProperty(
+    '--icon',
+    variant === 'success'
+      ? "url('/assets/icons/ui/checkbox-circle.svg')"
+      : "url('/assets/icons/ui/error-warning.svg')"
+  );
   icon.setAttribute('aria-hidden', 'true');
 
   const text = document.createElement('span');
@@ -108,6 +113,10 @@ function showToast(message, variant = 'success') {
 /* Error helpers                                                              */
 /* -------------------------------------------------------------------------- */
 function normalizeProfileError(error, fallback) {
+  const message = error?.error || error?.message || '';
+  if (message === 'invalid_avatar') {
+    return 'This type of file is not supported.';
+  }
   if (window.VouxErrors?.normalizeAuthError) {
     return window.VouxErrors.normalizeAuthError(error, fallback);
   }
@@ -120,11 +129,20 @@ function setInlineError(el, message) {
   const isHidden = el.classList.contains('is-hidden');
   const prev = el.dataset.errorText || '';
   const nextHidden = !message;
+  if (el._inlineErrorHideTimer) {
+    window.clearTimeout(el._inlineErrorHideTimer);
+    el._inlineErrorHideTimer = null;
+  }
   if (nextHidden) {
     if (!isHidden) {
-      el.textContent = '';
       el.classList.add('is-hidden');
       el.dataset.errorText = '';
+      el._inlineErrorHideTimer = window.setTimeout(() => {
+        if (el.classList.contains('is-hidden')) {
+          el.textContent = '';
+        }
+        el._inlineErrorHideTimer = null;
+      }, 160);
     }
     return;
   }

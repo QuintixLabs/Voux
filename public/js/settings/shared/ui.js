@@ -22,19 +22,25 @@ function ensureToastSupport() {
     container.className = 'toast-stack';
     document.body.appendChild(container);
   }
+
   window.showToast = (message, variant = 'success') => {
     const toast = document.createElement('div');
     toast.className = `toast toast--${variant}`;
     const icon = document.createElement('i');
-    icon.className =
+    icon.className = 'icon';
+    icon.style.setProperty(
+      '--icon',
       variant === 'success'
-        ? 'ri-checkbox-circle-line'
-        : 'ri-error-warning-line';
+        ? "url('/assets/icons/ui/checkbox-circle.svg')"
+        : "url('/assets/icons/ui/error-warning.svg')"
+    );
+
     icon.setAttribute('aria-hidden', 'true');
     const text = document.createElement('span');
     text.className = 'toast__message';
     text.textContent = String(message ?? '');
     toast.append(icon, text);
+    
     const timer = document.createElement('span');
     timer.className = 'toast__timer';
     toast.appendChild(timer);
@@ -141,9 +147,6 @@ async function assertSession(res) {
       error.error = 'csrf_blocked';
       throw error;
     }
-    const error = new Error('unauthorized');
-    error.code = 'unauthorized';
-    throw error;
   }
 }
 

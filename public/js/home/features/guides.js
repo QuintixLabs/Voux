@@ -37,6 +37,7 @@ function initGuideExpanders(root = document) {
         requestAnimationFrame(() => {
           content.style.gridTemplateRows = '0fr';
         });
+        
         closeTimeout = setTimeout(() => {
           details.removeAttribute('open');
           if (arrow) {
@@ -50,8 +51,10 @@ function initGuideExpanders(root = document) {
         if (arrow) {
           arrow.style.transform = 'rotate(180deg)';
         }
+
         content.style.gridTemplateRows = '0fr';
         void content.offsetHeight;
+
         requestAnimationFrame(() => {
           content.style.gridTemplateRows = '1fr';
           setTimeout(() => {

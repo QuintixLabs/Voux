@@ -1,5 +1,5 @@
 /*
-  dashboard/shared/ui.js
+  public/js/dashboard/shared/ui.js
 
   Dashboard UI helpers for modals and toasts.
 */
@@ -94,22 +94,32 @@ function showToast(message, variant = 'success') {
   if (!toastContainer) return;
   const toast = document.createElement('div');
   toast.className = `toast toast--${variant}`;
+  
   const icon = document.createElement('i');
-  icon.className =
-    variant === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line';
+  icon.className = 'icon';
+  icon.style.setProperty(
+    '--icon',
+    variant === 'success'
+      ? "url('/assets/icons/ui/checkbox-circle.svg')"
+      : "url('/assets/icons/ui/error-warning.svg')"
+  );
   icon.setAttribute('aria-hidden', 'true');
+
   const text = document.createElement('span');
   text.className = 'toast__message';
   text.textContent = String(message ?? '');
   toast.append(icon, text);
+
   const timer = document.createElement('span');
   timer.className = 'toast__timer';
+
   toast.appendChild(timer);
   toastContainer.appendChild(toast);
   toastContainer.classList.add('toast-stack--interactive');
   requestAnimationFrame(() => {
     requestAnimationFrame(() => toast.classList.add('toast--visible'));
   });
+  
   let remaining = 2200;
   let startedAt = Date.now();
   toast.style.setProperty('--toast-duration', `${remaining}ms`);
@@ -167,54 +177,112 @@ function showToast(message, variant = 'success') {
 /* -------------------------------------------------------------------------- */
 function showActionToast(message, actionLabel, onAction) {
   if (!toastContainer) return;
+  const duration = 5200;
   const toast = document.createElement('div');
   toast.className = 'toast toast--action';
+  toast.style.setProperty('--toast-duration', `${duration}ms`);
+
   const icon = document.createElement('i');
-  icon.className = 'ri-checkbox-circle-line';
+  icon.className = 'icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.style.setProperty('--icon', "url('/assets/icons/ui/checkbox-circle.svg')");
+
   const text = document.createElement('span');
   text.className = 'toast__message';
   text.textContent = message;
+
   const actionBtn = document.createElement('button');
   actionBtn.type = 'button';
   actionBtn.className = 'toast__action';
   actionBtn.textContent = actionLabel;
+
   const actionTimer = document.createElement('span');
   actionTimer.className = 'toast__timer';
   toast.append(icon, text, actionBtn, actionTimer);
+
   toastContainer.appendChild(toast);
   toastContainer.classList.add('toast-stack--interactive');
   requestAnimationFrame(() => {
     requestAnimationFrame(() => toast.classList.add('toast--visible'));
   });
 
-  const timeout = setTimeout(() => {
+  let remaining = duration;
+  let startedAt = Date.now();
+  let timeout = setTimeout(removeToast, remaining);
+
+  function removeToast() {
+    if (toast.dataset.removing) return;
+    toast.dataset.removing = 'true';
     toast.classList.remove('toast--visible');
     setTimeout(() => toast.remove(), 250);
-  }, 5200);
+    setTimeout(() => {
+      if (!toastContainer.querySelector('.toast')) {
+        toastContainer.classList.remove('toast-stack--interactive');
+      }
+    }, 260);
+  }
+
+  const pauseTimer = () => {
+    if (!timeout) return;
+    const elapsed = Date.now() - startedAt;
+    remaining = Math.max(0, remaining - elapsed);
+    clearTimeout(timeout);
+    timeout = null;
+    toast.classList.add('toast--paused');
+  };
+
+  const resumeTimer = () => {
+    if (timeout || toast.dataset.removing) return;
+    startedAt = Date.now();
+    timeout = setTimeout(removeToast, remaining);
+    toast.classList.remove('toast--paused');
+  };
+
+  toast._pauseToast = pauseTimer;
+  toast._resumeToast = resumeTimer;
+
+  const pauseAll = () => {
+    toastContainer
+      .querySelectorAll('.toast')
+      .forEach((node) => node._pauseToast?.());
+  };
+
+  const resumeAll = () => {
+    toastContainer
+      .querySelectorAll('.toast')
+      .forEach((node) => node._resumeToast?.());
+  };
 
   actionBtn.addEventListener('click', async () => {
     clearTimeout(timeout);
-    toast.classList.remove('toast--visible');
-    setTimeout(() => toast.remove(), 250);
+    timeout = null;
+    removeToast();
     try {
       await onAction?.();
     } catch {
       // ignore
     }
   });
+
+  toast.addEventListener('mouseenter', pauseAll);
+  toast.addEventListener('mouseleave', resumeAll);
 }
 
 window.showToast = showToast;
 
 export {
-  modalApi,
+  // Modal + auth helpers
   showAlert,
   normalizeAuthMessage,
   buildUnauthorizedError,
   buildForbiddenError,
   assertAuthorizedResponse,
+
+  // Confirm helpers
   showConfirm,
   showConfirmWithInput,
+
+  // Toast helpers
   showToast,
   showActionToast
 };

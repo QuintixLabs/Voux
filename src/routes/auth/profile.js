@@ -6,14 +6,21 @@
 
 function registerProfileRoutes(app, deps) {
   const {
+    // Auth middleware
     requireAuth,
     authenticateRequest,
+
+    // User serialization + permissions
     getOwnerId,
     serializeUser,
     getEffectiveAdminPermissions,
+
+    // User lookup + verification
     getUserByUsername,
     verifyPassword,
     resolveAvatarUrl,
+
+    // User updates
     updateUser
   } = deps;
 
@@ -25,6 +32,7 @@ function registerProfileRoutes(app, deps) {
     if (!auth || auth.type === 'key') {
       return res.status(401).json({ error: 'unauthorized' });
     }
+
     const ownerId = getOwnerId();
     const user = serializeUser(auth.user, ownerId);
     const adminPermissions =
@@ -42,17 +50,20 @@ function registerProfileRoutes(app, deps) {
     if (!auth || auth.type === 'key') {
       return res.status(401).json({ error: 'unauthorized' });
     }
+    
     const { displayName, avatarUrl, currentPassword, newPassword, username } =
       req.body || {};
     if (username !== undefined && !String(username || '').trim()) {
       return res.status(400).json({ error: 'username_required' });
     }
+
     if (
       username !== undefined &&
       String(username).trim().toLowerCase() === auth.user.username
     ) {
       return res.status(400).json({ error: 'username_unchanged' });
     }
+
     let password = null;
     const userRow = getUserByUsername(auth.user.username);
     const usernameChange =
@@ -66,12 +77,14 @@ function registerProfileRoutes(app, deps) {
         return res.status(401).json({ error: 'invalid_credentials' });
       }
     }
+
     if (newPassword) {
       if (String(newPassword).length < 6) {
         return res.status(400).json({ error: 'password_too_short' });
       }
       password = String(newPassword);
     }
+
     const avatarResult = resolveAvatarUrl(
       auth.user.id,
       avatarUrl,
@@ -80,6 +93,7 @@ function registerProfileRoutes(app, deps) {
     if (avatarResult.error) {
       return res.status(400).json({ error: avatarResult.error });
     }
+    
     try {
       const updated = updateUser(auth.user.id, {
         displayName,

@@ -1,5 +1,5 @@
 /*
-  dashboard/shared/api.js
+  public/js/dashboard/shared/api.js
 
   Network helpers for dashboard requests.
 */

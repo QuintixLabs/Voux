@@ -72,13 +72,18 @@ const profileDisplayCancel = document.getElementById('profileDisplayCancel');
 const profileRoleText = document.getElementById('profileRoleText');
 
 export {
+  // Display name
   profileDisplayText,
   profileDisplayEdit,
+
+  // Avatar
   profileAvatarButton,
   profileAvatarFile,
   profileAvatarPreview,
   profileAvatarFallback,
   profileAvatarRemove,
+
+  // Password modal
   profilePasswordReset,
   profilePasswordModal,
   profilePasswordMessage,
@@ -88,6 +93,8 @@ export {
   profilePasswordNewError,
   profilePasswordSave,
   profilePasswordCancel,
+
+  // Username modal
   profileUsernameEdit,
   profileUsernameText,
   profileUsernameModal,
@@ -97,10 +104,14 @@ export {
   profileUsernameNewError,
   profileUsernameSave,
   profileUsernameCancel,
+
+  // Display-name modal
   profileDisplayModal,
   profileDisplayNew,
   profileDisplayError,
   profileDisplaySave,
   profileDisplayCancel,
+
+  // Other profile refs
   profileRoleText
 };

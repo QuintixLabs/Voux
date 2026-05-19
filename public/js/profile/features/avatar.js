@@ -9,13 +9,18 @@
 /* -------------------------------------------------------------------------- */
 function createProfileAvatarFeature(deps) {
   const {
+    // Avatar controls
     profileAvatarButton,
     profileAvatarFile,
     profileAvatarPreview,
     profileAvatarFallback,
     profileAvatarRemove,
+
+    // Feedback
     showToast,
     normalizeProfileError,
+
+    // Requests + profile sync
     authFetch,
     syncProfile
   } = deps;

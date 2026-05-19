@@ -1,5 +1,5 @@
 /*
-  settings/features/adminPermissions.js
+  public/js/settings/features/adminPermissions.js
 
   Owner/admin permissions UI and modal flows.
 */
@@ -9,6 +9,7 @@
 /* -------------------------------------------------------------------------- */
 function createAdminPermissionsManager(deps) {
   const {
+    // Permissions modal controls
     adminDefaultsOpen,
     adminPermModal,
     adminPermTitle,
@@ -18,11 +19,17 @@ function createAdminPermissionsManager(deps) {
     adminPermCancel,
     adminPermReset,
     purgeInactiveButton,
+
+    // Permissions config
     ADMIN_PERMISSION_ITEMS,
+
+    // Requests + feedback
     authFetch,
     showToast,
     showAlert,
     normalizeAuthMessage,
+
+    // Settings shell
     initSettingsTabs,
     getActiveUser,
     onUsersChanged,
@@ -63,14 +70,15 @@ function createAdminPermissionsManager(deps) {
     if (adminDefaultsOpen) {
       adminDefaultsOpen.classList.toggle('hidden', !isOwner);
     }
+
     const allowedIds = isOwner
       ? getAllowedSettingsCards(null)
       : getAllowedSettingsCards(perms);
     initSettingsTabs(allowedIds);
     if (purgeInactiveButton) {
-      const canDanger = isOwner || (perms && perms.danger);
-      purgeInactiveButton.disabled = !canDanger;
-      purgeInactiveButton.classList.toggle('disabled', !canDanger);
+      const canPurgeInactive = isOwner || (perms && perms.runtime);
+      purgeInactiveButton.disabled = !canPurgeInactive;
+      purgeInactiveButton.classList.toggle('disabled', !canPurgeInactive);
     }
   }
 
@@ -80,13 +88,17 @@ function createAdminPermissionsManager(deps) {
     ADMIN_PERMISSION_ITEMS.forEach((item) => {
       const row = document.createElement('div');
       row.className = 'admin-permission';
+
       const labelWrap = document.createElement('div');
       labelWrap.className = 'admin-permission__label';
+
       const label = document.createElement('span');
       label.textContent = item.label;
+
       const hint = document.createElement('small');
       hint.textContent = item.hint;
       labelWrap.append(label, hint);
+
       const toggle = document.createElement('button');
       toggle.type = 'button';
       toggle.className = 'admin-toggle';
@@ -126,6 +138,7 @@ function createAdminPermissionsManager(deps) {
     if (values && typeof values === 'object') {
       adminPermissionsDefaults = { ...adminPermissionsDefaults, ...values };
     }
+
     if (adminDefaultsSaving) {
       adminDefaultsPending = true;
       return;
@@ -136,6 +149,7 @@ function createAdminPermissionsManager(deps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ defaults: adminPermissionsDefaults })
     });
+
     if (!res.ok) {
       adminDefaultsSaving = false;
       if (adminDefaultsPending) {
@@ -147,6 +161,7 @@ function createAdminPermissionsManager(deps) {
       );
       return;
     }
+    
     await res.json().catch(() => ({}));
     adminDefaultsSaving = false;
     if (adminDefaultsPending) {
@@ -167,6 +182,7 @@ function createAdminPermissionsManager(deps) {
     }
     adminPermMode = 'defaults';
     activeAdminPermUser = null;
+
     if (adminPermTitle) adminPermTitle.textContent = 'Admin defaults';
     if (adminPermMessage)
       adminPermMessage.textContent = 'Default permissions for all admins.';
@@ -253,11 +269,13 @@ function createAdminPermissionsManager(deps) {
         values[key] = toggle.getAttribute('aria-pressed') === 'true';
       }
     });
+
     if (adminPermMode === 'defaults') {
       await saveAdminDefaults(values);
       closeAdminPermissions();
       return;
     }
+
     if (!activeAdminPermUser) return;
     const res = await authFetch(
       `/api/admin-permissions/${activeAdminPermUser.id}`,
@@ -267,12 +285,14 @@ function createAdminPermissionsManager(deps) {
         body: JSON.stringify({ override: values })
       }
     );
+
     if (!res.ok) {
       await showAlert(
         normalizeAuthMessage(null, 'Failed to update permissions.')
       );
       return;
     }
+
     adminPermissionsOverrides = (await res.json()).overrides || {};
     closeAdminPermissions();
     onUsersChanged?.();
@@ -288,21 +308,29 @@ function createAdminPermissionsManager(deps) {
     adminDefaultsOpen?.addEventListener('click', () => {
       openAdminDefaults();
     });
+
     adminPermCancel?.addEventListener('click', closeAdminPermissions);
     adminPermModal?.addEventListener('click', (event) => {
       if (event.target === adminPermModal) closeAdminPermissions();
     });
+
     adminPermReset?.addEventListener('click', () => {
       handleReset();
     });
+
     adminPermSave?.addEventListener('click', () => {
       handleSave();
     });
   }
 
   return {
+    // Lifecycle
     setup,
+
+    // Permissions UI
     applyAdminPermissionsUI,
+
+    // Permissions data
     loadAdminPermissions,
     openAdminPermissions
   };

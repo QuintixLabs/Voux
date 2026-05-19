@@ -36,6 +36,7 @@ const {
   deleteCountersByOwner,
   deleteCountersByOwnerAndMode,
   deleteInactiveCountersOlderThan,
+  deleteInactiveCountersOlderThanForOwner,
   countCounters,
   getLastHitTimestamp,
   getCounterDailyTrend,
@@ -87,9 +88,7 @@ const {
   recordUserLogin
 } = require('./db');
 
-/* -------------------------------------------------------------------------- */
-/* Runtime config                                                              */
-/* -------------------------------------------------------------------------- */
+// Runtime config
 const { getConfig, updateConfig } = require('./configStore');
 
 /* -------------------------------------------------------------------------- */
@@ -103,15 +102,20 @@ const {
   resolveTrustProxySetting
 } = require('./middleware/securityHeaders');
 const {
+  // Auth guards
   requireAuth,
   requireAuthOrKey,
   hasCounterAccess,
   authenticateRequest,
+
+  // Login protection
   checkLoginBlock,
   recordLoginFailure,
   clearLoginFailures,
   rateLimitPayload,
   setRetryAfter,
+
+  // Session helpers
   getSessionToken
 } = require('./middleware/requireAdmin');
 
@@ -129,9 +133,7 @@ const createCounterResponseService = require('./services/counters/response');
 const registerAllRoutes = require('./routes');
 const buildRouteDeps = require('./routes/deps');
 
-/* -------------------------------------------------------------------------- */
-/* Runtime constants                                                           */
-/* -------------------------------------------------------------------------- */
+// Runtime constants
 const PORT = process.env.PORT || 8787;
 
 /* Pagination */
@@ -216,32 +218,46 @@ const notFoundPage = path.join(staticDir, '404.html');
 /* Service adapters                                                            */
 /* -------------------------------------------------------------------------- */
 const { resolveAvatarUrl } = createAvatarService({
+  // Filesystem + paths
   fs,
   path,
   avatarUploadsDir,
   staticDir,
+
+  // Avatar limits
   avatarMaxBytes: AVATAR_MAX_BYTES
 });
 
 const {
+  // Counter value parsing
   validateCounterValue,
   extractSearchQuery,
   isPreviewRequest,
+
+  // ID + counter normalization
   normalizeIdsInput,
   normalizeCounterValue,
   normalizeCounterForExport,
+
+  // Filter normalization
   normalizeModeFilter,
   normalizeSort,
   normalizeInactiveFilter,
   normalizeTagFilter,
+
+  // Settings patch normalization
   normalizeAllowedModesPatch
 } = createCounterRequestService({
+  // Counter validation
   startValueDigitLimit: START_VALUE_DIGIT_LIMIT,
+
+  // Tag filtering
   filterTagIds
 });
 
 const { formatActivityTrend, buildInactiveStatus, toSafeNumber } =
   createCounterStatsService({
+    // Activity config
     weekdayLabels,
     activityWindowDays: ACTIVITY_WINDOW_DAYS,
     inactiveThresholdDays: INACTIVE_THRESHOLD_DAYS,
@@ -250,45 +266,61 @@ const { formatActivityTrend, buildInactiveStatus, toSafeNumber } =
 
 const { serializeCounter, serializeCounterWithStats, serializeUser } =
   createCounterResponseService({
+    // Counter formatting
     normalizeCounterValue,
     describeModeLabel,
+
+    // Tag resolution + numeric helpers
     listTagCatalog,
     toSafeNumber,
+
+    // Counter stats
     getLastHitTimestamp,
     getCounterDailyTrend,
     formatActivityTrend,
     buildInactiveStatus,
+
+    // Activity window
     activityWindowDays: ACTIVITY_WINDOW_DAYS
   });
 
 const {
+  // Ownership helpers
   getOwnerId,
   isKnownOwner,
+
+  // Admin permission helpers
   getEffectiveAdminPermissions,
   hasAdminPermission
 } = createPermissionsService({
+  // Runtime config
   getConfig,
+
+  // Owner resolution
   getOwnerUser,
   getUserById
 });
 
 const backupService = createBackupService({
+  // Filesystem + paths
   fs,
   path,
   dataDir,
   staticDir,
   uploadsDir,
   requestedBackupDir: process.env.BACKUP_DIR,
+
+  // Runtime config + backup hooks
   getConfig,
   createDatabaseBackup,
   exportCounters,
   exportDailyActivity,
+
+  // Counter export normalization
   normalizeCounterForExport
 });
 
-/* -------------------------------------------------------------------------- */
-/* HTML cache and environment                                                  */
-/* -------------------------------------------------------------------------- */
+// HTML cache and ENV
 const htmlCache = new Map();
 const IS_DEV =
   String(process.env.DEV_MODE || process.env.NODE_ENV || '').toLowerCase() ===
@@ -433,6 +465,7 @@ const routeDeps = buildRouteDeps({
   getBaseUrl,
   serializeCounter,
   deleteInactiveCountersOlderThan,
+  deleteInactiveCountersOlderThanForOwner,
   isPreviewRequest,
   recordHit,
   normalizeCounterValue,
@@ -449,11 +482,17 @@ const routeDeps = buildRouteDeps({
 
 registerAllRoutes(app, routeDeps);
 
-registerPageRoutes(app, serveHtml, { countUsers });
+registerPageRoutes(app, serveHtml, {
+  countUsers
+});
+
 registerStaticAndErrorHandlers(app, {
+  // Express + paths
   express,
   uploadsDir,
   staticDir,
+
+  // Environment + HTML loading
   isDev: IS_DEV,
   loadHtmlTemplate,
   notFoundPage
@@ -484,8 +523,10 @@ function getBaseUrl(req) {
   if (process.env.PUBLIC_BASE_URL) {
     return String(process.env.PUBLIC_BASE_URL).replace(/\/+$/, '');
   }
+
   const host = String(req.get('host') || '').trim();
   if (!host) return '';
+  
   let protocol = req.protocol || 'http';
   if (req.secure) {
     protocol = 'https';

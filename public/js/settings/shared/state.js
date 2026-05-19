@@ -1,5 +1,5 @@
 /*
-  settings/shared/state.js
+  public/js/settings/shared/state.js
 
   Shared constants/state used by the settings module.
 */

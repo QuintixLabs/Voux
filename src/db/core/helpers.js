@@ -5,7 +5,6 @@
 */
 
 const crypto = require('crypto');
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function normalizeIdList(ids, limit = 200) {
@@ -170,17 +169,26 @@ function normalizeUserRow(row) {
 }
 
 module.exports = {
+  // Time
   DAY_MS,
+
+  // IDs + modes
   normalizeIdList,
   generateId,
   describeModeLabel,
   parseRequestedMode,
+
+  // Tags
   sanitizeTagColor,
   sanitizeTagCatalog,
+
+  // Numbers + search
   getDayStartTimestamp,
   toSafeNumber,
   normalizeSearch,
   extractIntegerDigits,
+
+  // Row normalization
   normalizeDailyEntry,
   normalizeApiKeyRow,
   normalizeUserRow

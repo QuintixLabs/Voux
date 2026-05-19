@@ -15,8 +15,8 @@ const helpers = require('./helpers');
 const cryptoApi = require('./crypto');
 
 // DB domain APIs
-const createTagsApi = require('../counters/tags');
-const createCountersApi = require('../counters/counters');
+const createTagsApi = require('../tags');
+const createCountersApi = require('../counters');
 const createApiKeysApi = require('../auth/apiKeys');
 const createUsersApi = require('../auth/users');
 const createSessionsApi = require('../auth/sessions');

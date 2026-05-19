@@ -9,6 +9,7 @@
 /* -------------------------------------------------------------------------- */
 function createProfileDisplayNameFeature(deps) {
   const {
+    // Display name controls
     profileDisplayEdit,
     profileDisplayText,
     profileDisplayModal,
@@ -16,10 +17,14 @@ function createProfileDisplayNameFeature(deps) {
     profileDisplayError,
     profileDisplaySave,
     profileDisplayCancel,
+
+    // Requests + feedback
     authFetch,
     showToast,
     normalizeProfileError,
     setInlineError,
+
+    // Profile sync
     syncProfile
   } = deps;
 
@@ -79,7 +84,9 @@ function createProfileDisplayNameFeature(deps) {
     profileDisplaySave?.addEventListener('click', saveDisplayName);
   }
 
-  return { bind };
+  return {
+    bind
+  };
 }
 
 export { createProfileDisplayNameFeature };
